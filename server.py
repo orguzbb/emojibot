@@ -339,19 +339,28 @@ async def generate_emoji_pack(req: GenerateRequest):
     if not target_files:
         raise HTTPException(status_code=404, detail="Shablonlar topilmadi")
 
-    # Pricing & Balance Check
+    # Pricing & Balance Check — HAR DOIM STARS TO'LANADI (Hech qachon tekin bo'lmaydi)
     total_stickers_count = len(target_files)
     emoji_price = get_emoji_price()
     total_cost = total_stickers_count * emoji_price
     
-    is_admin = req.user_id in ADMIN_IDS
-    if not is_admin and total_cost > 0:
+    if total_cost > 0:
         balance = get_user_balance(req.user_id)
         if balance < total_cost:
             raise HTTPException(
                 status_code=402,
                 detail=f"Balansingiz yetarli emas! Sizda {balance} ⭐ Stars bor, kerak: {total_cost} ⭐ Stars ({total_stickers_count} ta emoji x {emoji_price} ⭐). Iltimos, hisobingizni to'ldiring."
             )
+        
+        # Balansdan yechish
+        deducted = deduct_user_balance(
+            user_id=req.user_id,
+            amount=total_cost,
+            tx_type="purchase_webapp",
+            description=f"Mini App to'lovi: {clean_text} ({total_stickers_count} ta emoji, {total_cost} ⭐)"
+        )
+        if not deducted:
+            raise HTTPException(status_code=402, detail="Balansdan Stars yechishda xatolik yuz berdi.")
 
     # Generate processed animated stickers
     input_stickers: List[InputSticker] = []

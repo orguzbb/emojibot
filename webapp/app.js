@@ -591,11 +591,12 @@ function updateSelectionStatus() {
         }
     }
     
-    // Price & Label Calculation
+    // Price & Label Calculation — HAR DOIM STARS TO'LOV HISOB-KITOBLARI
     const count = selectedCount > 0 ? selectedCount : 1;
     const unitPrice = state.emojiPrice || 6;
-    const totalCost = state.isAdmin ? 0 : (count * unitPrice);
-    const priceBadge = state.isAdmin ? "Bepul (Admin)" : `${totalCost} ⭐`;
+    const totalCost = count * unitPrice;
+    state.lastNeededBal = totalCost;
+    const priceBadge = `${totalCost} ⭐`;
     
     const isExisting = state.destinationMode === 'existing';
     const actionVerb = isExisting ? "Qo'shish" : "Yaratish";
@@ -1036,13 +1037,14 @@ async function startGeneration(mode = 'selected') {
         }
     }
     
-    // Check balance
+    // Check balance — HAR DOIM STARS TALAB QILINADI
     const totalCount = selectedFiles.length;
     const unitPrice = state.emojiPrice || 6;
-    const totalCost = state.isAdmin ? 0 : (totalCount * unitPrice);
+    const totalCost = totalCount * unitPrice;
+    state.lastNeededBal = totalCost;
     
-    if (!state.isAdmin && totalCost > 0 && state.userBalance < totalCost) {
-        openBalanceModal(state.userBalance, totalCost);
+    if (totalCost > 0 && (state.userBalance || 0) < totalCost) {
+        openBalanceModal(state.userBalance || 0, totalCost);
         haptic('error');
         return;
     }
