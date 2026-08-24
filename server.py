@@ -60,6 +60,11 @@ app.mount("/static", StaticFiles(directory=str(WEBAPP_DIR)), name="static")
 bot_instance: Optional[Bot] = None
 
 
+def set_bot(bot: Bot):
+    global bot_instance
+    bot_instance = bot
+
+
 def get_bot() -> Bot:
     global bot_instance
     if bot_instance is None:

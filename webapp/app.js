@@ -32,10 +32,10 @@ for (let i = 14; i <= 117; i++) {
     });
 }
 
-// App State (Nothing selected by default on load)
+// App State (Nothing selected by default on load, empty text for user input)
 const state = {
     user: null,
-    text: "ABDURAHIM",
+    text: "",
     font: "stapel",
     scale: 1.0,
     activeTab: "name",
@@ -459,12 +459,13 @@ async function updateLivePreview() {
     const num = getTemplateNumber(state.selectedTemplate);
     const isTicket = parseInt(num) <= 13;
     dom.currentTemplateTag.textContent = `${isTicket ? 'Ticket' : 'Logo'} #${num}`;
-    dom.previewTextDisplay.textContent = state.text || "—";
+    const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
+    dom.previewTextDisplay.textContent = state.text ? state.text.trim().toUpperCase() : "—";
     
     const fontNames = { stapel: 'Stapel', inter: 'Inter', grobold: 'Grobold' };
     dom.previewFontDisplay.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
     
-    const lottieData = await fetchLottiePreview(state.selectedTemplate, state.text, state.font, state.scale);
+    const lottieData = await fetchLottiePreview(state.selectedTemplate, cleanTxt, state.font, state.scale);
     
     if (lottieData) {
         if (state.livePlayer) {
@@ -1048,20 +1049,18 @@ function setupEventListeners() {
         dom.charCount.textContent = `${len}/16`;
     }
     
-    // Debounced text/font/scale reload
-    const debouncedFullUpdate = debounce(() => {
+    // Debounced text update: only updates the live hero preview, leaving grid cards lightning fast!
+    const debouncedLiveTextUpdate = debounce(() => {
         let val = dom.nameInput.value.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_ \-]/g, '').toUpperCase();
         state.text = val;
         dom.nameInput.value = val;
         updateCharCount();
         updateLivePreview();
-        renderTicketsGrid(dom.templateSearch?.value || '');
-        renderLogosGrid(dom.logoSearch?.value || '');
-    }, 280);
+    }, 180);
     
     dom.nameInput.addEventListener('input', () => {
         updateCharCount();
-        debouncedFullUpdate();
+        debouncedLiveTextUpdate();
     });
     
     // Size Slider (O'lcham) — Real-time live interactive update

@@ -29,6 +29,9 @@ async def run_bot():
         token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
+    from server import set_bot
+    set_bot(bot)
+
     dp = Dispatcher()
     dp.include_router(admin_router)
     dp.include_router(router)
