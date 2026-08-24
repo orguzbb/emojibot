@@ -186,7 +186,7 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
         "✨ Ushbu bot orqali siz o'zingizning ismingiz bilan "
         "<b>Telegram Premium Animatsiyali Emoji Pack</b> yaratishingiz mumkin!\n\n"
         f"💰 <b>Sizning balansingiz:</b> <b>{balance} ⭐ Stars</b>\n"
-        f"💎 <b>1 ta to'plam narxi:</b> <b>{price} ⭐ Stars</b>\n\n"
+        f"💎 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b>\n\n"
         "🚀 <b>Mini App orqali foydalanish:</b>\n"
         "Pastdagi <b>📱 Mini App</b> tugmasini bosing va 100+ shablonlarni jonli prevyuda ko'ring!\n\n"
         "🔤 <b>Bot orqali yaratish:</b>\n"
@@ -206,7 +206,7 @@ async def cb_menu_main(callback: CallbackQuery, state: FSMContext):
     text = (
         f"👋 <b>Bosh menyu</b>\n\n"
         f"💰 <b>Sizning balansingiz:</b> <b>{balance} ⭐ Stars</b>\n"
-        f"💎 <b>1 ta to'plam narxi:</b> <b>{price} ⭐ Stars</b>\n\n"
+        f"💎 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b>\n\n"
         "<i>Ismingizni yozib yuboring yoki quyidagi bo'limlardan birini tanlang:</i>"
     )
     await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
@@ -229,7 +229,7 @@ async def handle_wallet_menu(event: Message | CallbackQuery, state: FSMContext):
     text = (
         "💰 <b>Mening Hamyonim</b>\n\n"
         f"💳 <b>Joriy balans:</b> <b>{balance} ⭐ Stars</b>\n"
-        f"💎 <b>1 ta to'plam narxi:</b> <b>{price} ⭐ Stars</b>\n"
+        f"💎 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b>\n"
         f"📦 <b>Yaratilgan to'plamlar:</b> <b>{len(packs)} ta</b>\n"
         f"👥 <b>Taklif qilingan do'stlar:</b> <b>{ref_stats['count']} ta</b> (+{ref_stats['total_earned']} ⭐)\n\n"
         "💡 <i>Balansingizni Telegram Stars orqali to'ldirishingiz, promokod kiritishingiz yoki do'stlaringizni taklif qilib bepul Stars ishlashingiz mumkin!</i>"
@@ -616,7 +616,7 @@ async def cb_help(event: Message | CallbackQuery):
     ref_bonus = get_referral_bonus()
     help_text = (
         "ℹ️ <b>Yordam & Narxlar</b>\n\n"
-        f"💎 <b>1 ta to'plam narxi:</b> <b>{price} ⭐ Stars</b>\n"
+        f"💎 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b>\n"
         f"🎁 <b>Do'st taklif qilish bonusi:</b> <b>+{ref_bonus} ⭐ Stars</b> har bir do'st uchun!\n\n"
         "• <b>Mini App:</b> Yuqoridagi '🚀 Mini Appni Ochish' tugmasini bosing — unda barcha 117 ta shablon jonli ko'rinadi!\n"
         "• Botga istalgan so'z yoki ism yuborib ham yaratishingiz mumkin (1-16 ta belgi).\n"

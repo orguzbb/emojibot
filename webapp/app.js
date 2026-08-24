@@ -35,6 +35,11 @@ for (let i = 14; i <= 117; i++) {
 // App State (Nothing selected by default on load, empty text for user input)
 const state = {
     user: null,
+    userBalance: 0,
+    emojiPrice: 6,
+    isAdmin: false,
+    destinationMode: "new", // "new" or "existing"
+    selectedExistingPack: "",
     text: "",
     font: "stapel",
     scale: 1.0,
@@ -56,6 +61,7 @@ const state = {
 
 // Telegram WebApp Object
 const tg = window.Telegram?.WebApp;
+const BOT_USERNAME = "GnEmojiBot";
 
 // DOM Elements
 const dom = {
@@ -67,6 +73,8 @@ const dom = {
     // Header
     userAvatar: document.getElementById('user-avatar'),
     userName: document.getElementById('user-name'),
+    userBalancePill: document.getElementById('user-balance-pill'),
+    userBalanceVal: document.getElementById('user-balance-val'),
     
     // Inputs
     nameInput: document.getElementById('name-input'),
@@ -76,6 +84,12 @@ const dom = {
     fontPills: document.getElementById('font-pills'),
     sizeSlider: document.getElementById('size-slider'),
     sizeValDisplay: document.getElementById('size-val-display'),
+    
+    // Destination Selector (New vs Existing)
+    destPillNew: document.getElementById('dest-pill-new'),
+    destPillExisting: document.getElementById('dest-pill-existing'),
+    existingPackSelectWrapper: document.getElementById('existing-pack-select-wrapper'),
+    existingPackSelect: document.getElementById('existing-pack-select'),
     
     // Live Preview
     liveLottiePlayer: document.getElementById('live-lottie-player'),
@@ -133,6 +147,15 @@ const dom = {
     packLinkText: document.getElementById('pack-link-text'),
     btnOpenPack: document.getElementById('btn-open-pack'),
     btnSharePack: document.getElementById('btn-share-pack'),
+    
+    // Balance Modal
+    modalBalance: document.getElementById('modal-balance'),
+    btnCloseBalanceModal: document.getElementById('btn-close-balance-modal'),
+    btnCancelBalance: document.getElementById('btn-cancel-balance'),
+    btnTopupWallet: document.getElementById('btn-topup-wallet'),
+    modalCurrBal: document.getElementById('modal-curr-bal'),
+    modalNeededBal: document.getElementById('modal-needed-bal'),
+    modalDiffBal: document.getElementById('modal-diff-bal'),
     
     // Toast
     toast: document.getElementById('toast'),
@@ -314,10 +337,9 @@ async function initApp() {
         // 4. Update Selection Status
         updateSelectionStatus();
         
-        // 5. Load user packs if user is available
-        if (state.user?.id) {
-            loadUserPacks(state.user.id);
-        }
+        // 5. Load user info, balance & existing packs
+        const uid = state.user?.id || 1323217434;
+        await loadUserInfo(uid);
         
         updateLoadingProgress(100, "Tayyor!");
         
@@ -367,15 +389,54 @@ async function apiFetch(endpoint, options = {}) {
     throw lastError || new Error("API ulanishida xatolik");
 }
 
-async function loadUserPacks(userId) {
+async function loadUserInfo(userId) {
     try {
-        const res = await apiFetch(`user_packs?user_id=${userId}`);
+        const res = await apiFetch(`user_info?user_id=${userId}`);
         const data = await res.json();
-        state.userPacks = data.packs || [];
+        state.userBalance = data.balance ?? 0;
+        state.emojiPrice = data.emoji_price ?? 6;
+        state.userPacks = data.packs ?? [];
+        state.isAdmin = !!data.is_admin;
+        
+        if (dom.userBalanceVal) {
+            dom.userBalanceVal.textContent = state.userBalance;
+        }
+        
+        renderExistingPacksDropdown();
         renderUserPacks();
+        updateSelectionStatus();
     } catch (e) {
-        console.warn('User packs fetch error:', e);
+        console.warn('User info fetch error:', e);
     }
+}
+
+async function loadUserPacks(userId) {
+    return loadUserInfo(userId);
+}
+
+function renderExistingPacksDropdown() {
+    if (!dom.existingPackSelect) return;
+    dom.existingPackSelect.innerHTML = '';
+    
+    if (!state.userPacks || state.userPacks.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = "Sizda hali yaratilgan to'plamlar yo'q";
+        dom.existingPackSelect.appendChild(opt);
+        return;
+    }
+    
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = '';
+    defaultOpt.textContent = "To'plamni tanlang...";
+    dom.existingPackSelect.appendChild(defaultOpt);
+    
+    state.userPacks.forEach(([pname, ptitle]) => {
+        const opt = document.createElement('option');
+        opt.value = pname;
+        opt.textContent = `📦 ${ptitle || pname}`;
+        dom.existingPackSelect.appendChild(opt);
+    });
 }
 
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
@@ -500,7 +561,6 @@ async function updateLivePreview() {
 // Update selection counters and bottom action button text
 function updateSelectionStatus() {
     const activeSet = state.activeTab === 'name' ? state.selectedTickets : state.selectedLogos;
-    const totalCount = state.activeTab === 'name' ? TICKET_TEMPLATES.length : LOGO_TEMPLATES.length;
     const selectedCount = activeSet.size;
     
     // Ticket tab toolbar
@@ -531,15 +591,25 @@ function updateSelectionStatus() {
         }
     }
     
+    // Price & Label Calculation
+    const count = selectedCount > 0 ? selectedCount : 1;
+    const unitPrice = state.emojiPrice || 6;
+    const totalCost = state.isAdmin ? 0 : (count * unitPrice);
+    const priceBadge = state.isAdmin ? "Bepul (Admin)" : `${totalCost} ⭐`;
+    
+    const isExisting = state.destinationMode === 'existing';
+    const actionVerb = isExisting ? "Qo'shish" : "Yaratish";
+    
     // Bottom Action Button Text
     if (selectedCount > 1) {
-        dom.mainBtnText.textContent = `Tanlangan Emojilarni Yaratish (${selectedCount} ta)`;
+        dom.mainBtnText.textContent = `Tanlangan Emojilarni ${actionVerb} (${selectedCount} ta • ${priceBadge})`;
     } else if (selectedCount === 1) {
         const singleFile = Array.from(activeSet)[0];
         const num = getTemplateNumber(singleFile);
-        dom.mainBtnText.textContent = `Tanlangan #${num} Emojini Yaratish`;
+        dom.mainBtnText.textContent = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
     } else {
-        dom.mainBtnText.textContent = state.activeTab === 'name' ? "Tanlangan Ticketni Yaratish" : "Tanlangan Logoni Yaratish";
+        const num = getTemplateNumber(state.selectedTemplate);
+        dom.mainBtnText.textContent = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
     }
 }
 
@@ -934,7 +1004,6 @@ async function startGeneration(mode = 'selected') {
     }
     
     const userId = state.user?.id || 1323217434;
-    haptic('medium');
     
     const activeSet = state.activeTab === 'name' ? state.selectedTickets : state.selectedLogos;
     const selectedArray = Array.from(activeSet);
@@ -943,22 +1012,51 @@ async function startGeneration(mode = 'selected') {
     let selectedFiles = [];
     
     if (mode === 'all') {
-        showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 104 ta logo shablon render qilinmoqda...", 15);
         selectedFiles = LOGO_TEMPLATES.map(t => t.file);
     } else if (selectedArray.length === 0) {
-        // If nothing selected in current tab, generate the active template
         targetMode = "single";
-        const num = getTemplateNumber(state.selectedTemplate);
-        showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 25);
         selectedFiles = [state.selectedTemplate];
     } else if (selectedArray.length === 1) {
         targetMode = "single";
-        const num = getTemplateNumber(selectedArray[0]);
-        showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 25);
         selectedFiles = selectedArray;
     } else {
         targetMode = "selected";
         selectedFiles = selectedArray;
+    }
+    
+    // Check destination (Yangi to'plam vs Mavjud to'plam)
+    let packName = undefined;
+    if (state.destinationMode === 'existing') {
+        targetMode = 'add_to_pack';
+        packName = dom.existingPackSelect?.value;
+        if (!packName) {
+            showToast("⚠️ Iltimos, qo'shish uchun mavjud to'plamni tanlang!", "⚠️");
+            haptic('error');
+            return;
+        }
+    }
+    
+    // Check balance
+    const totalCount = selectedFiles.length;
+    const unitPrice = state.emojiPrice || 6;
+    const totalCost = state.isAdmin ? 0 : (totalCount * unitPrice);
+    
+    if (!state.isAdmin && totalCost > 0 && state.userBalance < totalCost) {
+        openBalanceModal(state.userBalance, totalCost);
+        haptic('error');
+        return;
+    }
+    
+    haptic('medium');
+    
+    if (targetMode === 'add_to_pack') {
+        showProgressModal("Mavjud to'plamga qo'shilmoqda...", `\"${packName}\" to'plamiga ${totalCount} ta stiker qo'shilmoqda...`, 30);
+    } else if (mode === 'all') {
+        showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 104 ta logo shablon render qilinmoqda...", 15);
+    } else if (targetMode === "single") {
+        const num = getTemplateNumber(selectedFiles[0]);
+        showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 25);
+    } else {
         showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan stikerlar paketga jamlanmoqda...", 20);
     }
     
@@ -977,6 +1075,7 @@ async function startGeneration(mode = 'selected') {
             font: state.font,
             scale: state.scale,
             mode: targetMode,
+            pack_name: packName,
             template_id: selectedFiles[0] || state.selectedTemplate,
             selected_templates: selectedFiles.length > 0 ? selectedFiles : undefined,
             init_data: tg?.initData || ""
@@ -993,6 +1092,12 @@ async function startGeneration(mode = 'selected') {
         const result = await res.json();
         updateProgressStep(100, "Tayyor bo'ldi!");
         
+        if (result.remaining_balance !== undefined) {
+            state.userBalance = result.remaining_balance;
+            if (dom.userBalanceVal) dom.userBalanceVal.textContent = state.userBalance;
+            updateSelectionStatus();
+        }
+        
         setTimeout(() => {
             showSuccessModal(result.pack_name, result.pack_link, mode === 'all');
         }, 400);
@@ -1000,9 +1105,24 @@ async function startGeneration(mode = 'selected') {
     } catch (err) {
         console.error('Generation failed:', err);
         hideProgressModal();
-        showToast(`❌ Xatolik: ${err.message}`, "❌", 4000);
+        if (err.message && err.message.includes("Balansingiz yetarli emas")) {
+            openBalanceModal(state.userBalance, totalCost);
+        } else {
+            showToast(`❌ Xatolik: ${err.message}`, "❌", 4000);
+        }
         haptic('error');
     }
+}
+
+function openBalanceModal(currBal, neededBal) {
+    if (dom.modalCurrBal) dom.modalCurrBal.textContent = `${currBal} ⭐`;
+    if (dom.modalNeededBal) dom.modalNeededBal.textContent = `${neededBal} ⭐`;
+    if (dom.modalDiffBal) dom.modalDiffBal.textContent = `${Math.max(0, neededBal - currBal)} ⭐`;
+    dom.modalBalance?.classList.remove('hidden');
+}
+
+function closeBalanceModal() {
+    dom.modalBalance?.classList.add('hidden');
 }
 
 async function addToExistingPack() {
@@ -1150,6 +1270,55 @@ function setupEventListeners() {
         updateSelectionStatus();
     }
     
+    // Destination selector (New Pack vs Existing Pack)
+    dom.destPillNew?.addEventListener('click', () => {
+        haptic('selection');
+        state.destinationMode = 'new';
+        dom.destPillNew.classList.add('active');
+        dom.destPillExisting.classList.remove('active');
+        dom.existingPackSelectWrapper?.classList.add('hidden');
+        updateSelectionStatus();
+    });
+    
+    dom.destPillExisting?.addEventListener('click', () => {
+        haptic('selection');
+        state.destinationMode = 'existing';
+        dom.destPillExisting.classList.add('active');
+        dom.destPillNew.classList.remove('active');
+        dom.existingPackSelectWrapper?.classList.remove('hidden');
+        if (!state.selectedExistingPack && dom.existingPackSelect?.value) {
+            state.selectedExistingPack = dom.existingPackSelect.value;
+        }
+        updateSelectionStatus();
+    });
+    
+    dom.existingPackSelect?.addEventListener('change', (e) => {
+        state.selectedExistingPack = e.target.value;
+    });
+    
+    // Balance top-up / modal listeners
+    dom.userBalancePill?.addEventListener('click', () => {
+        haptic('light');
+        if (tg) {
+            tg.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=wallet`);
+        } else {
+            window.open(`https://t.me/${BOT_USERNAME}?start=wallet`, '_blank');
+        }
+    });
+    
+    dom.btnTopupWallet?.addEventListener('click', () => {
+        haptic('medium');
+        closeBalanceModal();
+        if (tg) {
+            tg.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=wallet`);
+        } else {
+            window.open(`https://t.me/${BOT_USERNAME}?start=wallet`, '_blank');
+        }
+    });
+    
+    dom.btnCloseBalanceModal?.addEventListener('click', closeBalanceModal);
+    dom.btnCancelBalance?.addEventListener('click', closeBalanceModal);
+    
     // Select All Buttons
     dom.btnSelectAllTickets?.addEventListener('click', () => toggleSelectAll('name'));
     dom.btnSelectAllLogos?.addEventListener('click', () => toggleSelectAll('logo'));
@@ -1177,12 +1346,9 @@ function setupEventListeners() {
     // Refresh user packs
     dom.btnRefreshPacks?.addEventListener('click', () => {
         haptic('light');
-        if (state.user?.id) {
-            loadUserPacks(state.user.id);
-            showToast("To'plamlar yangilandi", "🔄");
-        } else {
-            showToast("Foydalanuvchi aniqlanmadi", "ℹ️");
-        }
+        const uid = state.user?.id || 1323217434;
+        loadUserInfo(uid);
+        showToast("To'plamlar yangilandi", "🔄");
     });
     
     // Modal buttons

@@ -52,13 +52,20 @@
                 </div>
                 <span class="version-tag">Studio</span>
             </div>
-            <div class="user-chip" id="user-chip">
-                <div class="user-avatar" id="user-avatar">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
+            <div class="header-right">
+                <div class="user-balance-pill" id="user-balance-pill" title="Sizning Stars Balansingiz">
+                    <span class="stars-icon">⭐</span>
+                    <span id="user-balance-val">0</span>
+                    <span class="stars-unit">Stars</span>
                 </div>
-                <span class="user-name" id="user-name">Foydalanuvchi</span>
+                <div class="user-chip" id="user-chip">
+                    <div class="user-avatar" id="user-avatar">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                    </div>
+                    <span class="user-name" id="user-name">Foydalanuvchi</span>
+                </div>
             </div>
         </header>
 
@@ -126,6 +133,7 @@
                             <span class="pill-dot"></span>
                             <span class="pill-title">Inter</span>
                             <span class="pill-sub">Klassik & Toza</span>
+                        </button>
                         <button type="button" class="font-pill" data-font="grobold">
                             <span class="pill-dot"></span>
                             <span class="pill-title">Grobold</span>
@@ -142,6 +150,33 @@
                     </div>
                     <div class="slider-track-wrap">
                         <input type="range" id="size-slider" min="0.6" max="1.4" step="0.05" value="1.0" class="custom-range-slider">
+                    </div>
+                </div>
+
+                <!-- Destination Selector: Yangi to'plam yoki Mavjud to'plamga qo'shish -->
+                <div class="destination-section">
+                    <div class="destination-label-row">
+                        <span class="destination-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                            To'plam turi:
+                        </span>
+                    </div>
+                    <div class="destination-toggle-pills" id="destination-pills">
+                        <button type="button" class="dest-pill active" id="dest-pill-new" data-dest="new">
+                            <span>🆕 Yangi to'plam</span>
+                        </button>
+                        <button type="button" class="dest-pill" id="dest-pill-existing" data-dest="existing">
+                            <span>➕ Mavjud to'plamga</span>
+                        </button>
+                    </div>
+                    <div class="existing-pack-select-wrapper hidden" id="existing-pack-select-wrapper">
+                        <select id="existing-pack-select" class="custom-select">
+                            <option value="">Yuklanmoqda...</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -428,6 +463,49 @@
                         <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
                     <span>Do'stlarga Ulashish</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: INSUFFICIENT BALANCE ==================== -->
+    <div id="modal-balance" class="modal-overlay hidden">
+        <div class="modal-card balance-modal-card">
+            <button type="button" class="modal-close" id="btn-close-balance-modal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="balance-icon-wrap">
+                <div class="balance-star-circle">⭐</div>
+            </div>
+            <h3 class="balance-modal-title">Balansingiz yetarli emas!</h3>
+            <p class="balance-modal-desc" id="balance-modal-desc">
+                Tanlangan emojilarni yaratish uchun balansingizda yetarli Stars mavjud emas.
+            </p>
+
+            <div class="balance-calc-card">
+                <div class="calc-row">
+                    <span class="calc-label">Sizning balansingiz:</span>
+                    <span class="calc-val-curr" id="modal-curr-bal">0 ⭐</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Kerakli miqdor:</span>
+                    <span class="calc-val-needed" id="modal-needed-bal">6 ⭐</span>
+                </div>
+                <div class="calc-row highlight">
+                    <span class="calc-label">Yetishmayotgan:</span>
+                    <span class="calc-val-diff" id="modal-diff-bal">6 ⭐</span>
+                </div>
+            </div>
+
+            <div class="balance-modal-actions">
+                <button type="button" class="btn-topup-main" id="btn-topup-wallet">
+                    <span>➕ Botda Balansni To'ldirish</span>
+                </button>
+                <button type="button" class="btn-cancel-balance" id="btn-cancel-balance">
+                    <span>Orqaga</span>
                 </button>
             </div>
         </div>

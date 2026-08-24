@@ -22,6 +22,7 @@ from aiogram.exceptions import TelegramRetryAfter, TelegramAPIError
 from config import (
     BOT_TOKEN,
     BOT_USERNAME,
+    ADMIN_IDS,
     TEMPLATES_DIR,
     FONTS_DIR,
     DEFAULT_FONT_PATH,
@@ -34,7 +35,10 @@ from database import (
     add_or_update_user,
     increment_user_packs,
     save_user_pack,
-    get_user_packs
+    get_user_packs,
+    get_user_balance,
+    deduct_user_balance,
+    get_emoji_price
 )
 from handlers import FONTS_MAP, DEFAULT_EMOJIS, to_name_slug
 
@@ -113,7 +117,8 @@ class GenerateRequest(BaseModel):
     user_id: int
     text: str
     font: str = "stapel"
-    mode: str = "single"  # "single", "selected", or "all"
+    mode: str = "single"  # "single", "selected", "all", "add_to_pack"
+    pack_name: Optional[str] = None
     template_id: Optional[str] = "1.tgs"
     selected_templates: Optional[List[str]] = None
     scale: Optional[float] = 1.0
@@ -151,65 +156,85 @@ async def serve_js():
 
 
 @app.get("/ticket_templates.js")
-async def serve_ticket_templates_js():
+async def serve_ticket_templates():
     return FileResponse(WEBAPP_DIR / "ticket_templates.js", media_type="application/javascript")
 
 
-# ==================== API ENDPOINTS ====================
+# ==================== REST API ENDPOINTS ====================
 
 @app.get("/api/info")
-async def get_app_info():
-    """Bot and server metadata"""
+async def get_info():
+    """Returns bot meta information, emoji prices and font lists"""
     p = Path(TEMPLATES_DIR)
-    tgs_count = len(list(p.glob("*.tgs"))) if p.exists() else 0
+    total_templates = len(list(p.glob("*.tgs"))) if p.exists() else 0
+    emoji_price = get_emoji_price()
+
     return {
         "bot_username": BOT_USERNAME,
-        "webapp_url": WEBAPP_URL,
-        "templates_count": tgs_count,
-        "fonts": FONTS_MAP
+        "total_templates": total_templates,
+        "ticket_templates_count": 13,
+        "logo_templates_count": max(0, total_templates - 13),
+        "emoji_price": emoji_price,
+        "fonts": [
+            {"id": "stapel", "name": "Stapel", "description": "Qalin va Geometrik"},
+            {"id": "inter", "name": "Inter", "description": "Klassik va Toza"},
+            {"id": "grobold", "name": "Grobold", "description": "Zamonaviy Display"}
+        ]
+    }
+
+
+@app.get("/api/user_info")
+async def get_user_info_endpoint(user_id: int = Query(...)):
+    """Returns user balance, price per emoji, user created packs and admin flag"""
+    balance = get_user_balance(user_id)
+    price = get_emoji_price()
+    packs = get_user_packs(user_id)
+    is_admin = user_id in ADMIN_IDS
+
+    return {
+        "user_id": user_id,
+        "balance": balance,
+        "emoji_price": price,
+        "packs": packs,
+        "is_admin": is_admin
     }
 
 
 @app.get("/api/templates")
-async def list_templates():
-    """Returns list of all available templates (1..117)"""
+async def get_templates_list():
+    """Returns full list of available 117 animated emoji templates"""
     p = Path(TEMPLATES_DIR)
     if not p.exists():
         return {"templates": []}
 
-    tgs_files = sorted(
-        p.glob("*.tgs"),
-        key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name)
-    )
-
-    templates = []
-    for f in tgs_files:
-        templates.append({
+    files = sorted(p.glob("*.tgs"), key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name))
+    items = []
+    for f in files:
+        num = int(f.stem) if f.stem.isdigit() else 999
+        items.append({
             "id": f.stem,
-            "file": f.name,
-            "name": f"Emoji #{f.stem}"
+            "filename": f.name,
+            "category": "ticket" if num <= 13 else "logo",
+            "name": f"Ticket #{num}" if num <= 13 else f"Logo #{num - 13}"
         })
-
-    return {"templates": templates, "total": len(templates)}
+    return {"templates": items}
 
 
 @app.post("/api/preview")
-async def generate_live_preview(req: PreviewRequest):
-    """Processes template with text, font & scale and returns decompressed Lottie JSON for 60fps browser playback"""
+async def generate_preview(req: PreviewRequest):
+    """Renders a single template with text/font/scale and returns Lottie JSON"""
     clean_text = req.text.strip().upper()[:16]
     if not clean_text:
-        clean_text = "EMOJI"
-
-    raw_bytes = get_template_bytes(req.template_id)
-    if not raw_bytes:
-        raw_bytes = get_template_bytes("1.tgs") or get_template_bytes("14.tgs")
-    if not raw_bytes:
-        raise HTTPException(status_code=404, detail="Shablon topilmadi")
+        clean_text = "ISMINGIZ"
 
     font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     if not font_file_path.exists():
         font_file_path = Path(DEFAULT_FONT_PATH)
+
+    raw_bytes = get_template_bytes(req.template_id)
+    if not raw_bytes:
+        raise HTTPException(status_code=404, detail="Shablon fayli topilmadi")
 
     try:
         proc_bytes = process_tgs_template(
@@ -218,20 +243,19 @@ async def generate_live_preview(req: PreviewRequest):
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0
         )
-
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
     except Exception as e:
-        logger.error(f"Preview error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Prevyu yaratishda xatolik: {str(e)}")
+        logger.error(f"Preview generation error for {req.template_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Prevyu yaratishda xatolik yuz berdi")
 
 
 @app.post("/api/batch_preview")
-async def generate_batch_previews(req: BatchPreviewRequest):
-    """Generates Lottie JSON for multiple templates in one fast request"""
+async def generate_batch_preview(req: BatchPreviewRequest):
+    """Renders multiple templates in a single batch request for speed"""
     clean_text = req.text.strip().upper()[:16]
     if not clean_text:
-        clean_text = "EMOJI"
+        clean_text = "ISMINGIZ"
 
     font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
@@ -261,7 +285,7 @@ async def generate_batch_previews(req: BatchPreviewRequest):
 
 @app.post("/api/generate")
 async def generate_emoji_pack(req: GenerateRequest):
-    """Creates a single custom emoji, a selected set of emojis, or a full 117-pack in Telegram"""
+    """Creates a single custom emoji, a selected set of emojis, or adds to an existing pack, deducting balance"""
     clean_text = req.text.strip().upper()[:16]
     if not clean_text:
         raise HTTPException(status_code=400, detail="Iltimos, matn kiriting")
@@ -286,6 +310,20 @@ async def generate_emoji_pack(req: GenerateRequest):
     if not target_files:
         raise HTTPException(status_code=404, detail="Shablonlar topilmadi")
 
+    # Pricing & Balance Check
+    total_stickers_count = len(target_files)
+    emoji_price = get_emoji_price()
+    total_cost = total_stickers_count * emoji_price
+    
+    is_admin = req.user_id in ADMIN_IDS
+    if not is_admin and total_cost > 0:
+        balance = get_user_balance(req.user_id)
+        if balance < total_cost:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Balansingiz yetarli emas! Sizda {balance} ⭐ Stars bor, kerak: {total_cost} ⭐ Stars ({total_stickers_count} ta emoji x {emoji_price} ⭐). Iltimos, hisobingizni to'ldiring."
+            )
+
     # Generate processed animated stickers
     input_stickers: List[InputSticker] = []
     for idx, tgs_file in enumerate(target_files):
@@ -308,9 +346,59 @@ async def generate_emoji_pack(req: GenerateRequest):
             )
         )
 
-    name_slug = to_name_slug(clean_text)
-    short_code = random.randint(100, 9999)
-    pack_name = f"{name_slug}_{short_code}_by_{BOT_USERNAME}"
+    # Branch A: Add to existing user pack
+    if (req.mode == "add_to_pack" or req.pack_name) and req.pack_name:
+        pack_name = req.pack_name
+        pack_title = req.pack_name
+        try:
+            for idx, st in enumerate(input_stickers):
+                try:
+                    await bot.add_sticker_to_set(
+                        user_id=req.user_id,
+                        name=pack_name,
+                        sticker=st
+                    )
+                except TelegramRetryAfter as retry_err:
+                    await asyncio.sleep(retry_err.retry_after + 0.5)
+                    await bot.add_sticker_to_set(
+                        user_id=req.user_id,
+                        name=pack_name,
+                        sticker=st
+                    )
+                except Exception as add_err:
+                    logger.warning(f"Add sticker {idx+1} warning: {add_err}")
+                await asyncio.sleep(0.04)
+
+            # Deduct balance on successful addition
+            if not is_admin and total_cost > 0:
+                deduct_user_balance(
+                    req.user_id,
+                    total_cost,
+                    tx_type="add_to_pack",
+                    description=f"{clean_text} ({total_stickers_count} ta emoji mavjud to'plamga qo'shildi)"
+                )
+
+            pack_link = f"https://t.me/addemoji/{pack_name}"
+            new_bal = get_user_balance(req.user_id)
+            return {
+                "ok": True,
+                "pack_name": pack_name,
+                "pack_title": pack_title,
+                "pack_link": pack_link,
+                "stickers_count": len(input_stickers),
+                "remaining_balance": new_bal,
+                "mode": "add_to_pack"
+            }
+        except Exception as e:
+            logger.error(f"Add to pack error: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Mavjud to'plamga qo'shishda xatolik: {str(e)}")
+
+    # Branch B: Create a brand new sticker set
+    raw_slug = to_name_slug(clean_text)
+    if not raw_slug or not raw_slug[0].isalpha():
+        raw_slug = f"e{raw_slug}"
+    short_code = random.randint(100, 99999)
+    pack_name = f"{raw_slug}_{short_code}_by_{BOT_USERNAME}"
     pack_title = f"{clean_text} ({font_info['name']})" if req.mode == "single" else f"{clean_text} Emojis"
 
     try:
@@ -343,11 +431,21 @@ async def generate_emoji_pack(req: GenerateRequest):
                     logger.warning(f"Add sticker {idx+1} warning: {add_err}")
                 await asyncio.sleep(0.04)
 
+        # Deduct balance on successful creation
+        if not is_admin and total_cost > 0:
+            deduct_user_balance(
+                req.user_id,
+                total_cost,
+                tx_type="emoji_pack",
+                description=f"{clean_text} ({total_stickers_count} ta emoji)"
+            )
+
         # Save to database
         save_user_pack(req.user_id, pack_name, pack_title)
         increment_user_packs(req.user_id)
 
         pack_link = f"https://t.me/addemoji/{pack_name}"
+        new_bal = get_user_balance(req.user_id)
 
         # Send notification message into Telegram chat
         try:
@@ -363,7 +461,8 @@ async def generate_emoji_pack(req: GenerateRequest):
                     f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
                     f"🎨 <b>Shrift:</b> {font_info['name']}\n"
                     f"📦 <b>To'plam nomi:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
-                    f"⚡ <b>Jami stikerlar:</b> {len(input_stickers)} ta\n\n"
+                    f"⚡ <b>Jami stikerlar:</b> {len(input_stickers)} ta\n"
+                    f"💰 <b>Qolgan balansingiz:</b> {new_bal} ⭐ Stars\n\n"
                     f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>"
                 ),
                 reply_markup=markup,
@@ -377,7 +476,8 @@ async def generate_emoji_pack(req: GenerateRequest):
             "pack_name": pack_name,
             "pack_title": pack_title,
             "pack_link": pack_link,
-            "stickers_count": len(input_stickers)
+            "stickers_count": len(input_stickers),
+            "remaining_balance": new_bal
         }
 
     except TelegramRetryAfter as e:
@@ -388,10 +488,13 @@ async def generate_emoji_pack(req: GenerateRequest):
         )
     except TelegramAPIError as api_err:
         logger.error(f"Telegram API Error: {api_err}", exc_info=True)
-        raise HTTPException(status_code=400, detail=f"Telegram API xatoligi: {str(api_err)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Telegram API xatoligi: {getattr(api_err, 'message', str(api_err))}"
+        )
     except Exception as e:
-        logger.error(f"Generate error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Xatolik: {str(e)}")
+        logger.error(f"Generation unexpected error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Generatsiyada xatolik yuz berdi")
 
 
 @app.get("/api/user_packs")
