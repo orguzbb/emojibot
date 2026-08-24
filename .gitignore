@@ -26,6 +26,10 @@ wheels/
 
 # Logs and databases
 *.log
+*.db
+*.sqlite
+bot_database.db
+database.db
 local_test.db
 
 # IDE and OS files
