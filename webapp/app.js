@@ -157,6 +157,22 @@ const dom = {
     modalNeededBal: document.getElementById('modal-needed-bal'),
     modalDiffBal: document.getElementById('modal-diff-bal'),
     
+    // Payment Choice Modal
+    modalPaymentChoice: document.getElementById('modal-payment-choice'),
+    btnClosePaymentChoice: document.getElementById('btn-close-payment-choice'),
+    btnCancelPayChoice: document.getElementById('btn-cancel-pay-choice'),
+    payChoiceCount: document.getElementById('pay-choice-count'),
+    payChoiceText: document.getElementById('pay-choice-text'),
+    payChoiceCost: document.getElementById('pay-choice-cost'),
+    payChoiceBalance: document.getElementById('pay-choice-balance'),
+    btnPayStarsBot: document.getElementById('btn-pay-stars-bot'),
+    btnPayWallet: document.getElementById('btn-pay-wallet'),
+    
+    // Invoice Sent Modal
+    modalInvoiceSent: document.getElementById('modal-invoice-sent'),
+    btnCloseInvoiceSent: document.getElementById('btn-close-invoice-sent'),
+    btnGotoBot: document.getElementById('btn-goto-bot'),
+    
     // Toast
     toast: document.getElementById('toast'),
     toastMsg: document.getElementById('toast-msg'),
@@ -1025,7 +1041,6 @@ async function startGeneration(mode = 'selected') {
         selectedFiles = selectedArray;
     }
     
-    // Check destination (Yangi to'plam vs Mavjud to'plam)
     let packName = undefined;
     if (state.destinationMode === 'existing') {
         targetMode = 'add_to_pack';
@@ -1037,25 +1052,96 @@ async function startGeneration(mode = 'selected') {
         }
     }
     
-    // Check balance — HAR DOIM STARS TALAB QILINADI
-    const totalCount = selectedFiles.length;
+    const totalCount = selectedFiles.length > 0 ? selectedFiles.length : 1;
     const unitPrice = state.emojiPrice || 6;
     const totalCost = totalCount * unitPrice;
     state.lastNeededBal = totalCost;
+
+    currentPendingAction = {
+        userId,
+        cleanText,
+        mode: targetMode,
+        rawMode: mode,
+        packName,
+        selectedFiles,
+        totalCount,
+        totalCost
+    };
+
+    if (dom.payChoiceCount) dom.payChoiceCount.textContent = `${totalCount} ta`;
+    if (dom.payChoiceText) dom.payChoiceText.textContent = `"${cleanText}"`;
+    if (dom.payChoiceCost) dom.payChoiceCost.textContent = `${totalCost} Stars`;
+    if (dom.payChoiceBalance) dom.payChoiceBalance.textContent = `${state.userBalance || 0} Stars`;
+
+    dom.modalPaymentChoice?.classList.remove('hidden');
+    haptic('medium');
+}
+
+let currentPendingAction = null;
+
+function closePaymentChoiceModal() {
+    dom.modalPaymentChoice?.classList.add('hidden');
+}
+
+async function handlePayViaBotStars() {
+    if (!currentPendingAction) return;
+    const uid = state.user?.id || 1323217434;
+    const { cleanText, mode, packName, selectedFiles, totalCount } = currentPendingAction;
     
-    if (totalCost > 0 && (state.userBalance || 0) < totalCost) {
+    closePaymentChoiceModal();
+    showToast("Botga hisob yuborilmoqda...", "⏳");
+
+    try {
+        const res = await apiFetch('send_invoice_to_chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: uid,
+                count: totalCount,
+                text: cleanText,
+                font: state.font,
+                mode: mode,
+                pack_name: packName,
+                template_id: selectedFiles[0] || state.selectedTemplate,
+                selected_templates: selectedFiles.length > 0 ? selectedFiles : undefined
+            })
+        });
+
+        await res.json();
+        haptic('success');
+        dom.modalInvoiceSent?.classList.remove('hidden');
+    } catch (err) {
+        console.error('Send invoice error:', err);
+        showToast(`❌ Xatolik: ${err.message}`, "❌", 4000);
+        haptic('error');
+    }
+}
+
+async function handlePayViaWallet() {
+    if (!currentPendingAction) return;
+    const { totalCost } = currentPendingAction;
+
+    if ((state.userBalance || 0) < totalCost) {
+        closePaymentChoiceModal();
         openBalanceModal(state.userBalance || 0, totalCost);
         haptic('error');
         return;
     }
+
+    closePaymentChoiceModal();
+    executeGeneration(currentPendingAction);
+}
+
+async function executeGeneration(pendingAction) {
+    const { userId, cleanText, mode, rawMode, packName, selectedFiles, totalCount, totalCost } = pendingAction;
     
     haptic('medium');
     
-    if (targetMode === 'add_to_pack') {
+    if (mode === 'add_to_pack') {
         showProgressModal("Mavjud to'plamga qo'shilmoqda...", `\"${packName}\" to'plamiga ${totalCount} ta stiker qo'shilmoqda...`, 30);
-    } else if (mode === 'all') {
+    } else if (rawMode === 'all') {
         showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 104 ta logo shablon render qilinmoqda...", 15);
-    } else if (targetMode === "single") {
+    } else if (mode === "single") {
         const num = getTemplateNumber(selectedFiles[0]);
         showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 25);
     } else {
@@ -1063,11 +1149,11 @@ async function startGeneration(mode = 'selected') {
     }
     
     try {
-        let progress = targetMode === 'single' ? 35 : 20;
+        let progress = mode === 'single' ? 35 : 20;
         const progressInterval = setInterval(() => {
             if (progress < 85) {
-                progress += targetMode === 'single' ? 15 : 6;
-                updateProgressStep(progress, targetMode === 'single' ? "Telegram API-ga yuborilmoqda..." : "Stikerlar paketga qo'shilmoqda...");
+                progress += mode === 'single' ? 15 : 6;
+                updateProgressStep(progress, mode === 'single' ? "Telegram API-ga yuborilmoqda..." : "Stikerlar paketga qo'shilmoqda...");
             }
         }, 600);
         
@@ -1076,7 +1162,7 @@ async function startGeneration(mode = 'selected') {
             text: cleanText,
             font: state.font,
             scale: state.scale,
-            mode: targetMode,
+            mode: mode,
             pack_name: packName,
             template_id: selectedFiles[0] || state.selectedTemplate,
             selected_templates: selectedFiles.length > 0 ? selectedFiles : undefined,
@@ -1101,7 +1187,7 @@ async function startGeneration(mode = 'selected') {
         }
         
         setTimeout(() => {
-            showSuccessModal(result.pack_name, result.pack_link, mode === 'all');
+            showSuccessModal(result.pack_name, result.pack_link, rawMode === 'all');
         }, 400);
         
     } catch (err) {
@@ -1346,6 +1432,15 @@ function setupEventListeners() {
     
     dom.btnCloseBalanceModal?.addEventListener('click', closeBalanceModal);
     dom.btnCancelBalance?.addEventListener('click', closeBalanceModal);
+    
+    // Payment Choice Modal Listeners
+    dom.btnPayStarsBot?.addEventListener('click', handlePayViaBotStars);
+    dom.btnPayWallet?.addEventListener('click', handlePayViaWallet);
+    dom.btnClosePaymentChoice?.addEventListener('click', closePaymentChoiceModal);
+    dom.btnCancelPayChoice?.addEventListener('click', closePaymentChoiceModal);
+    dom.btnCloseInvoiceSent?.addEventListener('click', () => {
+        dom.modalInvoiceSent?.classList.add('hidden');
+    });
     
     // Select All Buttons
     dom.btnSelectAllTickets?.addEventListener('click', () => toggleSelectAll('name'));

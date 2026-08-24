@@ -206,27 +206,56 @@ async def get_user_info_endpoint(user_id: int = Query(...)):
     }
 
 
-@app.post("/api/create_invoice")
-async def create_invoice_endpoint(req: CreateInvoiceRequest):
-    """Creates a native Telegram Stars invoice link for Mini App"""
+class SendInvoiceRequest(BaseModel):
+    user_id: int
+    count: int = 1
+    text: str
+    font: str = "stapel"
+    mode: str = "single"
+    pack_name: Optional[str] = None
+    template_id: Optional[str] = "1.tgs"
+    selected_templates: Optional[List[str]] = None
+
+
+@app.post("/api/send_invoice_to_chat")
+async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
+    """Sends a Telegram Stars (XTR) invoice directly to user's Telegram chat"""
     unit_price = get_emoji_price()
     total_cost = max(1, req.count * unit_price)
 
+    clean_text = req.text.strip().upper()[:16]
+    if not clean_text:
+        clean_text = "EMOJI"
+
     bot = get_bot()
-    payload = f"topup:{req.user_id}:{total_cost}"
+
+    action_type = "gen_all" if req.mode == "all" else ("gen_one" if req.mode == "single" else "gen_selected")
+
+    if req.selected_templates and len(req.selected_templates) > 0:
+        raw_files = ",".join(req.selected_templates)
+    elif req.mode == "single":
+        raw_files = req.template_id or "1.tgs"
+    else:
+        raw_files = "all"
+
+    dest_flag = f"add_{req.pack_name}" if (req.mode == "add_to_pack" and req.pack_name) else "new"
+    extra_param = f"{raw_files}|{dest_flag}"
+
+    payload = f"buy_pack:{req.user_id}:{req.font}:{clean_text}:{action_type}:{extra_param}:{total_cost}"
 
     try:
-        invoice_link = await bot.create_invoice_link(
+        await bot.send_invoice(
+            chat_id=req.user_id,
             title="Stiker generatsiya",
-            description=f"{req.count} ta stiker uchun to'lov.",
+            description=f"'{clean_text}' uchun {req.count} ta stiker to'lovi.",
             payload=payload,
             currency="XTR",
-            prices=[LabeledPrice(label="Stars", amount=total_cost)]
+            prices=[LabeledPrice(label=f"Stars ({req.count} ta)", amount=total_cost)]
         )
-        return {"invoice_link": invoice_link, "total_cost": total_cost}
+        return {"ok": True, "total_cost": total_cost, "user_id": req.user_id}
     except Exception as e:
-        logger.error(f"Failed to create invoice link: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Send invoice to chat error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Botga hisob-faktura yuborishda xatolik: {e}")
 
 
 @app.get("/api/templates")

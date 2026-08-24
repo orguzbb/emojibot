@@ -97,17 +97,17 @@ def get_main_menu_markup(user_id: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚀 Mini Appni Ochish (Jonli Prevyu)",
+                    text="Web App ☰",
                     web_app=WebAppInfo(url=WEBAPP_URL)
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"💰 Hamyon ({balance} ⭐)",
+                    text=f"💳 Hamyon ({balance} ⭐)",
                     callback_data="menu_wallet"
                 ),
                 InlineKeyboardButton(
-                    text="🎁 Promokod",
+                    text="🏷 Promokod",
                     callback_data="menu_promo"
                 )
             ],
@@ -119,7 +119,7 @@ def get_main_menu_markup(user_id: int) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="📦 Mening To'plamlarim",
+                    text="📁 Mening To'plamlarim",
                     callback_data="cmd_mypacks_cb"
                 ),
                 InlineKeyboardButton(
@@ -830,7 +830,7 @@ async def handle_choose_destination(callback: CallbackQuery):
     buttons = [
         [
             InlineKeyboardButton(
-                text="Yangi Emoji pack",
+                text="➕ Yangi Emoji pack",
                 callback_data=f"req_pay:{action_type}:{font_key}:{clean_text}:{extra_param}|new"
             )
         ]
@@ -839,14 +839,14 @@ async def handle_choose_destination(callback: CallbackQuery):
     for pname, ptitle, _ in user_packs:
         buttons.append([
             InlineKeyboardButton(
-                text=f"📦 {ptitle}",
+                text=f"📁 {ptitle}",
                 callback_data=f"req_pay:{action_type}:{font_key}:{clean_text}:{extra_param}|add_{pname}"
             )
         ])
 
     buttons.append([
         InlineKeyboardButton(
-            text="Отмена",
+            text="◀️ Orqaga",
             callback_data=f"font:{font_key}:{clean_text}"
         )
     ])
@@ -875,15 +875,18 @@ async def handle_payment_request(callback: CallbackQuery, bot: Bot):
 
     if action_type == "gen_all":
         stickers_count = tgs_count
+    elif action_type == "gen_selected":
+        raw_t = extra_param.split("|")[0]
+        stickers_count = len(raw_t.split(",")) if "," in raw_t else 1
     else:
         stickers_count = 1
 
     total_cost = stickers_count * unit_price
 
     text = (
-        "<b>Выберите способ оплаты:</b>\n\n"
-        f"Количество стикеров: {stickers_count} ta.\n"
-        f"Общая цена: {total_cost} Stars"
+        "<b>To'lov usulini tanlang:</b>\n\n"
+        f"📊 <b>Stikerlar soni:</b> {stickers_count} ta.\n"
+        f"💰 <b>Jami narx:</b> {total_cost} Stars (Balansingiz: {balance} ⭐)"
     )
 
     raw_base_extra = extra_param.split("|")[0]
@@ -892,19 +895,19 @@ async def handle_payment_request(callback: CallbackQuery, bot: Bot):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Оплатить Stars",
+                    text="⭐️ Telegram Stars orqali to'lash",
                     callback_data=f"pay_stars_inv:{action_type}:{font_key}:{clean_text}:{extra_param}:{total_cost}"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="Оплатить с баланса",
+                    text="💳 Hamyondan to'lash",
                     callback_data=f"pay_wallet:{action_type}:{font_key}:{clean_text}:{extra_param}:{total_cost}"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="Отмена",
+                    text="◀️ Orqaga",
                     callback_data=f"choose_dest:{action_type}:{font_key}:{clean_text}:{raw_base_extra}"
                 )
             ]
@@ -934,10 +937,10 @@ async def handle_send_direct_stars_invoice(callback: CallbackQuery, bot: Bot):
         await bot.send_invoice(
             chat_id=user_id,
             title="Stiker generatsiya",
-            description=f"{stickers_count} ta stiker uchun to'lov.",
+            description=f"'{clean_text}' uchun {stickers_count} ta stiker to'lovi.",
             payload=payload,
             currency="XTR",
-            prices=[LabeledPrice(label="Stars", amount=total_cost)]
+            prices=[LabeledPrice(label=f"Stars ({stickers_count} ta)", amount=total_cost)]
         )
     except Exception as e:
         logger.error(f"Direct invoice send error: {e}", exc_info=True)
@@ -965,10 +968,10 @@ async def handle_pay_from_wallet(callback: CallbackQuery, bot: Bot):
             await bot.send_invoice(
                 chat_id=user_id,
                 title="Stiker generatsiya",
-                description=f"{stickers_count} ta stiker uchun to'lov.",
+                description=f"'{clean_text}' uchun {stickers_count} ta stiker to'lovi.",
                 payload=payload,
                 currency="XTR",
-                prices=[LabeledPrice(label="Stars", amount=total_cost)]
+                prices=[LabeledPrice(label=f"Stars ({stickers_count} ta)", amount=total_cost)]
             )
         except Exception as e:
             logger.error(f"Direct invoice send error: {e}", exc_info=True)
@@ -1007,8 +1010,111 @@ async def execute_generation_by_params(bot: Bot, user_id: int, clean_text: str, 
         await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id)
     elif action_type == "gen_one":
         await execute_single_sticker_generation(bot, user_id, clean_text, font_key, raw_target, chat_id)
+    elif action_type == "gen_selected" or "," in raw_target:
+        templates = [t.strip() for t in raw_target.split(",") if t.strip()]
+        await execute_selected_templates_generation(bot, user_id, clean_text, font_key, templates, chat_id)
     else:
         await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id)
+
+
+async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, template_filenames: List[str], chat_id: int):
+    font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
+    font_file_path = Path(FONTS_DIR) / font_info["file"]
+    
+    p = Path(TEMPLATES_DIR)
+    target_files = []
+    for f in template_filenames:
+        target = p / f if (p / f).exists() else (p / f"{f}.tgs")
+        if target.exists():
+            target_files.append(target)
+
+    if not target_files:
+        await bot.send_message(chat_id, "❌ Shablonlar topilmadi.")
+        return
+
+    status_msg = await bot.send_message(
+        chat_id,
+        f"🎨 <b>\"{clean_text}\"</b> uchun <b>{len(target_files)} ta</b> emoji tayyorlanmoqda...\n⏳ <i>Iltimos, biroz kuting...</i>",
+        parse_mode=ParseMode.HTML
+    )
+
+    try:
+        input_stickers = []
+        for idx, tgs_file in enumerate(target_files):
+            with open(tgs_file, "rb") as f:
+                template_bytes = f.read()
+
+            processed_bytes = process_tgs_template(
+                template_bytes=template_bytes,
+                text=clean_text,
+                font_path=str(font_file_path)
+            )
+
+            emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
+            input_stickers.append(
+                InputSticker(
+                    sticker=BufferedInputFile(processed_bytes, filename=f"emoji_{idx+1}.tgs"),
+                    emoji_list=[emoji_char],
+                    format="animated"
+                )
+            )
+
+        name_slug = to_name_slug(clean_text)
+        short_code = random.randint(100, 9999)
+        pack_name = f"{name_slug}_{short_code}_by_{BOT_USERNAME}"
+        pack_title = f"{clean_text} Emojis"
+        total_stickers = len(input_stickers)
+
+        await bot.create_new_sticker_set(
+            user_id=user_id,
+            name=pack_name,
+            title=pack_title,
+            stickers=[input_stickers[0]],
+            sticker_type="custom_emoji"
+        )
+
+        for idx in range(1, total_stickers):
+            try:
+                await bot.add_sticker_to_set(
+                    user_id=user_id,
+                    name=pack_name,
+                    sticker=input_stickers[idx]
+                )
+            except TelegramRetryAfter as retry_err:
+                await asyncio.sleep(retry_err.retry_after + 0.5)
+                await bot.add_sticker_to_set(
+                    user_id=user_id,
+                    name=pack_name,
+                    sticker=input_stickers[idx]
+                )
+            except Exception as e:
+                logger.warning(f"Error adding sticker {idx}: {e}")
+
+        save_user_pack(user_id=user_id, pack_name=pack_name, pack_title=pack_title)
+        increment_user_packs(user_id)
+
+        pack_link = f"https://t.me/addemoji/{pack_name}"
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="➕ Emoji Packni ochish", url=pack_link)],
+                [InlineKeyboardButton(text="◀️ Asosiy menyu", callback_data="menu_main")]
+            ]
+        )
+
+        await status_msg.edit_text(
+            f"🎉 <b>Tabriklaymiz! Emoji to'plamingiz tayyor!</b>\n\n"
+            f"✍️ <b>Matn:</b> {clean_text}\n"
+            f"🎨 <b>Shrift:</b> {font_info['name']}\n"
+            f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_name}</a>\n"
+            f"⚡ <b>Jami stikerlar:</b> {total_stickers} ta\n\n"
+            f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>",
+            reply_markup=markup,
+            parse_mode=ParseMode.HTML
+        )
+
+    except Exception as e:
+        logger.error(f"Selected templates gen error: {e}", exc_info=True)
+        await status_msg.edit_text(f"❌ Xatolik yuz berdi: {e}")
 
 
 # ==================== GENERATION EXECUTION FUNCTIONS ====================

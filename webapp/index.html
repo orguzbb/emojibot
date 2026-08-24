@@ -14,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=3.0.1">
+    <link rel="stylesheet" href="style.css?v=3.1.0">
 </head>
 <body>
 
@@ -54,9 +54,17 @@
             </div>
             <div class="header-right">
                 <div class="user-balance-pill" id="user-balance-pill" title="Sizning Stars Balansingiz">
-                    <span class="stars-icon">⭐</span>
+                    <svg class="svg-star-icon" viewBox="0 0 24 24" width="15" height="15" fill="url(#star-gold-grad)">
+                        <defs>
+                            <linearGradient id="star-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#FFE259"/>
+                                <stop offset="100%" stop-color="#FFA751"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
                     <span id="user-balance-val">0</span>
-                    <span class="stars-unit">Stars</span>
+                    <span class="stars-unit">STARS</span>
                 </div>
                 <div class="user-chip" id="user-chip">
                     <div class="user-avatar" id="user-avatar">
@@ -167,10 +175,17 @@
                     </div>
                     <div class="destination-toggle-pills" id="destination-pills">
                         <button type="button" class="dest-pill active" id="dest-pill-new" data-dest="new">
-                            <span>🆕 Yangi to'plam</span>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>Yangi to'plam</span>
                         </button>
                         <button type="button" class="dest-pill" id="dest-pill-existing" data-dest="existing">
-                            <span>➕ Mavjud to'plamga</span>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Mavjud to'plamga</span>
                         </button>
                     </div>
                     <div class="existing-pack-select-wrapper hidden" id="existing-pack-select-wrapper">
@@ -511,6 +526,103 @@
         </div>
     </div>
 
+    <!-- ==================== MODAL: PAYMENT CHOICE ==================== -->
+    <div id="modal-payment-choice" class="modal-overlay hidden">
+        <div class="modal-card payment-choice-modal-card">
+            <button type="button" class="modal-close" id="btn-close-payment-choice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="balance-icon-wrap">
+                <div class="balance-star-circle">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="url(#star-gold-grad)">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                </div>
+            </div>
+            <h3 class="balance-modal-title">To'lov Usulini Tanlang</h3>
+            <p class="balance-modal-desc">
+                Tanlangan <b id="pay-choice-count">1 ta</b> stiker uchun to'lovni tasdiqlang.
+            </p>
+
+            <div class="balance-calc-card">
+                <div class="calc-row">
+                    <span class="calc-label">Matn:</span>
+                    <span class="calc-val-curr" id="pay-choice-text">MATN</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Jami narx:</span>
+                    <span class="calc-val-needed" id="pay-choice-cost">6 Stars</span>
+                </div>
+                <div class="calc-row highlight">
+                    <span class="calc-label">Hamyon balansingiz:</span>
+                    <span class="calc-val-diff" id="pay-choice-balance">0 Stars</span>
+                </div>
+            </div>
+
+            <div class="payment-choice-actions">
+                <button type="button" class="btn-pay-option btn-pay-stars-bot" id="btn-pay-stars-bot">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="url(#star-gold-grad)">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    <div class="btn-pay-col">
+                        <span class="btn-pay-title">⭐️ Telegram Stars orqali to'lash</span>
+                        <span class="btn-pay-sub" id="pay-stars-sub">Botga to'g'ridan-to'g'ri XTR hisob yuborish</span>
+                    </div>
+                </button>
+
+                <button type="button" class="btn-pay-option btn-pay-wallet" id="btn-pay-wallet">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                    <div class="btn-pay-col">
+                        <span class="btn-pay-title">💳 Hamyondan to'lash</span>
+                        <span class="btn-pay-sub" id="pay-wallet-sub">Mavjud Stars balansidan yechish</span>
+                    </div>
+                </button>
+
+                <button type="button" class="btn-cancel-balance" id="btn-cancel-pay-choice">
+                    <span>Bekor qilish</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: INVOICE SENT NOTIFICATION ==================== -->
+    <div id="modal-invoice-sent" class="modal-overlay hidden">
+        <div class="modal-card balance-modal-card">
+            <button type="button" class="modal-close" id="btn-close-invoice-sent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div class="balance-icon-wrap">
+                <div class="balance-star-circle" style="background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.4); color: #22c55e;">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+            </div>
+            <h3 class="balance-modal-title" style="color: #22c55e;">Hisob Botga Yuborildi!</h3>
+            <p class="balance-modal-desc" style="margin-bottom: 20px;">
+                Telegram chatiga <b>@GnEmojiBot</b> botiga to'lov hisob-fakturasi yuborildi. Chatga o'tib to'lovni tasdiqlang. To'lov qilingach, bot to'plamingizni avtomatik yaratib beradi!
+            </p>
+            <div class="balance-modal-actions">
+                <a href="https://t.me/GnEmojiBot" target="_blank" class="btn-topup-main" id="btn-goto-bot" style="text-decoration: none; justify-content: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span>📲 Telegram Botga O'tish</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden">
         <span class="toast-icon" id="toast-icon">ℹ️</span>
@@ -518,7 +630,7 @@
     </div>
 
     <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=3.0.1"></script>
-    <script src="app.js?v=3.0.1"></script>
+    <script src="ticket_templates.js?v=3.1.0"></script>
+    <script src="app.js?v=3.1.0"></script>
 </body>
 </html>
