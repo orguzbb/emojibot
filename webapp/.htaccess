@@ -1,5 +1,11 @@
 DirectoryIndex index.html index.php
 
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+</IfModule>
+
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase /
@@ -10,5 +16,7 @@ RewriteRule ^api/generate/?$ api/index.php [QSA,L]
 RewriteRule ^api/batch_preview/?$ api/index.php [QSA,L]
 RewriteRule ^api/user_packs/?$ api/index.php [QSA,L]
 RewriteRule ^api/add_to_pack/?$ api/index.php [QSA,L]
+RewriteRule ^api/create_invoice/?$ api/index.php [QSA,L]
+RewriteRule ^api/user_info/?$ api/index.php [QSA,L]
 RewriteRule ^api/(.*)$ api/index.php [QSA,L]
 </IfModule>
