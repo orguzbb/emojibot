@@ -13,5 +13,5 @@ DEFAULT_FONT_PATH = FONTS_DIR / "stapel.ttf"
 
 WEBAPP_URL = "https://xs134.xuss.us"
 SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 8080
+SERVER_PORT = 8000
 
