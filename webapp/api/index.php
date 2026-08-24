@@ -1,16 +1,34 @@
 <?php
-// Bulletproof PHP Proxy for CGI/FastCGI/Apache/Nginx on Shared Hostings
+// Bulletproof API Bridge for Shared Hosting on xuss.us
 ini_set('display_errors', 0);
 error_reporting(0);
 
-$requestUri = $_SERVER['REQUEST_URI'] ?? '/api';
-$targetUrl = 'http://127.0.0.1:8000' . $requestUri;
+// Determine the target API endpoint
+$endpoint = $_GET['endpoint'] ?? '';
+if (!$endpoint) {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    if (preg_match('#/api/([a-zA-Z0-9_\-]+)#', $uri, $matches)) {
+        $endpoint = $matches[1];
+    }
+}
+$endpoint = trim($endpoint, '/');
+if (!$endpoint) {
+    $endpoint = 'info';
+}
+
+// Forward to local Python FastAPI backend
+$queryString = $_SERVER['QUERY_STRING'] ?? '';
+// Remove endpoint parameter from query string if present
+$cleanQuery = preg_replace('/(&?endpoint=[^&]*)/', '', $queryString);
+$cleanQuery = trim($cleanQuery, '&');
+
+$targetUrl = 'http://127.0.0.1:8000/api/' . $endpoint . ($cleanQuery ? '?' . $cleanQuery : '');
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $targetUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_TIMEOUT, 90);
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 $headers = ['Content-Type: application/json'];
@@ -33,7 +51,7 @@ if ($curlErr || $response === false) {
     http_response_code(502);
     header('Content-Type: application/json');
     echo json_encode([
-        'detail' => 'Python backend serverga ulanib bo\'lmadi. Terminalda "nohup python3 main.py > bot.log 2>&1 &" ishlab turganini tekshiring.'
+        'detail' => 'Python server ishlamayapti. Terminalda "nohup python3 main.py > bot.log 2>&1 &" buyrug\'ini bering.'
     ]);
     exit;
 }

@@ -338,12 +338,38 @@ function updateLoadingProgress(percent, statusText) {
     if (dom.loaderStatus) dom.loaderStatus.textContent = statusText;
 }
 
-// ==================== API CALLS ====================
+// ==================== ROBUST MULTI-FALLBACK API ====================
+
+async function apiFetch(endpoint, options = {}) {
+    const urls = [
+        `/api/${endpoint}`,
+        `/api/${endpoint}/index.php`,
+        `/api/index.php?endpoint=${endpoint}`
+    ];
+    
+    let lastError = null;
+    for (const url of urls) {
+        try {
+            const res = await fetch(url, options);
+            if (res.ok) {
+                return res;
+            }
+            const errData = await res.json().catch(() => null);
+            if (errData && errData.detail) {
+                lastError = new Error(errData.detail);
+            } else {
+                lastError = new Error(`HTTP ${res.status}`);
+            }
+        } catch (e) {
+            lastError = e;
+        }
+    }
+    throw lastError || new Error("API ulanishida xatolik");
+}
 
 async function loadUserPacks(userId) {
     try {
-        const res = await fetch(`/api/user_packs?user_id=${userId}`);
-        if (!res.ok) return;
+        const res = await apiFetch(`user_packs?user_id=${userId}`);
         const data = await res.json();
         state.userPacks = data.packs || [];
         renderUserPacks();
@@ -353,23 +379,15 @@ async function loadUserPacks(userId) {
 }
 
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
-    const cleanTxt = (text || "ABDURAHIM").trim().toUpperCase();
+    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : "ISMINGIZ";
     const cacheKey = `${templateFile}_${font}_${scale}_${cleanTxt}`;
     
     if (state.previewCache.has(cacheKey)) {
         return state.previewCache.get(cacheKey);
     }
     
-    if (cleanTxt === "ABDURAHIM") {
-        const preData = getPreRenderedTemplateData(templateFile, font, scale);
-        if (preData) {
-            state.previewCache.set(cacheKey, preData);
-            return preData;
-        }
-    }
-    
     try {
-        const res = await fetch('/api/preview', {
+        const res = await apiFetch('preview', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -380,12 +398,14 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
             })
         });
         
-        if (!res.ok) throw new Error(`Preview error: ${res.status}`);
         const animationData = await res.json();
-        state.previewCache.set(cacheKey, animationData);
-        return animationData;
+        if (animationData && !animationData.detail) {
+            state.previewCache.set(cacheKey, animationData);
+            return animationData;
+        }
+        throw new Error(animationData.detail || "Xato");
     } catch (err) {
-        // Safe fallback to pre-rendered template with client-side scaling
+        console.warn("API preview fallback:", err);
         const fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
         if (fallbackData) return fallbackData;
         return null;
@@ -419,7 +439,7 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
     }
     
     try {
-        const res = await fetch('/api/batch_preview', {
+        const res = await apiFetch('batch_preview', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -430,20 +450,15 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
             })
         });
         
-        if (res.ok) {
-            const data = await res.json();
-            if (data.previews) {
-                Object.entries(data.previews).forEach(([fname, lottieData]) => {
-                    const cacheKey = `${fname}_${font}_${scale}_${cleanTxt}`;
-                    state.previewCache.set(cacheKey, lottieData);
-                    results[fname] = lottieData;
-                });
-            }
-        } else {
-            throw new Error("Batch API unavailable");
+        const data = await res.json();
+        if (data.previews) {
+            Object.entries(data.previews).forEach(([fname, lottieData]) => {
+                const cacheKey = `${fname}_${font}_${scale}_${cleanTxt}`;
+                state.previewCache.set(cacheKey, lottieData);
+                results[fname] = lottieData;
+            });
         }
     } catch (e) {
-        // Fallback for static live server: use embedded data with client scale
         needed.forEach(file => {
             const fallbackData = getPreRenderedTemplateData(file, font, scale);
             if (fallbackData) results[file] = fallbackData;
@@ -967,18 +982,13 @@ async function startGeneration(mode = 'selected') {
             init_data: tg?.initData || ""
         };
         
-        const res = await fetch('/api/generate', {
+        const res = await apiFetch('generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
         
         clearInterval(progressInterval);
-        
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.detail || 'Generatsiyada xatolik yuz berdi');
-        }
         
         const result = await res.json();
         updateProgressStep(100, "Tayyor bo'ldi!");
@@ -1016,16 +1026,11 @@ async function addToExistingPack() {
             template_id: state.selectedTemplate
         };
         
-        const res = await fetch('/api/add_to_pack', {
+        const res = await apiFetch('add_to_pack', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || 'Qo\'shishda xatolik');
-        }
         
         const result = await res.json();
         updateProgressStep(100, "Muvaffaqiyatli qo'shildi!");
