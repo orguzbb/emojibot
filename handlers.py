@@ -541,16 +541,15 @@ async def process_successful_payment(message: Message, bot: Bot):
 
     # 2. Direct Stars purchase for emoji pack
     if payload.startswith("buy_pack:") or payload.startswith("buy_single:"):
-        # payload format: buy_pack:{user_id}:{font_key}:{clean_text}:{action_type}:{extra_param}
-        parts = payload.split(":", 5)
-        _, p_uid, font_key, clean_text, action_type, extra_param = parts
+        parts = payload.split(":")
+        _, p_uid, font_key, clean_text, action_type, extra_param = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
 
         # Record payment transaction
         add_user_balance(
             user_id=user_id,
             amount=total_amount,
             tx_type="deposit_stars",
-            description=f"To'g'ridan-to'g'ri Stars to'lovi: {clean_text}"
+            description=f"Telegram Stars to'lovi: {clean_text}"
         )
         deduct_user_balance(
             user_id=user_id,
@@ -565,14 +564,8 @@ async def process_successful_payment(message: Message, bot: Bot):
             parse_mode=ParseMode.HTML
         )
 
-        # Dispatch generation
-        if action_type == "gen_all":
-            await execute_full_pack_generation(bot, user_id, clean_text, font_key, message.chat.id)
-        elif action_type == "gen_one":
-            await execute_single_sticker_generation(bot, user_id, clean_text, font_key, extra_param, message.chat.id)
-        elif action_type == "do_add":
-            pack_name, tgs_mode = extra_param.split("|", 1) if "|" in extra_param else (extra_param, "all")
-            await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pack_name, tgs_mode, message.chat.id)
+        # Dispatch generation with full pack/destination support
+        await execute_generation_by_params(bot, user_id, clean_text, font_key, action_type, extra_param, message.chat.id)
 
 
 # ==================== EMOJI GENERATION LOGIC & FLOWS ====================
@@ -733,19 +726,13 @@ async def handle_font_selected(callback: CallbackQuery):
             [
                 InlineKeyboardButton(
                     text=f"🌟 Barcha {tgs_count} ta shablon (To'liq to'plam)",
-                    callback_data=f"req_pay:gen_all:{font_key}:{clean_text}:all"
+                    callback_data=f"choose_dest:gen_all:{font_key}:{clean_text}:all"
                 )
             ],
             [
                 InlineKeyboardButton(
                     text="🎯 Bitta shablonni tanlash",
                     callback_data=f"pick_single:{font_key}:{clean_text}"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="➕ Mavjud to'plamga qo'shish",
-                    callback_data=f"add_pack_menu:{font_key}:{clean_text}"
                 )
             ],
             [
@@ -794,7 +781,7 @@ async def handle_pick_single_menu(callback: CallbackQuery):
         row.append(
             InlineKeyboardButton(
                 text=f"#{btn_label}",
-                callback_data=f"req_pay:gen_one:{font_key}:{clean_text}:{f.name}"
+                callback_data=f"choose_dest:gen_one:{font_key}:{clean_text}:{f.name}"
             )
         )
         if len(row) == 4:
@@ -825,58 +812,51 @@ async def cb_ignore(callback: CallbackQuery):
     await callback.answer()
 
 
-# --- MAVJUD TO'PLAMGA QO'SHISH MENYUSI ---
-@router.callback_query(F.data.startswith("add_pack_menu:"))
-@router.callback_query(F.data.startswith("add_single_pack:"))
-async def handle_add_pack_menu(callback: CallbackQuery):
+# ==================== STEP: PACK NI TANLANG (DESTINATION SELECTION) ====================
+@router.callback_query(F.data.startswith("choose_dest:"))
+async def handle_choose_destination(callback: CallbackQuery):
+    # data: choose_dest:{action_type}:{font_key}:{clean_text}:{extra_param}
+    parts = callback.data.split(":", 4)
+    action_type = parts[1]
+    font_key = parts[2]
+    clean_text = parts[3]
+    extra_param = parts[4]
+
     user_id = callback.from_user.id
-    parts = callback.data.split(":")
-
-    if callback.data.startswith("add_single_pack:"):
-        font_key = parts[1]
-        clean_text = parts[2]
-        single_tgs = parts[3]
-    else:
-        font_key = parts[1]
-        clean_text = parts[2]
-        single_tgs = "all"
-
     user_packs = get_user_packs(user_id)
 
-    text = (
-        f"➕ <b>Qaysi to'plamingizga qo'shmoqchisiz?</b>\n\n"
-        "O'zingiz yaratgan mavjud paketlardan birini tanlang:"
-    )
+    text = "<b>Pack ni tanlang:</b>"
 
-    buttons = []
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="Yangi Emoji pack",
+                callback_data=f"req_pay:{action_type}:{font_key}:{clean_text}:{extra_param}|new"
+            )
+        ]
+    ]
+
     for pname, ptitle, _ in user_packs:
         buttons.append([
             InlineKeyboardButton(
                 text=f"📦 {ptitle}",
-                callback_data=f"req_pay:do_add:{font_key}:{clean_text}:{pname}|{single_tgs}"
+                callback_data=f"req_pay:{action_type}:{font_key}:{clean_text}:{extra_param}|add_{pname}"
             )
         ])
 
     buttons.append([
         InlineKeyboardButton(
-            text="🔙 Orqaga",
+            text="Отмена",
             callback_data=f"font:{font_key}:{clean_text}"
         )
     ])
-
-    if not user_packs:
-        text = (
-            "📁 <b>Sizda hali yaratilgan paketlar yo'q.</b>\n\n"
-            "Avval yangi to'plam yaratishingiz kerak. Orqaga qaytib 'Barcha shablonlar' tugmasini bosing."
-        )
 
     markup = InlineKeyboardMarkup(inline_keyboard=buttons)
     await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
     await callback.answer()
 
 
-# ==================== PAYMENT CONFIRMATION DIALOG (PAY DIALOG) ====================
-
+# ==================== STEP: TO'LOV USULINI TANLANG ====================
 @router.callback_query(F.data.startswith("req_pay:"))
 async def handle_payment_request(callback: CallbackQuery, bot: Bot):
     # data: req_pay:{action_type}:{font_key}:{clean_text}:{extra_param}
@@ -887,151 +867,148 @@ async def handle_payment_request(callback: CallbackQuery, bot: Bot):
     extra_param = parts[4]
 
     user_id = callback.from_user.id
-    price = get_emoji_price()
+    unit_price = get_emoji_price()
     balance = get_user_balance(user_id)
-    font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
 
-    # If price is 0 (free by admin), execute immediately
-    if price <= 0:
-        await callback.answer()
-        if action_type == "gen_all":
-            await execute_full_pack_generation(bot, user_id, clean_text, font_key, callback.message.chat.id)
-        elif action_type == "gen_one":
-            await execute_single_sticker_generation(bot, user_id, clean_text, font_key, extra_param, callback.message.chat.id)
-        elif action_type == "do_add":
-            pname, tgs_m = extra_param.split("|", 1) if "|" in extra_param else (extra_param, "all")
-            await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pname, tgs_m, callback.message.chat.id)
-        return
+    p = Path(TEMPLATES_DIR)
+    tgs_count = len(list(p.glob("*.tgs"))) if p.exists() else 117
 
-    # Price > 0: Check wallet vs direct payment
-    action_title = "To'liq emoji to'plami (100+ stiker)" if action_type == "gen_all" else (f"Bitta stiker ({extra_param})" if action_type == "gen_one" else "To'plamga qo'shish")
-
-    if balance >= price:
-        text = (
-            "💎 <b>To'lovni tasdiqlang</b>\n\n"
-            f"📦 <b>Xizmat:</b> {action_title}\n"
-            f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
-            f"🎨 <b>Shrift:</b> {font_info['name']}\n"
-            f"💰 <b>Narxi:</b> <b>{price} ⭐ Stars</b>\n"
-            f"💳 <b>Sizning balansingiz:</b> <b>{balance} ⭐ Stars</b>\n\n"
-            "To'lovni qanday tarzda amalga oshirmoqchisiz?"
-        )
-        markup = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text=f"💳 Hamyondan to'lash ({price} ⭐)",
-                        callback_data=f"pay_wallet:{action_type}:{font_key}:{clean_text}:{extra_param}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        text=f"⭐️ Stars orqali to'lash ({price} ⭐)",
-                        callback_data=f"pay_stars_inv:{action_type}:{font_key}:{clean_text}:{extra_param}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(text="🔙 Bekor qilish", callback_data=f"font:{font_key}:{clean_text}")
-                ]
-            ]
-        )
+    if action_type == "gen_all":
+        stickers_count = tgs_count
     else:
-        text = (
-            "💎 <b>To'lov talab qilinadi</b>\n\n"
-            f"📦 <b>Xizmat:</b> {action_title}\n"
-            f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
-            f"🎨 <b>Shrift:</b> {font_info['name']}\n"
-            f"💰 <b>Narxi:</b> <b>{price} ⭐ Stars</b>\n"
-            f"💳 <b>Sizning balansingiz:</b> <b>{balance} ⭐ Stars</b> (Yetarli emas)\n\n"
-            "To'g'ridan-to'g'ri Telegram Stars orqali to'lang yoki hisobingizni to'ldiring:"
-        )
-        markup = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text=f"⭐️ Stars orqali to'lash ({price} ⭐)",
-                        callback_data=f"pay_stars_inv:{action_type}:{font_key}:{clean_text}:{extra_param}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(text="➕ Balansni to'ldirish", callback_data="topup_menu"),
-                    InlineKeyboardButton(text="🎁 Promokod", callback_data="menu_promo")
-                ],
-                [
-                    InlineKeyboardButton(text="👥 Do'stlarni taklif qilib ishlash (+10 ⭐)", callback_data="menu_referral")
-                ],
-                [
-                    InlineKeyboardButton(text="🔙 Bekor qilish", callback_data=f"font:{font_key}:{clean_text}")
-                ]
+        stickers_count = 1
+
+    total_cost = stickers_count * unit_price
+
+    text = (
+        "<b>Выберите способ оплаты:</b>\n\n"
+        f"Количество стикеров: {stickers_count} ta.\n"
+        f"Общая цена: {total_cost} Stars"
+    )
+
+    raw_base_extra = extra_param.split("|")[0]
+
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Оплатить Stars",
+                    callback_data=f"pay_stars_inv:{action_type}:{font_key}:{clean_text}:{extra_param}:{total_cost}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Оплатить с баланса",
+                    callback_data=f"pay_wallet:{action_type}:{font_key}:{clean_text}:{extra_param}:{total_cost}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Отмена",
+                    callback_data=f"choose_dest:{action_type}:{font_key}:{clean_text}:{raw_base_extra}"
+                )
             ]
-        )
+        ]
+    )
 
     await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
     await callback.answer()
-
-
-# --- HAMYONDAN TO'LASH ---
-@router.callback_query(F.data.startswith("pay_wallet:"))
-async def handle_pay_from_wallet(callback: CallbackQuery, bot: Bot):
-    parts = callback.data.split(":", 4)
-    action_type = parts[1]
-    font_key = parts[2]
-    clean_text = parts[3]
-    extra_param = parts[4]
-
-    user_id = callback.from_user.id
-    price = get_emoji_price()
-
-    deducted = deduct_user_balance(
-        user_id=user_id,
-        amount=price,
-        tx_type="purchase_wallet",
-        description=f"Hamyondan to'lov: {clean_text} ({action_type})"
-    )
-
-    if not deducted:
-        await callback.answer("❌ Balansingizda yetarli Stars mavjud emas.", show_alert=True)
-        return
-
-    await callback.answer(f"✅ {price} Stars hamyoningizdan yechildi.", show_alert=False)
-
-    if action_type == "gen_all":
-        await execute_full_pack_generation(bot, user_id, clean_text, font_key, callback.message.chat.id)
-    elif action_type == "gen_one":
-        await execute_single_sticker_generation(bot, user_id, clean_text, font_key, extra_param, callback.message.chat.id)
-    elif action_type == "do_add":
-        pname, tgs_m = extra_param.split("|", 1) if "|" in extra_param else (extra_param, "all")
-        await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pname, tgs_m, callback.message.chat.id)
 
 
 # --- TO'G'RIDAN-TO'G'RI STARS INVOICE YUBORISH ---
 @router.callback_query(F.data.startswith("pay_stars_inv:"))
 async def handle_send_direct_stars_invoice(callback: CallbackQuery, bot: Bot):
     await callback.answer()
-    parts = callback.data.split(":", 4)
+    parts = callback.data.split(":", 5)
     action_type = parts[1]
     font_key = parts[2]
     clean_text = parts[3]
     extra_param = parts[4]
+    total_cost = int(parts[5]) if len(parts) > 5 else get_emoji_price()
 
     user_id = callback.from_user.id
-    price = get_emoji_price()
-    font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
-
-    payload = f"buy_pack:{user_id}:{font_key}:{clean_text}:{action_type}:{extra_param}"
+    stickers_count = total_cost // max(1, get_emoji_price())
+    payload = f"buy_pack:{user_id}:{font_key}:{clean_text}:{action_type}:{extra_param}:{total_cost}"
 
     try:
         await bot.send_invoice(
             chat_id=user_id,
-            title=f"⭐️ Emoji To'plami: {clean_text}",
-            description=f"'{clean_text}' ({font_info['name']}) uchun maxsus animatsiyali emoji to'plami.",
+            title="Stiker generatsiya",
+            description=f"{stickers_count} ta stiker uchun to'lov.",
             payload=payload,
             currency="XTR",
-            prices=[LabeledPrice(label=f"Emoji Pack ({clean_text})", amount=price)]
+            prices=[LabeledPrice(label="Stars", amount=total_cost)]
         )
     except Exception as e:
         logger.error(f"Direct invoice send error: {e}", exc_info=True)
         await callback.message.answer(f"❌ To'lov hisobini yuborishda xatolik: {e}")
+
+
+# --- BALANSDAN TO'LASH ---
+@router.callback_query(F.data.startswith("pay_wallet:"))
+async def handle_pay_from_wallet(callback: CallbackQuery, bot: Bot):
+    parts = callback.data.split(":", 5)
+    action_type = parts[1]
+    font_key = parts[2]
+    clean_text = parts[3]
+    extra_param = parts[4]
+    total_cost = int(parts[5]) if len(parts) > 5 else get_emoji_price()
+
+    user_id = callback.from_user.id
+    balance = get_user_balance(user_id)
+
+    if balance < total_cost:
+        await callback.answer(f"❌ Balansingiz yetarli emas! Sizda {balance} ⭐ bor, kerak: {total_cost} ⭐.", show_alert=True)
+        stickers_count = total_cost // max(1, get_emoji_price())
+        payload = f"buy_pack:{user_id}:{font_key}:{clean_text}:{action_type}:{extra_param}:{total_cost}"
+        try:
+            await bot.send_invoice(
+                chat_id=user_id,
+                title="Stiker generatsiya",
+                description=f"{stickers_count} ta stiker uchun to'lov.",
+                payload=payload,
+                currency="XTR",
+                prices=[LabeledPrice(label="Stars", amount=total_cost)]
+            )
+        except Exception as e:
+            logger.error(f"Direct invoice send error: {e}", exc_info=True)
+        return
+
+    deducted = deduct_user_balance(
+        user_id=user_id,
+        amount=total_cost,
+        tx_type="purchase_wallet",
+        description=f"Hamyondan to'lov: {clean_text} ({action_type}, {total_cost} ⭐)"
+    )
+
+    await callback.answer(f"✅ {total_cost} Stars balansingizdan yechildi.", show_alert=False)
+    await execute_generation_by_params(bot, user_id, clean_text, font_key, action_type, extra_param, callback.message.chat.id)
+
+
+async def execute_generation_by_params(bot: Bot, user_id: int, clean_text: str, font_key: str, action_type: str, extra_param: str, chat_id: int):
+    dest_mode = "new"
+    pack_target = ""
+    raw_target = extra_param
+
+    if "|" in extra_param:
+        raw_target, dest_info = extra_param.split("|", 1)
+        if dest_info.startswith("add_"):
+            dest_mode = "add"
+            pack_target = dest_info.replace("add_", "")
+        elif dest_info.startswith("add:"):
+            dest_mode = "add"
+            pack_target = dest_info.replace("add:", "")
+        elif dest_info == "new":
+            dest_mode = "new"
+
+    if dest_mode == "add" and pack_target:
+        await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pack_target, raw_target, chat_id)
+    elif action_type == "gen_all":
+        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id)
+    elif action_type == "gen_one":
+        await execute_single_sticker_generation(bot, user_id, clean_text, font_key, raw_target, chat_id)
+    else:
+        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id)
 
 
 # ==================== GENERATION EXECUTION FUNCTIONS ====================

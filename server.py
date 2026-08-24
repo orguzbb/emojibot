@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
-from aiogram.types import InputSticker, BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InputSticker, BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice
 from aiogram.exceptions import TelegramRetryAfter, TelegramAPIError
 
 from config import (
@@ -134,6 +134,12 @@ class AddToPackRequest(BaseModel):
     scale: Optional[float] = 1.0
 
 
+class CreateInvoiceRequest(BaseModel):
+    user_id: int
+    count: int = 1
+    text: Optional[str] = ""
+
+
 # ==================== WEB APP FRONTEND ROUTE ====================
 
 @app.get("/", response_class=HTMLResponse)
@@ -198,6 +204,29 @@ async def get_user_info_endpoint(user_id: int = Query(...)):
         "packs": packs,
         "is_admin": is_admin
     }
+
+
+@app.post("/api/create_invoice")
+async def create_invoice_endpoint(req: CreateInvoiceRequest):
+    """Creates a native Telegram Stars invoice link for Mini App"""
+    unit_price = get_emoji_price()
+    total_cost = max(1, req.count * unit_price)
+
+    bot = get_bot()
+    payload = f"topup:{req.user_id}:{total_cost}"
+
+    try:
+        invoice_link = await bot.create_invoice_link(
+            title="Stiker generatsiya",
+            description=f"{req.count} ta stiker uchun to'lov.",
+            payload=payload,
+            currency="XTR",
+            prices=[LabeledPrice(label="Stars", amount=total_cost)]
+        )
+        return {"invoice_link": invoice_link, "total_cost": total_cost}
+    except Exception as e:
+        logger.error(f"Failed to create invoice link: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/templates")

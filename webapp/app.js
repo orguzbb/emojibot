@@ -1306,8 +1306,34 @@ function setupEventListeners() {
         }
     });
     
-    dom.btnTopupWallet?.addEventListener('click', () => {
+    dom.btnTopupWallet?.addEventListener('click', async () => {
         haptic('medium');
+        const uid = state.user?.id || 1323217434;
+        const diff = Math.max(1, (state.lastNeededBal || state.emojiPrice || 6) - (state.userBalance || 0));
+        
+        try {
+            const count = Math.max(1, Math.ceil(diff / (state.emojiPrice || 6)));
+            const res = await apiFetch('create_invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, count: count, text: state.text })
+            });
+            const data = await res.json();
+            
+            if (data.invoice_link && tg?.openInvoice) {
+                closeBalanceModal();
+                tg.openInvoice(data.invoice_link, async (status) => {
+                    if (status === 'paid') {
+                        showToast("⭐️ Stars to'lovi qabul qilindi!", "✅");
+                        await loadUserInfo(uid);
+                    }
+                });
+                return;
+            }
+        } catch (e) {
+            console.warn('Invoice creation error:', e);
+        }
+        
         closeBalanceModal();
         if (tg) {
             tg.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=wallet`);
