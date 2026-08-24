@@ -4,6 +4,11 @@ DirectoryIndex index.html index.php
 RewriteEngine On
 RewriteBase /
 
-# Fallback API requests to PHP proxy if mod_proxy is not enabled
+# Route API calls to PHP proxy
+RewriteRule ^api/preview/?$ api/index.php [QSA,L]
+RewriteRule ^api/generate/?$ api/index.php [QSA,L]
+RewriteRule ^api/batch_preview/?$ api/index.php [QSA,L]
+RewriteRule ^api/user_packs/?$ api/index.php [QSA,L]
+RewriteRule ^api/add_to_pack/?$ api/index.php [QSA,L]
 RewriteRule ^api/(.*)$ api/index.php [QSA,L]
 </IfModule>
