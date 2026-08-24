@@ -1,0 +1,9 @@
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+
+# Fallback API requests to PHP proxy if mod_proxy is not enabled
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+</IfModule>
