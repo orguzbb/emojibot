@@ -403,7 +403,6 @@ function updateLoadingProgress(percent, statusText) {
 async function apiFetch(endpoint, options = {}) {
     const urls = [
         `/api/${endpoint}`,
-        `/api/${endpoint}/index.php`,
         `/api/index.php?endpoint=${endpoint}`
     ];
     
@@ -416,15 +415,17 @@ async function apiFetch(endpoint, options = {}) {
             }
             const errData = await res.json().catch(() => null);
             if (errData && errData.detail) {
-                lastError = new Error(errData.detail);
-            } else {
-                lastError = new Error(`HTTP ${res.status}`);
+                throw new Error(errData.detail);
             }
+            lastError = new Error(`Server xatosi (${res.status})`);
         } catch (e) {
+            if (e.message && !e.message.startsWith("Server xatosi") && !e.message.startsWith("HTTP")) {
+                throw e;
+            }
             lastError = e;
         }
     }
-    throw lastError || new Error("API ulanishida xatolik");
+    throw lastError || new Error("API ulanishida xatolik yuz berdi");
 }
 
 async function loadUserInfo(userId) {

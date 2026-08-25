@@ -37,6 +37,7 @@ from database import (
     save_user_pack,
     get_user_packs,
     get_user_balance,
+    add_user_balance,
     deduct_user_balance,
     get_emoji_price
 )
