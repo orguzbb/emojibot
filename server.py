@@ -599,6 +599,7 @@ async def generate_emoji_pack(req: GenerateRequest):
                     f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>"
                 ),
                 reply_markup=markup,
+                parse_mode=ParseMode.HTML,
                 disable_web_page_preview=False
             )
         except Exception as msg_err:

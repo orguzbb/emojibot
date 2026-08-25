@@ -402,8 +402,8 @@ function updateLoadingProgress(percent, statusText) {
 
 async function apiFetch(endpoint, options = {}) {
     const urls = [
-        `/api/${endpoint}`,
-        `/api/index.php?endpoint=${endpoint}`
+        `/api/index.php?endpoint=${endpoint}`,
+        `/api/${endpoint}`
     ];
     
     let lastError = null;
@@ -1377,16 +1377,20 @@ function setupEventListeners() {
         dom.charCount.textContent = `${len}/16`;
     }
     
-    // Debounced text update: only updates the live hero preview, leaving grid cards lightning fast!
+    // Fast real-time live preview update
     const debouncedLiveTextUpdate = debounce(() => {
-        let val = dom.nameInput.value.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_ \-]/g, '').toUpperCase();
-        state.text = val;
-        dom.nameInput.value = val;
-        updateCharCount();
         updateLivePreview();
-    }, 180);
+        if (typeof debouncedFullUpdate === 'function') {
+            debouncedFullUpdate();
+        }
+    }, 100);
     
     dom.nameInput.addEventListener('input', () => {
+        let val = dom.nameInput.value.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_ \-]/g, '').toUpperCase();
+        state.text = val;
+        if (dom.previewTextDisplay) {
+            dom.previewTextDisplay.textContent = val || "—";
+        }
         updateCharCount();
         debouncedLiveTextUpdate();
     });
