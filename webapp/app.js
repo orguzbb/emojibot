@@ -319,9 +319,24 @@ function getPreRenderedTemplateData(filename, font, scale = 1.0) {
 // ==================== INITIALIZATION ====================
 
 async function initApp() {
+    let currentP = 25;
+    updateLoadingProgress(25, "Telegram muhiti tayyorlanmoqda...");
+
+    const progressTimer = setInterval(() => {
+        if (currentP < 90) {
+            currentP += 15;
+            updateLoadingProgress(currentP, currentP < 50 ? "Shablonlar yuklanmoqda..." : "Animatsiyalar tayyorlanmoqda...");
+        }
+    }, 450);
+
+    const safetyTimeout = setTimeout(() => {
+        clearInterval(progressTimer);
+        updateLoadingProgress(100, "Tayyor!");
+        dom.loadingScreen?.classList.add('fade-out');
+        dom.appContainer?.classList.remove('hidden');
+    }, 5500);
+
     try {
-        updateLoadingProgress(20, "Telegram muhiti aniqlanmoqda...");
-        
         if (tg) {
             tg.ready();
             tg.expand();
@@ -342,7 +357,7 @@ async function initApp() {
             }
         }
         
-        updateLoadingProgress(45, "13 ta Ticket va 104 ta Logo stikerlar yuklanmoqda...");
+        updateLoadingProgress(55, "Shablonlar va stikerlar yuklanmoqda...");
         
         // 1. Render initial Live Hero Preview
         await updateLivePreview();
@@ -360,17 +375,21 @@ async function initApp() {
         const uid = state.user?.id || 1323217434;
         await loadUserInfo(uid);
         
+        clearTimeout(safetyTimeout);
+        clearInterval(progressTimer);
         updateLoadingProgress(100, "Tayyor!");
         
         setTimeout(() => {
-            dom.loadingScreen.classList.add('fade-out');
-            dom.appContainer.classList.remove('hidden');
-        }, 200);
+            dom.loadingScreen?.classList.add('fade-out');
+            dom.appContainer?.classList.remove('hidden');
+        }, 250);
         
     } catch (err) {
         console.error("App init error:", err);
-        dom.loadingScreen.classList.add('fade-out');
-        dom.appContainer.classList.remove('hidden');
+        clearTimeout(safetyTimeout);
+        clearInterval(progressTimer);
+        dom.loadingScreen?.classList.add('fade-out');
+        dom.appContainer?.classList.remove('hidden');
     }
 }
 
@@ -493,7 +512,7 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
 }
 
 async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
-    const cleanTxt = (text || "ABDURAHIM").trim().toUpperCase();
+    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : "ISMINGIZ";
     const needed = [];
     const results = {};
     
@@ -501,7 +520,7 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
         const cacheKey = `${file}_${font}_${scale}_${cleanTxt}`;
         if (state.previewCache.has(cacheKey)) {
             results[file] = state.previewCache.get(cacheKey);
-        } else if (cleanTxt === "ABDURAHIM") {
+        } else if (cleanTxt === "ISMINGIZ") {
             const preData = getPreRenderedTemplateData(file, font, scale);
             if (preData) {
                 state.previewCache.set(cacheKey, preData);

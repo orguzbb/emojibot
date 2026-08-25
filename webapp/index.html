@@ -14,27 +14,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=3.3.0">
+    <link rel="stylesheet" href="style.css?v=3.4.0">
 </head>
 <body>
 
     <!-- ==================== 1. LOADING SCREEN ==================== -->
     <div id="loading-screen" class="loading-screen">
         <div class="loader-content">
-            <div class="loader-logo-wrap">
-                <div class="glow-ring"></div>
-                <div class="pulse-core">
-                    <svg class="svg-loader-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                    </svg>
-                </div>
+            <div class="loader-flag-wrap">
+                <img src="images/bayroq.webp" alt="Loading..." class="loader-flag-img">
             </div>
-            <h1 class="loader-title">GnEmoji Studio</h1>
+            <h1 class="loader-title"><span class="gn-dot">.</span>GN Studio</h1>
             <p class="loader-subtitle">Telegram Animated Emoji Generator</p>
             <div class="loader-bar-bg">
                 <div class="loader-bar-fill" id="loader-bar"></div>
             </div>
-            <span class="loader-status" id="loader-status">Shablonlar va animatsiyalar yuklanmoqda...</span>
+            <span class="loader-status" id="loader-status">Shablonlar yuklanmoqda...</span>
         </div>
     </div>
 
@@ -95,7 +90,7 @@
                         type="text" 
                         id="name-input" 
                         class="name-input" 
-                        placeholder="MASALAN: ABDURAHIM" 
+                        placeholder="MASALAN: ISMINGIZ" 
                         maxlength="16" 
                         autocomplete="off" 
                         spellcheck="false"
@@ -194,7 +189,7 @@
                 </div>
                 <div class="preview-footer">
                     <span class="preview-text-info">
-                        Matn: <b id="preview-text-display">ABDURAHIM</b> | Shrift: <b id="preview-font-display">Stapel</b>
+                        Matn: <b id="preview-text-display">ISMINGIZ</b> | Shrift: <b id="preview-font-display">Stapel</b>
                     </span>
                 </div>
             </div>
@@ -610,7 +605,7 @@
     </div>
 
     <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=3.3.0"></script>
-    <script src="app.js?v=3.3.0"></script>
+    <script src="ticket_templates.js?v=3.4.0"></script>
+    <script src="app.js?v=3.4.0"></script>
 </body>
 </html>
