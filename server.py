@@ -381,12 +381,12 @@ async def generate_emoji_pack(req: GenerateRequest):
                 detail=f"Balansingiz yetarli emas! Sizda {balance} ⭐ Stars bor, kerak: {total_cost} ⭐ Stars ({total_stickers_count} ta emoji x {emoji_price} ⭐). Iltimos, hisobingizni to'ldiring."
             )
         
-        # Balansdan yechish
+        # Balansdan yechish (Faqat bir marta)
         deducted = deduct_user_balance(
             user_id=req.user_id,
             amount=total_cost,
             tx_type="purchase_webapp",
-            description=f"Mini App to'lovi: {clean_text} ({total_stickers_count} ta emoji, {total_cost} ⭐)"
+            description=f"Mini App: {clean_text} ({total_stickers_count} ta emoji, {total_cost} ⭐)"
         )
         if not deducted:
             raise HTTPException(status_code=402, detail="Balansdan Stars yechishda xatolik yuz berdi.")
@@ -419,31 +419,20 @@ async def generate_emoji_pack(req: GenerateRequest):
         pack_title = req.pack_name
         try:
             for idx, st in enumerate(input_stickers):
-                try:
-                    await bot.add_sticker_to_set(
-                        user_id=req.user_id,
-                        name=pack_name,
-                        sticker=st
-                    )
-                except TelegramRetryAfter as retry_err:
-                    await asyncio.sleep(retry_err.retry_after + 0.5)
-                    await bot.add_sticker_to_set(
-                        user_id=req.user_id,
-                        name=pack_name,
-                        sticker=st
-                    )
-                except Exception as add_err:
-                    logger.warning(f"Add sticker {idx+1} warning: {add_err}")
-                await asyncio.sleep(0.04)
-
-            # Deduct balance on successful addition
-            if not is_admin and total_cost > 0:
-                deduct_user_balance(
-                    req.user_id,
-                    total_cost,
-                    tx_type="add_to_pack",
-                    description=f"{clean_text} ({total_stickers_count} ta emoji mavjud to'plamga qo'shildi)"
-                )
+                for attempt in range(4):
+                    try:
+                        await bot.add_sticker_to_set(
+                            user_id=req.user_id,
+                            name=pack_name,
+                            sticker=st
+                        )
+                        break
+                    except TelegramRetryAfter as retry_err:
+                        await asyncio.sleep(retry_err.retry_after + 1.0)
+                    except Exception as add_err:
+                        logger.warning(f"Add sticker {idx+1} warning (attempt {attempt+1}): {add_err}")
+                        await asyncio.sleep(0.3)
+                await asyncio.sleep(0.06)
 
             pack_link = f"https://t.me/addemoji/{pack_name}"
             new_bal = get_user_balance(req.user_id)
@@ -457,6 +446,9 @@ async def generate_emoji_pack(req: GenerateRequest):
                 "mode": "add_to_pack"
             }
         except Exception as e:
+            # Refund if failed
+            if total_cost > 0:
+                add_user_balance(req.user_id, total_cost, tx_type="refund", description="Muvaffaqiyatsiz to'plam uchun qaytarildi")
             logger.error(f"Add to pack error: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Mavjud to'plamga qo'shishda xatolik: {str(e)}")
 
@@ -478,34 +470,24 @@ async def generate_emoji_pack(req: GenerateRequest):
             sticker_type="custom_emoji"
         )
 
-        # Step 2: Add remaining stickers if full pack or multiple
+        # Step 2: Add remaining stickers with robust flood wait handling
         if len(input_stickers) > 1:
             for idx in range(1, len(input_stickers)):
-                try:
-                    await bot.add_sticker_to_set(
-                        user_id=req.user_id,
-                        name=pack_name,
-                        sticker=input_stickers[idx]
-                    )
-                except TelegramRetryAfter as retry_err:
-                    await asyncio.sleep(retry_err.retry_after + 0.5)
-                    await bot.add_sticker_to_set(
-                        user_id=req.user_id,
-                        name=pack_name,
-                        sticker=input_stickers[idx]
-                    )
-                except Exception as add_err:
-                    logger.warning(f"Add sticker {idx+1} warning: {add_err}")
-                await asyncio.sleep(0.04)
-
-        # Deduct balance on successful creation
-        if not is_admin and total_cost > 0:
-            deduct_user_balance(
-                req.user_id,
-                total_cost,
-                tx_type="emoji_pack",
-                description=f"{clean_text} ({total_stickers_count} ta emoji)"
-            )
+                for attempt in range(4):
+                    try:
+                        await bot.add_sticker_to_set(
+                            user_id=req.user_id,
+                            name=pack_name,
+                            sticker=input_stickers[idx]
+                        )
+                        break
+                    except TelegramRetryAfter as retry_err:
+                        logger.warning(f"Telegram flood wait {retry_err.retry_after}s on sticker {idx+1}")
+                        await asyncio.sleep(retry_err.retry_after + 1.0)
+                    except Exception as add_err:
+                        logger.warning(f"Add sticker {idx+1} error (attempt {attempt+1}): {add_err}")
+                        await asyncio.sleep(0.3)
+                await asyncio.sleep(0.06)
 
         # Save to database
         save_user_pack(req.user_id, pack_name, pack_title)
@@ -548,20 +530,26 @@ async def generate_emoji_pack(req: GenerateRequest):
         }
 
     except TelegramRetryAfter as e:
+        if total_cost > 0:
+            add_user_balance(req.user_id, total_cost, tx_type="refund", description="Telegram floodwait sababli qaytarildi")
         logger.warning(f"Telegram FloodWait: {e.retry_after}s")
         raise HTTPException(
             status_code=429,
-            detail=f"Telegram serveri floodwait qo'ydi ({e.retry_after} soniya). Iltimos, birozdan so'ng urinib ko'ring."
+            detail=f"Telegram serveri vaqtinchalik cheklov qo'ydi ({e.retry_after} soniya). Stars qaytarildi. Iltimos, birozdan so'ng urinib ko'ring."
         )
     except TelegramAPIError as api_err:
+        if total_cost > 0:
+            add_user_balance(req.user_id, total_cost, tx_type="refund", description="Telegram xatosi sababli qaytarildi")
         logger.error(f"Telegram API Error: {api_err}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Telegram API xatoligi: {getattr(api_err, 'message', str(api_err))}"
         )
     except Exception as e:
+        if total_cost > 0:
+            add_user_balance(req.user_id, total_cost, tx_type="refund", description="Xatolik sababli qaytarildi")
         logger.error(f"Generation unexpected error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Generatsiyada xatolik yuz berdi")
+        raise HTTPException(status_code=500, detail="Generatsiyada xatolik yuz berdi. Stars qaytarildi.")
 
 
 @app.get("/api/user_packs")

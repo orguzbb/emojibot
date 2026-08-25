@@ -2,6 +2,8 @@
 // Bulletproof API Bridge for Shared Hosting on xuss.us
 ini_set('display_errors', 0);
 error_reporting(0);
+set_time_limit(0);
+ini_set('max_execution_time', 0);
 
 // Determine the target API endpoint
 $endpoint = $_GET['endpoint'] ?? '';
