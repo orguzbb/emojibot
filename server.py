@@ -341,6 +341,9 @@ async def generate_batch_preview(req: BatchPreviewRequest):
     return JSONResponse(content={"previews": results})
 
 
+_background_tasks = set()
+
+
 async def background_add_stickers(
     bot_instance: Bot,
     user_id: int,
@@ -354,7 +357,7 @@ async def background_add_stickers(
     """Safely adds stickers in background to prevent HTTP timeouts and handle Telegram flood limits"""
     logger.info(f"Background worker started: adding {len(stickers_to_add)} stickers to {pack_name}")
     for idx, st in enumerate(stickers_to_add):
-        for attempt in range(5):
+        for attempt in range(8):
             try:
                 await bot_instance.add_sticker_to_set(
                     user_id=user_id,
@@ -363,29 +366,30 @@ async def background_add_stickers(
                 )
                 break
             except TelegramRetryAfter as retry_err:
-                wait_sec = retry_err.retry_after + 1.0
+                wait_sec = retry_err.retry_after + 1.5
                 logger.warning(f"Background FloodWait on sticker {idx+1}: waiting {wait_sec}s")
                 await asyncio.sleep(wait_sec)
             except Exception as e:
                 logger.warning(f"Background add sticker {idx+1} error (attempt {attempt+1}): {e}")
-                await asyncio.sleep(0.3)
-        await asyncio.sleep(0.08)
+                await asyncio.sleep(1.0)
+        # Polite spacing to avoid fast rate limits
+        await asyncio.sleep(0.4)
 
     logger.info(f"Background worker completed for {pack_name} (Total: {total_count})")
     try:
         markup = InlineKeyboardMarkup(
             inline_keyboard=[
-                [InlineKeyboardButton(text="➕ To'plamni Ochish", url=pack_link)]
+                [InlineKeyboardButton(text="➕ To'plamni Telegramda Ochish", url=pack_link)]
             ]
         )
         await bot_instance.send_message(
             chat_id=user_id,
             text=(
-                f"✅ <b>Barcha stikerlar to'liq yuklandi!</b>\n\n"
+                f"🎉 <b>Barcha stikerlar muvaffaqiyatli yuklandi!</b>\n\n"
                 f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
                 f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
                 f"⚡ <b>Jami stikerlar:</b> {total_count} ta to'liq tayyor!\n\n"
-                f"<i>Foydalanish uchun to'plamni Telegramga qo'shing:</i>"
+                f"<i>Foydalanish uchun to'plamni oching:</i>"
             ),
             reply_markup=markup,
             parse_mode=ParseMode.HTML
@@ -500,7 +504,7 @@ async def generate_emoji_pack(req: GenerateRequest):
             pack_link = f"https://t.me/addemoji/{pack_name}"
             
             if len(input_stickers) > 5:
-                asyncio.create_task(
+                bg_task = asyncio.create_task(
                     background_add_stickers(
                         bot_instance=bot,
                         user_id=req.user_id,
@@ -512,6 +516,8 @@ async def generate_emoji_pack(req: GenerateRequest):
                         clean_text=clean_text
                     )
                 )
+                _background_tasks.add(bg_task)
+                bg_task.add_done_callback(_background_tasks.discard)
 
             new_bal = get_user_balance(req.user_id)
             return {
@@ -574,7 +580,7 @@ async def generate_emoji_pack(req: GenerateRequest):
 
         # Step 3: If more than 5 stickers, spawn background worker for the rest
         if len(input_stickers) > 5:
-            asyncio.create_task(
+            bg_task = asyncio.create_task(
                 background_add_stickers(
                     bot_instance=bot,
                     user_id=req.user_id,
@@ -586,6 +592,8 @@ async def generate_emoji_pack(req: GenerateRequest):
                     clean_text=clean_text
                 )
             )
+            _background_tasks.add(bg_task)
+            bg_task.add_done_callback(_background_tasks.discard)
 
         new_bal = get_user_balance(req.user_id)
 
