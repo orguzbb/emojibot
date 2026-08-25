@@ -6,7 +6,7 @@ import logging
 import asyncio
 import urllib.parse
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from aiogram import Bot, Router, F
 from aiogram.filters import CommandStart, Command
