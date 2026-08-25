@@ -545,12 +545,13 @@ async def generate_emoji_pack(req: GenerateRequest):
     pack_link = f"https://t.me/addemoji/{pack_name}"
 
     try:
-        # Step 1: Create new custom emoji sticker set with initial sticker
+        # Step 1: Create new custom emoji sticker set with initial 10 stickers in ONE call
+        initial_count = min(10, len(input_stickers))
         await bot.create_new_sticker_set(
             user_id=req.user_id,
             name=pack_name,
             title=pack_title,
-            stickers=[input_stickers[0]],
+            stickers=input_stickers[:initial_count],
             sticker_type="custom_emoji"
         )
 
@@ -558,28 +559,8 @@ async def generate_emoji_pack(req: GenerateRequest):
         save_user_pack(req.user_id, pack_name, pack_title)
         increment_user_packs(req.user_id)
 
-        # Step 2: Add up to 5 initial stickers synchronously
-        sync_limit = min(5, len(input_stickers))
-        if sync_limit > 1:
-            for idx in range(1, sync_limit):
-                for attempt in range(4):
-                    try:
-                        await bot.add_sticker_to_set(
-                            user_id=req.user_id,
-                            name=pack_name,
-                            sticker=input_stickers[idx]
-                        )
-                        break
-                    except TelegramRetryAfter as retry_err:
-                        logger.warning(f"Telegram flood wait {retry_err.retry_after}s on sticker {idx+1}")
-                        await asyncio.sleep(retry_err.retry_after + 1.0)
-                    except Exception as add_err:
-                        logger.warning(f"Add sticker {idx+1} error (attempt {attempt+1}): {add_err}")
-                        await asyncio.sleep(0.2)
-                await asyncio.sleep(0.04)
-
-        # Step 3: If more than 5 stickers, spawn background worker for the rest
-        if len(input_stickers) > 5:
+        # Step 2: If more than 10 stickers, spawn background worker for the rest
+        if len(input_stickers) > 10:
             bg_task = asyncio.create_task(
                 background_add_stickers(
                     bot_instance=bot,
@@ -587,7 +568,7 @@ async def generate_emoji_pack(req: GenerateRequest):
                     pack_name=pack_name,
                     pack_title=pack_title,
                     pack_link=pack_link,
-                    stickers_to_add=input_stickers[5:],
+                    stickers_to_add=input_stickers[10:],
                     total_count=len(input_stickers),
                     clean_text=clean_text
                 )
