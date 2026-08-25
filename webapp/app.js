@@ -452,6 +452,17 @@ async function loadUserPacks(userId) {
     return loadUserInfo(userId);
 }
 
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    })[m]);
+}
+
 function renderExistingPacksDropdown() {
     if (!dom.existingPackSelect) return;
     dom.existingPackSelect.innerHTML = '';
@@ -469,11 +480,83 @@ function renderExistingPacksDropdown() {
     defaultOpt.textContent = "To'plamni tanlang...";
     dom.existingPackSelect.appendChild(defaultOpt);
     
-    state.userPacks.forEach(([pname, ptitle]) => {
-        const opt = document.createElement('option');
-        opt.value = pname;
-        opt.textContent = `📦 ${ptitle || pname}`;
-        dom.existingPackSelect.appendChild(opt);
+    state.userPacks.forEach((pack) => {
+        let pname = "";
+        let ptitle = "";
+        if (Array.isArray(pack)) {
+            pname = pack[0] || "";
+            ptitle = pack[1] || pack[0] || "";
+        } else if (typeof pack === 'object' && pack !== null) {
+            pname = pack.pack_name || pack.name || "";
+            ptitle = pack.pack_title || pack.title || pname;
+        } else if (typeof pack === 'string') {
+            pname = pack;
+            ptitle = pack;
+        }
+        if (pname) {
+            const opt = document.createElement('option');
+            opt.value = pname;
+            opt.textContent = `📦 ${ptitle}`;
+            dom.existingPackSelect.appendChild(opt);
+        }
+    });
+}
+
+function renderUserPacks() {
+    if (!dom.userPacksList) return;
+    dom.userPacksList.innerHTML = '';
+    
+    if (!state.userPacks || state.userPacks.length === 0) {
+        dom.userPacksList.innerHTML = `
+            <div class="packs-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>Hali yaratilgan to'plamlar yo'q</span>
+            </div>
+        `;
+        return;
+    }
+    
+    state.userPacks.forEach(pack => {
+        let pname = "";
+        let ptitle = "";
+        let pdate = "";
+        if (Array.isArray(pack)) {
+            pname = pack[0] || "";
+            ptitle = pack[1] || pack[0] || "";
+            pdate = pack[2] || "";
+        } else if (typeof pack === 'object' && pack !== null) {
+            pname = pack.pack_name || pack.name || "";
+            ptitle = pack.pack_title || pack.title || pname;
+            pdate = pack.created_at || "";
+        } else if (typeof pack === 'string') {
+            pname = pack;
+            ptitle = pack;
+        }
+        
+        if (!pname) return;
+        
+        const packLink = `https://t.me/addemoji/${pname}`;
+        const item = document.createElement('a');
+        item.href = packLink;
+        item.target = '_blank';
+        item.className = 'pack-item-card';
+        item.onclick = (e) => {
+            if (tg) {
+                e.preventDefault();
+                tg.openTelegramLink(packLink);
+            }
+        };
+        
+        item.innerHTML = `
+            <div class="pack-info-left">
+                <span class="pack-name-txt">${escapeHtml(ptitle)}</span>
+                <span class="pack-date-txt">${pdate || pname}</span>
+            </div>
+            <span class="pack-btn-open">Ochish</span>
+        `;
+        dom.userPacksList.appendChild(item);
     });
 }
 
@@ -1160,24 +1243,29 @@ async function executeGeneration(pendingAction) {
     haptic('medium');
     
     if (mode === 'add_to_pack') {
-        showProgressModal("Mavjud to'plamga qo'shilmoqda...", `\"${packName}\" to'plamiga ${totalCount} ta stiker qo'shilmoqda...`, 30);
+        showProgressModal("Mavjud to'plamga qo'shilmoqda...", `\"${packName}\" to'plamiga ${totalCount} ta stiker qo'shilmoqda...`, 15);
     } else if (rawMode === 'all') {
-        showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 104 ta logo shablon render qilinmoqda...", 15);
+        showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 104 ta logo shablon qayta ishlanmoqda...", 10);
     } else if (mode === "single") {
         const num = getTemplateNumber(selectedFiles[0]);
-        showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 25);
+        showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 20);
     } else {
-        showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan stikerlar paketga jamlanmoqda...", 20);
+        showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan stikerlar paketga jamlanmoqda...", 15);
     }
     
     try {
-        let progress = mode === 'single' ? 35 : 20;
+        let progress = 12;
+        updateProgressStep(12, "Shablonlar tekshirilmoqda...");
+        
         const progressInterval = setInterval(() => {
-            if (progress < 85) {
-                progress += mode === 'single' ? 15 : 6;
-                updateProgressStep(progress, mode === 'single' ? "Telegram API-ga yuborilmoqda..." : "Stikerlar paketga qo'shilmoqda...");
+            if (progress < 80) {
+                progress += mode === 'single' ? 12 : 5;
+                let desc = "Shablonlar tayyorlanmoqda...";
+                if (progress > 25 && progress <= 50) desc = "Animatsiyalar render qilinmoqda...";
+                if (progress > 50) desc = "Telegram API to'plami yaratilmoqda...";
+                updateProgressStep(progress, desc);
             }
-        }, 600);
+        }, 220);
         
         const payload = {
             user_id: userId,
@@ -1200,7 +1288,7 @@ async function executeGeneration(pendingAction) {
         clearInterval(progressInterval);
         
         const result = await res.json();
-        updateProgressStep(100, "Tayyor bo'ldi!");
+        updateProgressStep(100, "Muvaffaqiyatli tayyorlandi!");
         
         if (result.remaining_balance !== undefined) {
             state.userBalance = result.remaining_balance;
@@ -1208,26 +1296,30 @@ async function executeGeneration(pendingAction) {
             updateSelectionStatus();
         }
         
+        // Refresh user info and packs list immediately
+        await loadUserInfo(userId);
+        
         setTimeout(() => {
             showSuccessModal(result.pack_name, result.pack_link, rawMode === 'all');
-        }, 400);
+        }, 350);
         
     } catch (err) {
         console.error('Generation failed:', err);
         hideProgressModal();
-        if (err.message && err.message.includes("Balansingiz yetarli emas")) {
-            openBalanceModal(state.userBalance, totalCost);
+        if ((state.userBalance || 0) < totalCost) {
+            openBalanceModal(state.userBalance || 0, totalCost);
         } else {
-            showToast(`❌ Xatolik: ${err.message}`, "❌", 4000);
+            showToast(`❌ ${err.message || "Generatsiyada xatolik yuz berdi"}`, "❌", 5000);
         }
         haptic('error');
     }
 }
 
 function openBalanceModal(currBal, neededBal) {
+    const diff = Math.max(1, neededBal - currBal);
     if (dom.modalCurrBal) dom.modalCurrBal.innerHTML = `${currBal} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
     if (dom.modalNeededBal) dom.modalNeededBal.innerHTML = `${neededBal} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
-    if (dom.modalDiffBal) dom.modalDiffBal.innerHTML = `${Math.max(0, neededBal - currBal)} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
+    if (dom.modalDiffBal) dom.modalDiffBal.innerHTML = `${diff} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
     dom.modalBalance?.classList.remove('hidden');
 }
 

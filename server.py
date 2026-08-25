@@ -341,21 +341,83 @@ async def generate_batch_preview(req: BatchPreviewRequest):
     return JSONResponse(content={"previews": results})
 
 
+async def background_add_stickers(
+    bot_instance: Bot,
+    user_id: int,
+    pack_name: str,
+    pack_title: str,
+    pack_link: str,
+    stickers_to_add: List[InputSticker],
+    total_count: int,
+    clean_text: str
+):
+    """Safely adds stickers in background to prevent HTTP timeouts and handle Telegram flood limits"""
+    logger.info(f"Background worker started: adding {len(stickers_to_add)} stickers to {pack_name}")
+    for idx, st in enumerate(stickers_to_add):
+        for attempt in range(5):
+            try:
+                await bot_instance.add_sticker_to_set(
+                    user_id=user_id,
+                    name=pack_name,
+                    sticker=st
+                )
+                break
+            except TelegramRetryAfter as retry_err:
+                wait_sec = retry_err.retry_after + 1.0
+                logger.warning(f"Background FloodWait on sticker {idx+1}: waiting {wait_sec}s")
+                await asyncio.sleep(wait_sec)
+            except Exception as e:
+                logger.warning(f"Background add sticker {idx+1} error (attempt {attempt+1}): {e}")
+                await asyncio.sleep(0.3)
+        await asyncio.sleep(0.08)
+
+    logger.info(f"Background worker completed for {pack_name} (Total: {total_count})")
+    try:
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="➕ To'plamni Ochish", url=pack_link)]
+            ]
+        )
+        await bot_instance.send_message(
+            chat_id=user_id,
+            text=(
+                f"✅ <b>Barcha stikerlar to'liq yuklandi!</b>\n\n"
+                f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
+                f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
+                f"⚡ <b>Jami stikerlar:</b> {total_count} ta to'liq tayyor!\n\n"
+                f"<i>Foydalanish uchun to'plamni Telegramga qo'shing:</i>"
+            ),
+            reply_markup=markup,
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as notify_err:
+        logger.info(f"Background completion notification warning: {notify_err}")
+
+
 @app.post("/api/generate")
 async def generate_emoji_pack(req: GenerateRequest):
-    """Creates a single custom emoji, a selected set of emojis, or adds to an existing pack, deducting balance"""
+    """
+    Bulletproof Generation Endpoint:
+    - Verifies user balance (deducts once)
+    - Creates sticker set immediately
+    - Adds initial batch synchronously and runs remaining batch in background
+    - Returns instant success response to Mini App
+    """
     clean_text = req.text.strip().upper()[:16]
     if not clean_text:
-        raise HTTPException(status_code=400, detail="Iltimos, matn kiriting")
+        raise HTTPException(status_code=400, detail="Matn kiritilmagan")
 
     bot = get_bot()
-    font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
+
+    # Font lookup
+    font_key = req.font.lower() if req.font else "stapel"
+    font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     if not font_file_path.exists():
-        font_file_path = Path(DEFAULT_FONT_PATH)
+        font_file_path = Path(FONTS_DIR) / "stapel.ttf"
 
+    # Template filtering
     p = Path(TEMPLATES_DIR)
-    
     if req.selected_templates and len(req.selected_templates) > 0:
         target_files = [p / f for f in req.selected_templates if (p / f).exists()]
     elif req.mode == "single":
@@ -368,7 +430,7 @@ async def generate_emoji_pack(req: GenerateRequest):
     if not target_files:
         raise HTTPException(status_code=404, detail="Shablonlar topilmadi")
 
-    # Pricing & Balance Check — HAR DOIM STARS TO'LANADI (Hech qachon tekin bo'lmaydi)
+    # Pricing & Balance Check
     total_stickers_count = len(target_files)
     emoji_price = get_emoji_price()
     total_cost = total_stickers_count * emoji_price
@@ -418,23 +480,39 @@ async def generate_emoji_pack(req: GenerateRequest):
         pack_name = req.pack_name
         pack_title = req.pack_name
         try:
-            for idx, st in enumerate(input_stickers):
+            sync_limit = min(5, len(input_stickers))
+            for idx in range(sync_limit):
                 for attempt in range(4):
                     try:
                         await bot.add_sticker_to_set(
                             user_id=req.user_id,
                             name=pack_name,
-                            sticker=st
+                            sticker=input_stickers[idx]
                         )
                         break
                     except TelegramRetryAfter as retry_err:
                         await asyncio.sleep(retry_err.retry_after + 1.0)
                     except Exception as add_err:
                         logger.warning(f"Add sticker {idx+1} warning (attempt {attempt+1}): {add_err}")
-                        await asyncio.sleep(0.3)
-                await asyncio.sleep(0.06)
+                        await asyncio.sleep(0.2)
+                await asyncio.sleep(0.04)
 
             pack_link = f"https://t.me/addemoji/{pack_name}"
+            
+            if len(input_stickers) > 5:
+                asyncio.create_task(
+                    background_add_stickers(
+                        bot_instance=bot,
+                        user_id=req.user_id,
+                        pack_name=pack_name,
+                        pack_title=pack_title,
+                        pack_link=pack_link,
+                        stickers_to_add=input_stickers[5:],
+                        total_count=len(input_stickers),
+                        clean_text=clean_text
+                    )
+                )
+
             new_bal = get_user_balance(req.user_id)
             return {
                 "ok": True,
@@ -446,7 +524,6 @@ async def generate_emoji_pack(req: GenerateRequest):
                 "mode": "add_to_pack"
             }
         except Exception as e:
-            # Refund if failed
             if total_cost > 0:
                 add_user_balance(req.user_id, total_cost, tx_type="refund", description="Muvaffaqiyatsiz to'plam uchun qaytarildi")
             logger.error(f"Add to pack error: {e}", exc_info=True)
@@ -459,6 +536,7 @@ async def generate_emoji_pack(req: GenerateRequest):
     short_code = random.randint(100, 99999)
     pack_name = f"{raw_slug}_{short_code}_by_{BOT_USERNAME}"
     pack_title = f"{clean_text} ({font_info['name']})" if req.mode == "single" else f"{clean_text} Emojis"
+    pack_link = f"https://t.me/addemoji/{pack_name}"
 
     try:
         # Step 1: Create new custom emoji sticker set with initial sticker
@@ -470,9 +548,14 @@ async def generate_emoji_pack(req: GenerateRequest):
             sticker_type="custom_emoji"
         )
 
-        # Step 2: Add remaining stickers with robust flood wait handling
-        if len(input_stickers) > 1:
-            for idx in range(1, len(input_stickers)):
+        # Save to database immediately so it shows up everywhere
+        save_user_pack(req.user_id, pack_name, pack_title)
+        increment_user_packs(req.user_id)
+
+        # Step 2: Add up to 5 initial stickers synchronously
+        sync_limit = min(5, len(input_stickers))
+        if sync_limit > 1:
+            for idx in range(1, sync_limit):
                 for attempt in range(4):
                     try:
                         await bot.add_sticker_to_set(
@@ -486,14 +569,24 @@ async def generate_emoji_pack(req: GenerateRequest):
                         await asyncio.sleep(retry_err.retry_after + 1.0)
                     except Exception as add_err:
                         logger.warning(f"Add sticker {idx+1} error (attempt {attempt+1}): {add_err}")
-                        await asyncio.sleep(0.3)
-                await asyncio.sleep(0.06)
+                        await asyncio.sleep(0.2)
+                await asyncio.sleep(0.04)
 
-        # Save to database
-        save_user_pack(req.user_id, pack_name, pack_title)
-        increment_user_packs(req.user_id)
+        # Step 3: If more than 5 stickers, spawn background worker for the rest
+        if len(input_stickers) > 5:
+            asyncio.create_task(
+                background_add_stickers(
+                    bot_instance=bot,
+                    user_id=req.user_id,
+                    pack_name=pack_name,
+                    pack_title=pack_title,
+                    pack_link=pack_link,
+                    stickers_to_add=input_stickers[5:],
+                    total_count=len(input_stickers),
+                    clean_text=clean_text
+                )
+            )
 
-        pack_link = f"https://t.me/addemoji/{pack_name}"
         new_bal = get_user_balance(req.user_id)
 
         # Send notification message into Telegram chat
@@ -503,10 +596,11 @@ async def generate_emoji_pack(req: GenerateRequest):
                     [InlineKeyboardButton(text="➕ Telegramga Qo'shish", url=pack_link)]
                 ]
             )
+            extra_txt = f"\n⏳ <i>Qolgan stikerlar orqa fonda to'liq yuklanmoqda...</i>" if len(input_stickers) > 5 else ""
             await bot.send_message(
                 chat_id=req.user_id,
                 text=(
-                    f"🎉 <b>Tabriklaymiz! Yangi emoji to'plamingiz tayyor!</b>\n\n"
+                    f"🎉 <b>Tabriklaymiz! Yangi emoji to'plamingiz yaratildi!</b>\n\n"
                     f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
                     f"🎨 <b>Shrift:</b> {font_info['name']}\n"
                     f"📦 <b>To'plam nomi:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
