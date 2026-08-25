@@ -153,6 +153,7 @@ const dom = {
     btnCloseBalanceModal: document.getElementById('btn-close-balance-modal'),
     btnCancelBalance: document.getElementById('btn-cancel-balance'),
     btnTopupWallet: document.getElementById('btn-topup-wallet'),
+    btnHeaderTopup: document.getElementById('btn-header-topup'),
     modalCurrBal: document.getElementById('modal-curr-bal'),
     modalNeededBal: document.getElementById('modal-needed-bal'),
     modalDiffBal: document.getElementById('modal-diff-bal'),
@@ -1392,6 +1393,12 @@ function setupEventListeners() {
         } else {
             window.open(`https://t.me/${BOT_USERNAME}?start=wallet`, '_blank');
         }
+    });
+
+    dom.btnHeaderTopup?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        haptic('medium');
+        openBalanceModal(state.userBalance || 0, (state.lastNeededBal || state.emojiPrice || 6));
     });
     
     dom.btnTopupWallet?.addEventListener('click', async () => {

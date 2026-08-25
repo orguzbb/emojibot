@@ -189,63 +189,96 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 2px 16px 2px;
+    padding: 8px 2px 18px 2px;
 }
 
 .brand {
     display: flex;
     align-items: center;
-    gap: 8px;
 }
 
-.brand-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    padding: 6px 12px;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-subtle);
-    backdrop-filter: blur(16px);
-}
-
-.svg-icon-lightning {
-    width: 18px;
-    height: 18px;
-    color: var(--accent-amber);
-    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
-}
-
-.brand-name {
+.brand-gn-title {
     font-family: 'Outfit', sans-serif;
+    font-size: 28px;
     font-weight: 800;
-    font-size: 16px;
-    background: var(--grad-glow);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.3px;
+    color: #ffffff;
+    letter-spacing: -0.6px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    gap: 1px;
 }
 
-.version-tag {
-    font-size: 11px;
-    font-weight: 700;
-    background: rgba(56, 189, 248, 0.12);
-    color: var(--accent-cyan);
-    padding: 3px 8px;
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(56, 189, 248, 0.25);
+.gn-dot {
+    font-weight: 900;
+    color: #ffffff;
 }
 
-.user-chip {
+/* ==================== EXACT STARS BADGE PILL (IMAGE 2) ==================== */
+.gn-stars-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 38px;
+    background: #1c2029;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+}
+
+.gn-stars-pill:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25);
+}
+
+.gn-stars-content {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    padding: 4px 12px 4px 4px;
-    border-radius: var(--radius-full);
-    backdrop-filter: blur(12px);
+    padding: 0 12px 0 10px;
+    height: 100%;
+}
+
+.gn-stars-img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.5));
+}
+
+.gn-stars-val {
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff4d2;
+    letter-spacing: 0.2px;
+}
+
+.gn-stars-plus {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 100%;
+    background: linear-gradient(135deg, #fcd34d, #f59e0b);
+    border: none;
+    border-top-right-radius: 999px;
+    border-bottom-right-radius: 999px;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: filter 0.2s ease;
+    outline: none;
+    line-height: 1;
+    padding: 0;
+}
+
+.gn-stars-plus:hover {
+    filter: brightness(1.1);
 }
 
 .user-avatar {
