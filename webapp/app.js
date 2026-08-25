@@ -319,22 +319,22 @@ function getPreRenderedTemplateData(filename, font, scale = 1.0) {
 // ==================== INITIALIZATION ====================
 
 async function initApp() {
-    let currentP = 25;
-    updateLoadingProgress(25, "Telegram muhiti tayyorlanmoqda...");
+    let currentP = 35;
+    updateLoadingProgress(35, "Telegram muhiti tayyorlanmoqda...");
 
     const progressTimer = setInterval(() => {
-        if (currentP < 90) {
-            currentP += 15;
-            updateLoadingProgress(currentP, currentP < 50 ? "Shablonlar yuklanmoqda..." : "Animatsiyalar tayyorlanmoqda...");
+        if (currentP < 95) {
+            currentP += 20;
+            updateLoadingProgress(currentP, currentP < 60 ? "Shablonlar yuklanmoqda..." : "Animatsiyalar tayyorlanmoqda...");
         }
-    }, 450);
+    }, 200);
 
     const safetyTimeout = setTimeout(() => {
         clearInterval(progressTimer);
         updateLoadingProgress(100, "Tayyor!");
         dom.loadingScreen?.classList.add('fade-out');
         dom.appContainer?.classList.remove('hidden');
-    }, 5500);
+    }, 3800);
 
     try {
         if (tg) {
@@ -357,7 +357,7 @@ async function initApp() {
             }
         }
         
-        updateLoadingProgress(55, "Shablonlar va stikerlar yuklanmoqda...");
+        updateLoadingProgress(70, "Shablonlar va stikerlar yuklanmoqda...");
         
         // 1. Render initial Live Hero Preview
         await updateLivePreview();
@@ -382,7 +382,7 @@ async function initApp() {
         setTimeout(() => {
             dom.loadingScreen?.classList.add('fade-out');
             dom.appContainer?.classList.remove('hidden');
-        }, 250);
+        }, 150);
         
     } catch (err) {
         console.error("App init error:", err);
@@ -1315,25 +1315,13 @@ function setupEventListeners() {
         debouncedFullUpdate();
     });
     
-    // Random Name Button
-    dom.btnRandomName.addEventListener('click', () => {
-        haptic('light');
-        const rand = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
-        state.text = rand;
-        dom.nameInput.value = rand;
-        updateCharCount();
-        updateLivePreview();
-        renderTicketsGrid(dom.templateSearch?.value || '');
-        renderLogosGrid(dom.logoSearch?.value || '');
-    });
-    
     // Clear Name Button
-    dom.btnClearName.addEventListener('click', () => {
+    dom.btnClearName?.addEventListener('click', () => {
         haptic('light');
         state.text = "";
-        dom.nameInput.value = "";
+        if (dom.nameInput) dom.nameInput.value = "";
         updateCharCount();
-        dom.nameInput.focus();
+        dom.nameInput?.focus();
         updateLivePreview();
     });
     
@@ -1503,16 +1491,20 @@ function setupEventListeners() {
     });
     
     // Modal buttons
-    dom.btnCloseModal.addEventListener('click', closeTemplateModal);
-    dom.btnGenerateSingle.addEventListener('click', () => startGeneration('single'));
-    dom.btnAddToPackModal.addEventListener('click', addToExistingPack);
-    dom.btnCloseSuccess.addEventListener('click', () => {
-        dom.modalSuccess.classList.add('hidden');
+    dom.btnCloseModal?.addEventListener('click', closeTemplateModal);
+    dom.btnGenerateSingle?.addEventListener('click', () => startGeneration('single'));
+    dom.btnAddToPackModal?.addEventListener('click', addToExistingPack);
+    dom.btnCloseSuccess?.addEventListener('click', () => {
+        dom.modalSuccess?.classList.add('hidden');
     });
 }
 
 // Run when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    setupEventListeners();
+    try {
+        setupEventListeners();
+    } catch (e) {
+        console.warn("setupEventListeners warning:", e);
+    }
     initApp();
 });
