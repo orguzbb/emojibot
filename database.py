@@ -155,6 +155,21 @@ def get_user(user_id: int) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
+def get_all_users_list(limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
+    """Returns paginated list of users for admin panel"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT user_id, username, first_name, balance, packs_created, joined_at
+        FROM users
+        ORDER BY joined_at DESC
+        LIMIT ? OFFSET ?
+    """, (limit, offset))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def get_user_balance(user_id: int) -> int:
     conn = get_db_connection()
     cursor = conn.cursor()

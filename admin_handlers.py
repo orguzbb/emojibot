@@ -25,6 +25,7 @@ from lottie_processor import process_tgs_template, process_all_templates
 from database import (
     get_users_count,
     get_all_user_ids,
+    get_all_users_list,
     get_user,
     get_user_balance,
     admin_set_user_balance,
@@ -83,11 +84,11 @@ def get_admin_menu_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="🎁 Promokodlar", callback_data="admin:promocodes")
             ],
             [
-                InlineKeyboardButton(text="💳 User Balansini sozlash", callback_data="admin:user_balance"),
-                InlineKeyboardButton(text="📊 Bot statistikasi", callback_data="admin:stats")
+                InlineKeyboardButton(text="👥 Foydalanuvchilar (ID & User)", callback_data="admin:users:0"),
+                InlineKeyboardButton(text="💳 User Balansini sozlash", callback_data="admin:user_balance")
             ],
             [
-                InlineKeyboardButton(text="🧪 Barchasini test qilish", callback_data="admin:test"),
+                InlineKeyboardButton(text="📊 Bot statistikasi", callback_data="admin:stats"),
                 InlineKeyboardButton(text="📢 Xabar yuborish (/broadcast)", callback_data="admin:broadcast_start")
             ]
         ]
@@ -1140,3 +1141,49 @@ async def execute_broadcast(callback: CallbackQuery, state: FSMContext, bot: Bot
         inline_keyboard=[[InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="admin:main")]]
     )
     await status_msg.edit_text(report_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+# ==================== USERS LIST WITH ID & USERNAME ====================
+
+@admin_router.callback_query(F.data.startswith("admin:users:"))
+async def cb_admin_users_list(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+
+    page = int(callback.data.split(":")[2])
+    PER_PAGE = 8
+    total_users = get_users_count()
+    total_pages = max(1, (total_users + PER_PAGE - 1) // PER_PAGE)
+    page = max(0, min(page, total_pages - 1))
+
+    users = get_all_users_list(limit=PER_PAGE, offset=page * PER_PAGE)
+
+    lines = [f"👥 <b>Foydalanuvchilar Ro'yxati</b> (Jami: <b>{total_users} ta</b>, Sahifa: <b>{page + 1}/{total_pages}</b>)\n"]
+
+    if not users:
+        lines.append("<i>Hozircha foydalanuvchilar yo'q.</i>")
+    else:
+        for idx, u in enumerate(users, start=page * PER_PAGE + 1):
+            uname = f"@{u['username']}" if u['username'] else "<i>yo'q</i>"
+            fname = u['first_name'] or "Noma'lum"
+            joined = u['joined_at'][:16] if u['joined_at'] else "Noma'lum"
+            lines.append(
+                f"<b>{idx}. {fname}</b>\n"
+                f"   🆔 ID: <code>{u['user_id']}</code> | 👤 {uname}\n"
+                f"   💰 Balans: <b>{u['balance']} ⭐</b> | 📦 Paketlar: <b>{u['packs_created']} ta</b>\n"
+                f"   📅 Qo'shilgan: <i>{joined}</i>\n"
+            )
+
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"admin:users:{page - 1}"))
+    nav_buttons.append(InlineKeyboardButton(text=f"📄 {page + 1}/{total_pages}", callback_data="ignore"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"admin:users:{page + 1}"))
+
+    keyboard = [nav_buttons] if nav_buttons else []
+    keyboard.append([InlineKeyboardButton(text="🔙 Admin Menyusi", callback_data="admin:main")])
+
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    await callback.message.edit_text("\n".join(lines), reply_markup=markup, parse_mode=ParseMode.HTML)
+    await callback.answer()

@@ -2086,3 +2086,29 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 0 24px rgba(168, 85, 247, 0.3);
 }
+
+/* ==================== INLINE STAR ICON STYLES ==================== */
+.inline-star-icon {
+    width: 18px;
+    height: 18px;
+    vertical-align: -3px;
+    object-fit: contain;
+    display: inline-block;
+    filter: drop-shadow(0 1px 4px rgba(245, 158, 11, 0.4));
+}
+
+.btn-star-icon {
+    width: 20px;
+    height: 20px;
+    vertical-align: -3px;
+    object-fit: contain;
+    display: inline-block;
+    filter: drop-shadow(0 1px 5px rgba(245, 158, 11, 0.6));
+}
+
+.btn-stars-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 800;
+}

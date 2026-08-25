@@ -330,12 +330,14 @@ async function initApp() {
             const user = tg.initDataUnsafe?.user;
             if (user) {
                 state.user = user;
-                dom.userName.textContent = user.first_name || user.username || "Foydalanuvchi";
-                if (user.photo_url) {
-                    dom.userAvatar.innerHTML = `<img src="${user.photo_url}" alt="Avatar">`;
-                } else {
-                    const initials = (user.first_name ? user.first_name[0] : 'U').toUpperCase();
-                    dom.userAvatar.textContent = initials;
+                if (dom.userName) dom.userName.textContent = user.first_name || user.username || "Foydalanuvchi";
+                if (dom.userAvatar) {
+                    if (user.photo_url) {
+                        dom.userAvatar.innerHTML = `<img src="${user.photo_url}" alt="Avatar">`;
+                    } else {
+                        const initials = (user.first_name ? user.first_name[0] : 'U').toUpperCase();
+                        dom.userAvatar.textContent = initials;
+                    }
                 }
             }
         }
@@ -613,21 +615,21 @@ function updateSelectionStatus() {
     const unitPrice = state.emojiPrice || 6;
     const totalCost = count * unitPrice;
     state.lastNeededBal = totalCost;
-    const priceBadge = `${totalCost} ⭐`;
+    const priceBadge = `<span class="btn-stars-badge">${totalCost} <img src="images/image.png" class="btn-star-icon" alt="Stars"></span>`;
     
     const isExisting = state.destinationMode === 'existing';
     const actionVerb = isExisting ? "Qo'shish" : "Yaratish";
     
     // Bottom Action Button Text
     if (selectedCount > 1) {
-        dom.mainBtnText.textContent = `Tanlangan Emojilarni ${actionVerb} (${selectedCount} ta • ${priceBadge})`;
+        dom.mainBtnText.innerHTML = `Tanlangan Emojilarni ${actionVerb} (${selectedCount} ta • ${priceBadge})`;
     } else if (selectedCount === 1) {
         const singleFile = Array.from(activeSet)[0];
         const num = getTemplateNumber(singleFile);
-        dom.mainBtnText.textContent = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
+        dom.mainBtnText.innerHTML = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
     } else {
         const num = getTemplateNumber(state.selectedTemplate);
-        dom.mainBtnText.textContent = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
+        dom.mainBtnText.innerHTML = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
     }
 }
 
@@ -1071,8 +1073,8 @@ async function startGeneration(mode = 'selected') {
 
     if (dom.payChoiceCount) dom.payChoiceCount.textContent = `${totalCount} ta`;
     if (dom.payChoiceText) dom.payChoiceText.textContent = `"${cleanText}"`;
-    if (dom.payChoiceCost) dom.payChoiceCost.textContent = `${totalCost} Stars`;
-    if (dom.payChoiceBalance) dom.payChoiceBalance.textContent = `${state.userBalance || 0} Stars`;
+    if (dom.payChoiceCost) dom.payChoiceCost.innerHTML = `${totalCost} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
+    if (dom.payChoiceBalance) dom.payChoiceBalance.innerHTML = `${state.userBalance || 0} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
 
     dom.modalPaymentChoice?.classList.remove('hidden');
     haptic('medium');
@@ -1204,9 +1206,9 @@ async function executeGeneration(pendingAction) {
 }
 
 function openBalanceModal(currBal, neededBal) {
-    if (dom.modalCurrBal) dom.modalCurrBal.textContent = `${currBal} ⭐`;
-    if (dom.modalNeededBal) dom.modalNeededBal.textContent = `${neededBal} ⭐`;
-    if (dom.modalDiffBal) dom.modalDiffBal.textContent = `${Math.max(0, neededBal - currBal)} ⭐`;
+    if (dom.modalCurrBal) dom.modalCurrBal.innerHTML = `${currBal} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
+    if (dom.modalNeededBal) dom.modalNeededBal.innerHTML = `${neededBal} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
+    if (dom.modalDiffBal) dom.modalDiffBal.innerHTML = `${Math.max(0, neededBal - currBal)} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
     dom.modalBalance?.classList.remove('hidden');
 }
 

@@ -14,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=3.2.0">
+    <link rel="stylesheet" href="style.css?v=3.3.0">
 </head>
 <body>
 
@@ -475,7 +475,9 @@
                 </svg>
             </button>
             <div class="balance-icon-wrap">
-                <div class="balance-star-circle">⭐</div>
+                <div class="balance-star-circle">
+                    <img src="images/image.png" alt="Stars" style="width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(245,158,11,0.5));">
+                </div>
             </div>
             <h3 class="balance-modal-title">Balansingiz yetarli emas!</h3>
             <p class="balance-modal-desc" id="balance-modal-desc">
@@ -485,15 +487,15 @@
             <div class="balance-calc-card">
                 <div class="calc-row">
                     <span class="calc-label">Sizning balansingiz:</span>
-                    <span class="calc-val-curr" id="modal-curr-bal">0 ⭐</span>
+                    <span class="calc-val-curr" id="modal-curr-bal">0</span>
                 </div>
                 <div class="calc-row">
                     <span class="calc-label">Kerakli miqdor:</span>
-                    <span class="calc-val-needed" id="modal-needed-bal">6 ⭐</span>
+                    <span class="calc-val-needed" id="modal-needed-bal">6</span>
                 </div>
                 <div class="calc-row highlight">
                     <span class="calc-label">Yetishmayotgan:</span>
-                    <span class="calc-val-diff" id="modal-diff-bal">6 ⭐</span>
+                    <span class="calc-val-diff" id="modal-diff-bal">6</span>
                 </div>
             </div>
 
@@ -519,9 +521,7 @@
             </button>
             <div class="balance-icon-wrap">
                 <div class="balance-star-circle">
-                    <svg viewBox="0 0 24 24" width="28" height="28" fill="url(#star-gold-grad)">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
+                    <img src="images/image.png" alt="Stars" style="width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(245,158,11,0.5));">
                 </div>
             </div>
             <h3 class="balance-modal-title">To'lov Usulini Tanlang</h3>
@@ -536,21 +536,19 @@
                 </div>
                 <div class="calc-row">
                     <span class="calc-label">Jami narx:</span>
-                    <span class="calc-val-needed" id="pay-choice-cost">6 Stars</span>
+                    <span class="calc-val-needed" id="pay-choice-cost">6</span>
                 </div>
                 <div class="calc-row highlight">
                     <span class="calc-label">Hamyon balansingiz:</span>
-                    <span class="calc-val-diff" id="pay-choice-balance">0 Stars</span>
+                    <span class="calc-val-diff" id="pay-choice-balance">0</span>
                 </div>
             </div>
 
             <div class="payment-choice-actions">
                 <button type="button" class="btn-pay-option btn-pay-stars-bot" id="btn-pay-stars-bot">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="url(#star-gold-grad)">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
+                    <img src="images/image.png" alt="Stars" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(245,158,11,0.5));">
                     <div class="btn-pay-col">
-                        <span class="btn-pay-title">⭐️ Telegram Stars orqali to'lash</span>
+                        <span class="btn-pay-title">Telegram Stars orqali to'lash</span>
                         <span class="btn-pay-sub" id="pay-stars-sub">Botga to'g'ridan-to'g'ri XTR hisob yuborish</span>
                     </div>
                 </button>
@@ -561,7 +559,7 @@
                         <line x1="1" y1="10" x2="23" y2="10"></line>
                     </svg>
                     <div class="btn-pay-col">
-                        <span class="btn-pay-title">💳 Hamyondan to'lash</span>
+                        <span class="btn-pay-title">Hamyondan to'lash</span>
                         <span class="btn-pay-sub" id="pay-wallet-sub">Mavjud Stars balansidan yechish</span>
                     </div>
                 </button>
@@ -612,7 +610,7 @@
     </div>
 
     <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=3.2.0"></script>
-    <script src="app.js?v=3.2.0"></script>
+    <script src="ticket_templates.js?v=3.3.0"></script>
+    <script src="app.js?v=3.3.0"></script>
 </body>
 </html>
