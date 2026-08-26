@@ -32,6 +32,9 @@ for (let i = 14; i <= 117; i++) {
     });
 }
 
+// User stylized 'A' vector logo as the default sample SVG
+const DEFAULT_SAMPLE_SVG = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 684 598"><path fill="#000000" fill-rule="evenodd" d="M 349.333 80.000 C 369.333 113.333 410.000 180.667 471.333 282.000 C 416.790 286.079 380.052 301.761 361.121 329.047 C 349.525 345.759 346.037 364.743 350.658 386.000 C 373.189 366.502 400.970 356.753 434.000 356.753 C 434.000 361.325 434.619 365.408 435.856 369.000 L 395.279 369.000 L 444.667 451.000 L 473.333 451.000 L 435.333 388.000 C 449.699 389.289 460.921 394.289 469.000 403.000 L 511.000 473.000 L 562.000 473.000 C 529.742 418.847 483.409 341.513 423.000 241.000 L 580.000 216.000 C 520.158 221.737 465.158 238.737 415.000 267.000 C 371.333 194.000 338.000 138.000 315.000 99.000 C 313.250 96.029 313.250 89.971 315.000 87.000 C 321.333 76.333 332.778 74.000 349.333 80.000 Z M 270.000 340.000 C 287.000 313.000 318.000 279.000 363.000 238.000 L 294.000 353.000 L 270.000 340.000 Z M 97.000 507.000 L 247.000 258.000 L 165.000 452.000 L 97.000 507.000 Z"/></svg>`;
+
 // App State (Nothing selected by default on load, empty text for user input)
 const state = {
     user: null,
@@ -40,7 +43,10 @@ const state = {
     isAdmin: false,
     destinationMode: "new", // "new" or "existing"
     selectedExistingPack: "",
+    inputType: "text", // "text" or "svg"
     text: "",
+    svgData: DEFAULT_SAMPLE_SVG,
+    svgFileName: "sample_logo.svg",
     font: "stapel",
     scale: 1.0,
     activeTab: "name",
@@ -55,7 +61,7 @@ const state = {
     ticketPlayers: {},
     logoPlayers: {},
     
-    // In-memory preview cache: key = `${filename}_${font}_${scale}_${text}`
+    // In-memory preview cache
     previewCache: new Map()
 };
 
@@ -75,6 +81,20 @@ const dom = {
     userName: document.getElementById('user-name'),
     userBalancePill: document.getElementById('user-balance-pill'),
     userBalanceVal: document.getElementById('user-balance-val'),
+    
+    // Mode Switch Tabs
+    modeTabText: document.getElementById('mode-tab-text'),
+    modeTabSvg: document.getElementById('mode-tab-svg'),
+    modeSectionText: document.getElementById('mode-section-text'),
+    modeSectionSvg: document.getElementById('mode-section-svg'),
+    
+    // SVG Controls
+    svgFileInput: document.getElementById('svg-file-input'),
+    svgDropzone: document.getElementById('svg-dropzone'),
+    svgThumbPreview: document.getElementById('svg-thumb-preview'),
+    svgFileName: document.getElementById('svg-file-name'),
+    btnChangeSvg: document.getElementById('btn-change-svg'),
+    btnLoadSampleSvg: document.getElementById('btn-load-sample-svg'),
     
     // Inputs
     nameInput: document.getElementById('name-input'),
@@ -359,7 +379,8 @@ async function initApp() {
         
         updateLoadingProgress(70, "Shablonlar va stikerlar yuklanmoqda...");
         
-        // 1. Render initial Live Hero Preview
+        // 1. Render initial Live Hero Preview & SVG Thumbnail
+        updateSvgThumbnail();
         await updateLivePreview();
         
         // 2. Render the 13 Ticket Templates in Name Tab (none selected by default)
@@ -561,9 +582,19 @@ function renderUserPacks() {
     });
 }
 
+function getPreviewCacheKey(file, scale) {
+    if (state.inputType === 'svg') {
+        const svgHash = (state.svgData || "").length + "_" + (state.svgData || "").slice(0, 30);
+        return `${file}_svg_${scale}_${svgHash}`;
+    }
+    const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
+    return `${file}_${state.font}_${scale}_${cleanTxt}`;
+}
+
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
-    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : "ISMINGIZ";
-    const cacheKey = `${templateFile}_${font}_${scale}_${cleanTxt}`;
+    const isSvg = state.inputType === 'svg';
+    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : (isSvg ? "SVG" : "ISMINGIZ");
+    const cacheKey = getPreviewCacheKey(templateFile, scale);
     
     if (state.previewCache.has(cacheKey)) {
         return state.previewCache.get(cacheKey);
@@ -575,9 +606,11 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 template_id: templateFile,
+                input_type: state.inputType,
                 text: cleanTxt,
                 font: font,
-                scale: scale
+                scale: scale,
+                svg_data: isSvg ? state.svgData : null
             })
         });
         
@@ -596,15 +629,16 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
 }
 
 async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
-    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : "ISMINGIZ";
+    const isSvg = state.inputType === 'svg';
+    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : (isSvg ? "SVG" : "ISMINGIZ");
     const needed = [];
     const results = {};
     
     templateFiles.forEach(file => {
-        const cacheKey = `${file}_${font}_${scale}_${cleanTxt}`;
+        const cacheKey = getPreviewCacheKey(file, scale);
         if (state.previewCache.has(cacheKey)) {
             results[file] = state.previewCache.get(cacheKey);
-        } else if (cleanTxt === "ISMINGIZ") {
+        } else if (!isSvg && cleanTxt === "ISMINGIZ") {
             const preData = getPreRenderedTemplateData(file, font, scale);
             if (preData) {
                 state.previewCache.set(cacheKey, preData);
@@ -627,16 +661,18 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 template_ids: needed,
+                input_type: state.inputType,
                 text: cleanTxt,
                 font: font,
-                scale: scale
+                scale: scale,
+                svg_data: isSvg ? state.svgData : null
             })
         });
         
         const data = await res.json();
         if (data.previews) {
             Object.entries(data.previews).forEach(([fname, lottieData]) => {
-                const cacheKey = `${fname}_${font}_${scale}_${cleanTxt}`;
+                const cacheKey = getPreviewCacheKey(fname, scale);
                 state.previewCache.set(cacheKey, lottieData);
                 results[fname] = lottieData;
             });
@@ -651,18 +687,99 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
     return results;
 }
 
+// ==================== SVG LOGIC & HANDLERS ====================
+
+function setInputMode(mode) {
+    state.inputType = mode;
+    state.previewCache.clear();
+    
+    if (mode === 'svg') {
+        dom.modeTabText?.classList.remove('active');
+        dom.modeTabSvg?.classList.add('active');
+        dom.modeSectionText?.classList.add('hidden');
+        dom.modeSectionSvg?.classList.remove('hidden');
+        updateSvgThumbnail();
+    } else {
+        dom.modeTabSvg?.classList.remove('active');
+        dom.modeTabText?.classList.add('active');
+        dom.modeSectionSvg?.classList.add('hidden');
+        dom.modeSectionText?.classList.remove('hidden');
+    }
+    haptic('light');
+    updateLivePreview();
+    debouncedFullUpdate();
+}
+
+function updateSvgThumbnail() {
+    if (dom.svgFileName) dom.svgFileName.textContent = state.svgFileName || "sample_logo.svg";
+    if (dom.svgThumbPreview) {
+        dom.svgThumbPreview.innerHTML = state.svgData || DEFAULT_SAMPLE_SVG;
+    }
+}
+
+function loadSvgFile(file) {
+    if (!file) return;
+    const name = file.name || "vector.svg";
+    const lower = name.toLowerCase();
+    
+    if (!lower.endsWith('.svg') && file.type !== 'image/svg+xml') {
+        showToast("❌ Faqat .svg formatidagi vektor fayllar qabul qilinadi! (PNG, JPG qo'llab-quvvatlanmaydi)", "⚠️", 4500);
+        haptic('error');
+        if (dom.svgFileInput) dom.svgFileInput.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const content = e.target.result;
+        if (!content || !content.toLowerCase().includes('<svg')) {
+            showToast("❌ Yaroqsiz SVG fayl! <svg> tegi topilmadi.", "❌", 4000);
+            haptic('error');
+            return;
+        }
+        state.svgData = content;
+        state.svgFileName = name;
+        state.previewCache.clear();
+        updateSvgThumbnail();
+        showToast(`✅ Vektor SVG yuklandi: ${name}`, "🎨", 2500);
+        haptic('success');
+        updateLivePreview();
+        debouncedFullUpdate();
+    };
+    reader.onerror = () => {
+        showToast("❌ Faylni o'qishda xatolik", "❌");
+    };
+    reader.readAsText(file);
+}
+
+function loadDefaultSampleSvg() {
+    state.svgData = DEFAULT_SAMPLE_SVG;
+    state.svgFileName = "sample_logo.svg";
+    state.previewCache.clear();
+    updateSvgThumbnail();
+    showToast("✨ Namuna 'A' logosi tanlandi", "✨", 2000);
+    haptic('success');
+    updateLivePreview();
+    debouncedFullUpdate();
+}
+
 // ==================== UI RENDERING ====================
 
 async function updateLivePreview() {
     const num = getTemplateNumber(state.selectedTemplate);
     const isTicket = parseInt(num) <= 13;
     dom.currentTemplateTag.textContent = `${isTicket ? 'Ticket' : 'Logo'} #${num}`;
+    
+    if (state.inputType === 'svg') {
+        dom.previewTextDisplay.textContent = state.svgFileName || "SVG Vektor";
+        dom.previewFontDisplay.textContent = `🎨 Vektor (${Math.round(state.scale * 100)}%)`;
+    } else {
+        dom.previewTextDisplay.textContent = state.text ? state.text.trim().toUpperCase() : "—";
+        const fontNames = { stapel: 'Stapel', inter: 'Inter', grobold: 'Grobold' };
+        dom.previewFontDisplay.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
+    }
+    
     const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
-    dom.previewTextDisplay.textContent = state.text ? state.text.trim().toUpperCase() : "—";
-    
-    const fontNames = { stapel: 'Stapel', inter: 'Inter', grobold: 'Grobold' };
-    dom.previewFontDisplay.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
-    
     const lottieData = await fetchLottiePreview(state.selectedTemplate, cleanTxt, state.font, state.scale);
     
     if (lottieData) {
@@ -1118,10 +1235,17 @@ function showSuccessModal(packName, packLink, isFullPack = false) {
 }
 
 async function startGeneration(mode = 'selected') {
-    const cleanText = state.text.trim().toUpperCase();
-    if (!cleanText) {
+    const isSvg = state.inputType === 'svg';
+    const cleanText = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : (isSvg ? "SVG" : "");
+    
+    if (!isSvg && !cleanText) {
         showToast("⚠️ Iltimos, ism yoki so'z kiriting!", "⚠️");
-        dom.nameInput.focus();
+        dom.nameInput?.focus();
+        haptic('error');
+        return;
+    }
+    if (isSvg && !state.svgData) {
+        showToast("⚠️ Iltimos, .svg vektor faylini yuklang!", "⚠️");
         haptic('error');
         return;
     }
@@ -1165,7 +1289,9 @@ async function startGeneration(mode = 'selected') {
 
     currentPendingAction = {
         userId,
-        cleanText,
+        cleanText: isSvg ? (state.text ? state.text.trim().toUpperCase() : "SVG") : cleanText,
+        inputType: state.inputType,
+        svgData: isSvg ? state.svgData : null,
         mode: targetMode,
         rawMode: mode,
         packName,
@@ -1175,7 +1301,7 @@ async function startGeneration(mode = 'selected') {
     };
 
     if (dom.payChoiceCount) dom.payChoiceCount.textContent = `${totalCount} ta`;
-    if (dom.payChoiceText) dom.payChoiceText.textContent = `"${cleanText}"`;
+    if (dom.payChoiceText) dom.payChoiceText.textContent = isSvg ? `"${state.svgFileName || 'SVG Vektor'}"` : `"${cleanText}"`;
     if (dom.payChoiceCost) dom.payChoiceCost.innerHTML = `${totalCost} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
     if (dom.payChoiceBalance) dom.payChoiceBalance.innerHTML = `${state.userBalance || 0} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
 
@@ -1192,7 +1318,7 @@ function closePaymentChoiceModal() {
 async function handlePayViaBotStars() {
     if (!currentPendingAction) return;
     const uid = state.user?.id || 1323217434;
-    const { cleanText, mode, packName, selectedFiles, totalCount } = currentPendingAction;
+    const { cleanText, inputType, svgData, mode, packName, selectedFiles, totalCount } = currentPendingAction;
     
     closePaymentChoiceModal();
     showToast("Botga hisob yuborilmoqda...", "⏳");
@@ -1204,8 +1330,10 @@ async function handlePayViaBotStars() {
             body: JSON.stringify({
                 user_id: uid,
                 count: totalCount,
+                input_type: inputType || "text",
                 text: cleanText,
                 font: state.font,
+                scale: state.scale,
                 mode: mode,
                 pack_name: packName,
                 template_id: selectedFiles[0] || state.selectedTemplate,
@@ -1239,7 +1367,7 @@ async function handlePayViaWallet() {
 }
 
 async function executeGeneration(pendingAction) {
-    const { userId, cleanText, mode, rawMode, packName, selectedFiles, totalCount, totalCost } = pendingAction;
+    const { userId, cleanText, inputType, svgData, mode, rawMode, packName, selectedFiles, totalCount, totalCost } = pendingAction;
     
     haptic('medium');
     
@@ -1270,6 +1398,8 @@ async function executeGeneration(pendingAction) {
         
         const payload = {
             user_id: userId,
+            input_type: inputType || state.inputType,
+            svg_data: svgData || (state.inputType === 'svg' ? state.svgData : null),
             text: cleanText,
             font: state.font,
             scale: state.scale,
@@ -1336,14 +1466,18 @@ async function addToExistingPack() {
     
     const firstPack = state.userPacks[0];
     const packName = firstPack[0];
+    const isSvg = state.inputType === 'svg';
+    const cleanText = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : (isSvg ? "SVG" : "EMOJI");
     
     showProgressModal("Paketga qo'shilmoqda...", `\"${firstPack[1]}\" to'plamiga stiker qo'shilmoqda...`, 40);
     
     try {
         const payload = {
             user_id: state.user?.id || 1323217434,
+            input_type: state.inputType,
+            svg_data: isSvg ? state.svgData : null,
             pack_name: packName,
-            text: state.text.trim().toUpperCase(),
+            text: cleanText,
             font: state.font,
             scale: state.scale,
             template_id: state.selectedTemplate
@@ -1372,6 +1506,47 @@ async function addToExistingPack() {
 
 function setupEventListeners() {
     
+    // Mode Switch Tabs (Matn vs SVG)
+    dom.modeTabText?.addEventListener('click', () => setInputMode('text'));
+    dom.modeTabSvg?.addEventListener('click', () => setInputMode('svg'));
+    
+    // SVG File Input & Dropzone triggers
+    dom.btnChangeSvg?.addEventListener('click', () => dom.svgFileInput?.click());
+    dom.svgDropzone?.addEventListener('click', () => dom.svgFileInput?.click());
+    
+    dom.svgFileInput?.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            loadSvgFile(e.target.files[0]);
+        }
+    });
+    
+    // SVG Drag & Drop
+    dom.svgDropzone?.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.svgDropzone.classList.add('dragover');
+    });
+    
+    dom.svgDropzone?.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.svgDropzone.classList.remove('dragover');
+    });
+    
+    dom.svgDropzone?.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dom.svgDropzone.classList.remove('dragover');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            loadSvgFile(e.dataTransfer.files[0]);
+        }
+    });
+    
+    // Reset to user's provided Stylized 'A' Logo
+    dom.btnLoadSampleSvg?.addEventListener('click', () => {
+        loadDefaultSampleSvg();
+    });
+
     function updateCharCount() {
         const len = dom.nameInput.value.length;
         dom.charCount.textContent = `${len}/16`;

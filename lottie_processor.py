@@ -2,9 +2,13 @@ import os
 import gzip
 import json
 import copy
+import re
 from pathlib import Path
 from fontTools.ttLib import TTFont
 from fontTools.pens.basePen import BasePen
+from fontTools.svgLib.path import SVGPath
+from fontTools.pens.recordingPen import RecordingPen
+from fontTools.pens.boundsPen import BoundsPen
 
 
 class LottieGlyphPen(BasePen):
@@ -359,33 +363,208 @@ def process_shapes_list(shapes_list, font_path, text, text_scale: float = 1.0):
     return new_list, modified
 
 
-def process_tgs_template(template_bytes: bytes, text: str, font_path: str = "fonts/stapel.ttf", text_scale: float = 1.0) -> bytes:
+def sanitize_svg(svg_content: str) -> str:
+    """Validates and strips unsafe scripts from SVG XML content."""
+    if not svg_content or not isinstance(svg_content, str):
+        raise ValueError("SVG ma'lumotlari bo'sh")
+    clean = re.sub(r'(?is)<script.*?>.*?</script>', '', svg_content)
+    clean = re.sub(r'(?i)on\w+\s*=\s*["\'].*?["\']', '', clean)
+    if '<svg' not in clean.lower():
+        raise ValueError("Yaroqsiz SVG: <svg> tegi topilmadi")
+    return clean.strip()
+
+
+def generate_svg_shapes(svg_string: str, target_layer: dict, scale_factor: float = 1.0) -> list:
+    """
+    Parses an SVG vector string and converts its path geometries
+    into high-precision Lottie vector shapes centered in the target badge area.
+    """
+    clean_svg = sanitize_svg(svg_string)
+    svg_obj = SVGPath.fromstring(clean_svg)
+    
+    rec_pen = RecordingPen()
+    svg_obj.draw(rec_pen)
+    bounds_pen = BoundsPen(None)
+    rec_pen.replay(bounds_pen)
+    bounds = bounds_pen.bounds
+    if not bounds:
+        bounds = (0.0, 0.0, 100.0, 100.0)
+        
+    xMin, yMin, xMax, yMax = bounds
+    svg_w = max(1.0, xMax - xMin)
+    svg_h = max(1.0, yMax - yMin)
+    svg_cx = (xMin + xMax) / 2.0
+    svg_cy = (yMin + yMax) / 2.0
+    
+    info = extract_layer_template_info(target_layer)
+    target_w = info["orig_width"]
+    target_h = info["orig_height"]
+    target_cx = info["orig_center_x"]
+    target_cy = info["orig_center_y"]
+    
+    # Calculate scale factor to comfortably fit template geometry
+    scale_fit = min((target_w * 0.90) / svg_w, (target_h * 0.90) / svg_h)
+    if target_w > target_h * 2.0:
+        # If target badge is wide elongated (ticket), scale with respect to height
+        scale_fit = (target_h * 0.95) / svg_h
+        
+    final_scale = scale_fit * max(0.2, min(3.0, scale_factor))
+    
+    class LottieSVGPen(LottieGlyphPen):
+        def _transform(self, pt):
+            tx = target_cx + (pt[0] - svg_cx) * final_scale
+            ty = target_cy + (pt[1] - svg_cy) * final_scale
+            return [round(tx, 3), round(ty, 3)]
+
+    pen = LottieSVGPen()
+    rec_pen.replay(pen)
+    pen._closePath()
+    
+    items = []
+    for p_idx, path in enumerate(pen.paths):
+        items.append({
+            "ty": "sh",
+            "nm": f"SVG Path {p_idx+1}",
+            "np": 3,
+            "cix": 2,
+            "bm": 0,
+            "ix": p_idx + 1,
+            "mn": "ADBE Vector Shape - Group",
+            "hd": False,
+            "ks": {"a": 0, "k": path}
+        })
+
+    if len(pen.paths) > 1:
+        items.append({
+            "ty": "mm",
+            "nm": "Merge Paths",
+            "mm": 1,
+            "hd": False
+        })
+
+    items.append({
+        "ty": "st",
+        "nm": "Stroke",
+        "c": info["stroke"],
+        "w": info["stroke_w"],
+        "o": {"a": 0, "k": 100}
+    })
+
+    items.append({
+        "ty": "fl",
+        "nm": "Fill",
+        "c": info["fill"],
+        "o": {"a": 0, "k": 100},
+        "r": 1,
+        "bm": 0
+    })
+
+    items.append({
+        "ty": "tr",
+        "nm": "Transform",
+        "p": {"a": 0, "k": [0, 0]},
+        "a": {"a": 0, "k": [0, 0]},
+        "s": {"a": 0, "k": [100, 100]},
+        "r": {"a": 0, "k": 0},
+        "o": {"a": 0, "k": 100},
+        "sk": {"a": 0, "k": 0},
+        "sa": {"a": 0, "k": 0}
+    })
+
+    return [{
+        "ty": "gr",
+        "nm": "SVG Icon",
+        "np": len(items),
+        "cix": 2,
+        "bm": 0,
+        "ix": 1,
+        "mn": "ADBE Vector Group",
+        "hd": False,
+        "it": items
+    }]
+
+
+def process_shapes_list_svg(shapes_list, svg_string: str, scale: float = 1.0):
+    """
+    Recursively replaces text/letter shape groups with vector SVG shapes.
+    """
+    letter_indices = [
+        i for i, s in enumerate(shapes_list)
+        if isinstance(s, dict) and bool(s.get('nm')) and len(s.get('nm')) == 1 and s.get('nm').isalnum()
+    ]
+    if len(letter_indices) >= 2:
+        target_group = {'shapes': [shapes_list[i] for i in letter_indices]}
+        for s in shapes_list:
+            if isinstance(s, dict) and s.get('ty') in ('fl', 'st'):
+                target_group['shapes'].append(s)
+        new_svg_shapes = generate_svg_shapes(svg_string, target_group, scale_factor=scale)
+        non_letters = [s for i, s in enumerate(shapes_list) if i not in letter_indices]
+        trs = [s for s in non_letters if s.get('ty') == 'tr']
+        others = [s for s in non_letters if s.get('ty') != 'tr']
+        return new_svg_shapes + others + trs, True
+
+    modified = False
+    new_list = []
+    for item in shapes_list:
+        if isinstance(item, dict):
+            is_text, text_type = is_text_container(item)
+            if is_text and text_type[0] in ('text_group', 'logo_paths'):
+                target_group = {'shapes': [item]}
+                new_svg_shapes = generate_svg_shapes(svg_string, target_group, scale_factor=scale)
+                children = item.get('it', [])
+                trs = [s for s in children if s.get('ty') == 'tr']
+                item['it'] = new_svg_shapes + trs
+                modified = True
+                new_list.append(item)
+                continue
+            if 'it' in item and isinstance(item['it'], list):
+                new_it, changed = process_shapes_list_svg(item['it'], svg_string, scale=scale)
+                if changed:
+                    item['it'] = new_it
+                    modified = True
+        new_list.append(item)
+    return new_list, modified
+
+
+def process_tgs_template(
+    template_bytes: bytes,
+    text: str = None,
+    font_path: str = "fonts/stapel.ttf",
+    text_scale: float = 1.0,
+    svg_data: str = None,
+    input_type: str = "text"
+) -> bytes:
     data = json.loads(gzip.decompress(template_bytes))
 
-    # Search in all layer collections: root layers and precomposition assets
     all_layer_lists = [data.get('layers', [])]
     for asset in data.get('assets', []):
         if 'layers' in asset:
             all_layer_lists.append(asset['layers'])
 
+    is_svg_mode = (input_type == "svg" or bool(svg_data)) and bool(svg_data)
+
     for layers in all_layer_lists:
         for layer in layers:
             if 'shapes' in layer and isinstance(layer['shapes'], list):
-                new_shapes, changed = process_shapes_list(layer['shapes'], font_path, text, text_scale=text_scale)
+                if is_svg_mode:
+                    new_shapes, changed = process_shapes_list_svg(layer['shapes'], svg_data, scale=text_scale)
+                else:
+                    clean_text = text if (text and text.strip()) else "ISMINGIZ"
+                    new_shapes, changed = process_shapes_list(layer['shapes'], font_path, clean_text, text_scale=text_scale)
                 if changed:
                     layer['shapes'] = new_shapes
 
     return gzip.compress(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 
 
-def process_all_templates(templates_dir: str, text: str, font_path: str = "fonts/stapel.ttf", text_scale: float = 1.0) -> list:
+def process_all_templates(templates_dir: str, text: str = None, font_path: str = "fonts/stapel.ttf", text_scale: float = 1.0, svg_data: str = None, input_type: str = "text") -> list:
     p = Path(templates_dir)
     results = []
     tgs_files = sorted(p.glob("*.tgs"), key=lambda f: (len(f.name), f.name))
     for tgs_file in tgs_files:
         with open(tgs_file, "rb") as f:
             template_bytes = f.read()
-        proc_bytes = process_tgs_template(template_bytes, text, font_path, text_scale=text_scale)
+        proc_bytes = process_tgs_template(template_bytes, text=text, font_path=font_path, text_scale=text_scale, svg_data=svg_data, input_type=input_type)
         results.append((tgs_file.name, proc_bytes))
     return results
 

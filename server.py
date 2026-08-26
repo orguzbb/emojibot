@@ -102,37 +102,45 @@ def get_template_bytes(template_name: str) -> Optional[bytes]:
 
 class PreviewRequest(BaseModel):
     template_id: str
-    text: str
+    text: Optional[str] = "ISMINGIZ"
     font: str = "stapel"
     scale: Optional[float] = 1.0
+    input_type: Optional[str] = "text"
+    svg_data: Optional[str] = None
 
 
 class BatchPreviewRequest(BaseModel):
     template_ids: List[str]
-    text: str
+    text: Optional[str] = "ISMINGIZ"
     font: str = "stapel"
     scale: Optional[float] = 1.0
+    input_type: Optional[str] = "text"
+    svg_data: Optional[str] = None
 
 
 class GenerateRequest(BaseModel):
     user_id: int
-    text: str
+    text: Optional[str] = "EMOJI"
     font: str = "stapel"
     mode: str = "single"  # "single", "selected", "all", "add_to_pack"
     pack_name: Optional[str] = None
     template_id: Optional[str] = "1.tgs"
     selected_templates: Optional[List[str]] = None
     scale: Optional[float] = 1.0
+    input_type: Optional[str] = "text"
+    svg_data: Optional[str] = None
     init_data: Optional[str] = None
 
 
 class AddToPackRequest(BaseModel):
     user_id: int
     pack_name: str
-    text: str
+    text: Optional[str] = "EMOJI"
     font: str = "stapel"
     template_id: str = "1.tgs"
     scale: Optional[float] = 1.0
+    input_type: Optional[str] = "text"
+    svg_data: Optional[str] = None
 
 
 class CreateInvoiceRequest(BaseModel):
@@ -281,10 +289,11 @@ async def get_templates_list():
 
 @app.post("/api/preview")
 async def generate_preview(req: PreviewRequest):
-    """Renders a single template with text/font/scale and returns Lottie JSON"""
-    clean_text = req.text.strip().upper()[:16]
+    """Renders a single template with text/font/scale or SVG and returns Lottie JSON"""
+    is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
+    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
     if not clean_text:
-        clean_text = "ISMINGIZ"
+        clean_text = "SVG" if is_svg_mode else "ISMINGIZ"
 
     font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
@@ -300,7 +309,9 @@ async def generate_preview(req: PreviewRequest):
             template_bytes=raw_bytes,
             text=clean_text,
             font_path=str(font_file_path),
-            text_scale=req.scale or 1.0
+            text_scale=req.scale or 1.0,
+            svg_data=req.svg_data,
+            input_type=req.input_type or "text"
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
@@ -312,9 +323,10 @@ async def generate_preview(req: PreviewRequest):
 @app.post("/api/batch_preview")
 async def generate_batch_preview(req: BatchPreviewRequest):
     """Renders multiple templates in a single batch request for speed"""
-    clean_text = req.text.strip().upper()[:16]
+    is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
+    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
     if not clean_text:
-        clean_text = "ISMINGIZ"
+        clean_text = "SVG" if is_svg_mode else "ISMINGIZ"
 
     font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
@@ -331,7 +343,9 @@ async def generate_batch_preview(req: BatchPreviewRequest):
                 template_bytes=raw_bytes,
                 text=clean_text,
                 font_path=str(font_file_path),
-                text_scale=req.scale or 1.0
+                text_scale=req.scale or 1.0,
+                svg_data=req.svg_data,
+                input_type=req.input_type or "text"
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
             filename = tpl_id if tpl_id.endswith(".tgs") else f"{tpl_id}.tgs"
@@ -408,9 +422,10 @@ async def generate_emoji_pack(req: GenerateRequest):
     - Adds initial batch synchronously and runs remaining batch in background
     - Returns instant success response to Mini App
     """
-    clean_text = req.text.strip().upper()[:16]
+    is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
+    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
     if not clean_text:
-        raise HTTPException(status_code=400, detail="Matn kiritilmagan")
+        clean_text = "SVG" if is_svg_mode else "EMOJI"
 
     bot = get_bot()
 
@@ -468,7 +483,9 @@ async def generate_emoji_pack(req: GenerateRequest):
             template_bytes=raw_bytes,
             text=clean_text,
             font_path=str(font_file_path),
-            text_scale=req.scale or 1.0
+            text_scale=req.scale or 1.0,
+            svg_data=req.svg_data,
+            input_type=req.input_type or "text"
         )
 
         emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -537,12 +554,20 @@ async def generate_emoji_pack(req: GenerateRequest):
             raise HTTPException(status_code=500, detail=f"Mavjud to'plamga qo'shishda xatolik: {str(e)}")
 
     # Branch B: Create a brand new sticker set
-    raw_slug = to_name_slug(clean_text)
-    if not raw_slug or not raw_slug[0].isalpha():
-        raw_slug = f"e{raw_slug}"
-    short_code = random.randint(100, 99999)
-    pack_name = f"{raw_slug}_{short_code}_by_{BOT_USERNAME}"
-    pack_title = f"{clean_text} ({font_info['name']})" if req.mode == "single" else f"{clean_text} Emojis"
+    if is_svg_mode:
+        raw_slug = to_name_slug(clean_text) if clean_text != "SVG" else "svg"
+        if not raw_slug or not raw_slug[0].isalpha():
+            raw_slug = f"v{raw_slug}" if raw_slug else "svg"
+        short_code = random.randint(100, 99999)
+        pack_name = f"{raw_slug}_{short_code}_by_{BOT_USERNAME}"
+        pack_title = f"{clean_text} Vector Emojis" if clean_text != "SVG" else "SVG Vector Emojis"
+    else:
+        raw_slug = to_name_slug(clean_text)
+        if not raw_slug or not raw_slug[0].isalpha():
+            raw_slug = f"e{raw_slug}"
+        short_code = random.randint(100, 99999)
+        pack_name = f"{raw_slug}_{short_code}_by_{BOT_USERNAME}"
+        pack_title = f"{clean_text} ({font_info['name']})" if req.mode == "single" else f"{clean_text} Emojis"
     pack_link = f"https://t.me/addemoji/{pack_name}"
 
     try:
@@ -586,13 +611,12 @@ async def generate_emoji_pack(req: GenerateRequest):
                     [InlineKeyboardButton(text="➕ Telegramga Qo'shish", url=pack_link)]
                 ]
             )
-            extra_txt = f"\n⏳ <i>Qolgan stikerlar orqa fonda to'liq yuklanmoqda...</i>" if len(input_stickers) > 5 else ""
+            type_info = f"🎨 <b>Turi:</b> SVG Vektor Rasm\n" if is_svg_mode else f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n🎨 <b>Shrift:</b> {font_info['name']}\n"
             await bot.send_message(
                 chat_id=req.user_id,
                 text=(
                     f"🎉 <b>Tabriklaymiz! Yangi emoji to'plamingiz yaratildi!</b>\n\n"
-                    f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
-                    f"🎨 <b>Shrift:</b> {font_info['name']}\n"
+                    f"{type_info}"
                     f"📦 <b>To'plam nomi:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
                     f"⚡ <b>Jami stikerlar:</b> {len(input_stickers)} ta\n"
                     f"💰 <b>Qolgan balansingiz:</b> {new_bal} ⭐ Stars\n\n"
@@ -658,14 +682,20 @@ async def add_to_existing_pack_endpoint(req: AddToPackRequest):
     if not tgs_path.exists():
         tgs_path = next(Path(TEMPLATES_DIR).glob("*.tgs"))
 
+    is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
+    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "EMOJI")
+
     try:
         with open(tgs_path, "rb") as f:
             raw_bytes = f.read()
 
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
-            text=req.text.strip().upper()[:16],
-            font_path=str(font_file_path)
+            text=clean_text,
+            font_path=str(font_file_path),
+            text_scale=req.scale or 1.0,
+            svg_data=req.svg_data,
+            input_type=req.input_type or "text"
         )
 
         sticker_item = InputSticker(
