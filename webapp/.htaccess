@@ -10,13 +10,7 @@ DirectoryIndex index.html index.php
 RewriteEngine On
 RewriteBase /
 
-# Route API calls to PHP proxy
-RewriteRule ^api/preview/?$ api/index.php [QSA,L]
-RewriteRule ^api/generate/?$ api/index.php [QSA,L]
-RewriteRule ^api/batch_preview/?$ api/index.php [QSA,L]
-RewriteRule ^api/user_packs/?$ api/index.php [QSA,L]
-RewriteRule ^api/add_to_pack/?$ api/index.php [QSA,L]
-RewriteRule ^api/create_invoice/?$ api/index.php [QSA,L]
-RewriteRule ^api/user_info/?$ api/index.php [QSA,L]
-RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+# Route all /api/* requests directly to PHP proxy
+RewriteRule ^api/(.*)$ api/index.php?endpoint=$1 [QSA,L]
+RewriteRule ^api$ api/index.php [QSA,L]
 </IfModule>

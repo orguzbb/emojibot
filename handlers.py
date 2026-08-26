@@ -885,7 +885,7 @@ async def handle_payment_request(callback: CallbackQuery, bot: Bot):
 
     text = (
         "<b>To'lov usulini tanlang:</b>\n\n"
-        f"📊 <b>Stikerlar soni:</b> {stickers_count} ta.\n"
+        f"📊 <b>Emojilar soni:</b> {stickers_count} ta.\n"
         f"💰 <b>Jami narx:</b> {total_cost} Stars (Balansingiz: {balance} ⭐)"
     )
 
@@ -936,8 +936,8 @@ async def handle_send_direct_stars_invoice(callback: CallbackQuery, bot: Bot):
     try:
         await bot.send_invoice(
             chat_id=user_id,
-            title="Stiker generatsiya",
-            description=f"'{clean_text}' uchun {stickers_count} ta stiker to'lovi.",
+            title="Emoji generatsiya",
+            description=f"'{clean_text}' uchun {stickers_count} ta emoji to'lovi.",
             payload=payload,
             currency="XTR",
             prices=[LabeledPrice(label=f"Stars ({stickers_count} ta)", amount=total_cost)]
@@ -967,8 +967,8 @@ async def handle_pay_from_wallet(callback: CallbackQuery, bot: Bot):
         try:
             await bot.send_invoice(
                 chat_id=user_id,
-                title="Stiker generatsiya",
-                description=f"'{clean_text}' uchun {stickers_count} ta stiker to'lovi.",
+                title="Emoji generatsiya",
+                description=f"'{clean_text}' uchun {stickers_count} ta emoji to'lovi.",
                 payload=payload,
                 currency="XTR",
                 prices=[LabeledPrice(label=f"Stars ({stickers_count} ta)", amount=total_cost)]
@@ -1106,7 +1106,7 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
             f"✍️ <b>Matn:</b> {clean_text}\n"
             f"🎨 <b>Shrift:</b> {font_info['name']}\n"
             f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_name}</a>\n"
-            f"⚡ <b>Jami stikerlar:</b> {total_stickers} ta\n\n"
+            f"⚡ <b>Jami emojilar:</b> {total_stickers} ta\n\n"
             f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>",
             reply_markup=markup,
             parse_mode=ParseMode.HTML
@@ -1128,46 +1128,51 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
         await bot.send_message(chat_id, f"❌ Shablon {tgs_filename} topilmadi.")
         return
 
-    status_msg = await bot.send_message(
-        chat_id,
-        f"🎨 <b>\"{clean_text}\"</b> uchun <b>{tgs_filename}</b> shabloni tayyorlanmoqda...\n⏳ <i>Iltimos, biroz kuting...</i>",
-        parse_mode=ParseMode.HTML
-    )
+    status_msg = await bot.send_message(chat_id, "⏳ <i>Emoji tayyorlanmoqda...</i>", parse_mode=ParseMode.HTML)
 
     try:
         with open(target_tgs, "rb") as f:
-            raw_bytes = f.read()
+            proc_bytes = process_tgs_template(f.read(), clean_text, str(font_file_path))
 
-        proc_bytes = process_tgs_template(raw_bytes, clean_text, str(font_file_path))
-        input_file = BufferedInputFile(proc_bytes, filename=f"{clean_text}_{tgs_filename}")
+        rand_suffix = random.randint(1000, 99999)
+        slug_text = re.sub(r'[^a-zA-Z0-9_]', '', clean_text.lower()) or "custom"
+        pack_name = f"{slug_text}_{rand_suffix}_by_{BOT_USERNAME}"
+        pack_title = f"{clean_text} ({font_info['name']})"
 
-        await bot.send_document(
-            chat_id=chat_id,
-            document=input_file,
-            caption=f"✨ <b>{clean_text}</b> — Shablon <code>{tgs_filename}</code> ({font_info['name']})",
-            parse_mode=ParseMode.HTML
+        sticker_item = InputSticker(
+            sticker=BufferedInputFile(proc_bytes, filename="emoji_1.tgs"),
+            emoji_list=["⭐"],
+            format="animated"
         )
+
+        await bot.create_new_sticker_set(
+            user_id=user_id,
+            name=pack_name,
+            title=pack_title,
+            stickers=[sticker_item],
+            sticker_type="custom_emoji"
+        )
+
+        save_user_pack(user_id, pack_name, pack_title)
+        pack_link = f"https://t.me/addemoji/{pack_name}"
 
         markup = InlineKeyboardMarkup(
             inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="➕ Mavjud paketga qo'shish",
-                        callback_data=f"add_single_pack:{font_key}:{clean_text}:{tgs_filename}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        text="🎯 Boshqa shablon tanlash",
-                        callback_data=f"pick_single:{font_key}:{clean_text}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")
-                ]
+                [InlineKeyboardButton(text="➕ Telegramga Qo'shish", url=pack_link)],
+                [InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")]
             ]
         )
-        await status_msg.edit_text("✅ <b>Tayyor!</b> Animatsiya yuqorida yuborildi.", reply_markup=markup, parse_mode=ParseMode.HTML)
+
+        await status_msg.edit_text(
+            f"🎉 <b>Tabriklaymiz! Emoji yaratildi!</b>\n\n"
+            f"✍️ <b>Matn:</b> {clean_text}\n"
+            f"🎨 <b>Shrift:</b> {font_info['name']}\n"
+            f"📦 <b>To'plam nomi:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
+            f"⚡ <b>Jami emojilar:</b> 1 ta\n\n"
+            f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>",
+            reply_markup=markup,
+            parse_mode=ParseMode.HTML
+        )
 
     except Exception as e:
         logger.error(f"Single sticker gen error: {e}", exc_info=True)
@@ -1178,7 +1183,7 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
 
-    status_msg = await bot.send_message(chat_id, "⏳ <i>Stikerlar paketga qo'shilmoqda...</i>", parse_mode=ParseMode.HTML)
+    status_msg = await bot.send_message(chat_id, "⏳ <i>Emojilar paketga qo'shilmoqda...</i>", parse_mode=ParseMode.HTML)
 
     try:
         p = Path(TEMPLATES_DIR)
@@ -1218,7 +1223,7 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
         await status_msg.edit_text(
             f"✅ <b>Muvaffaqiyatli qo'shildi!</b>\n\n"
             f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_name}</a>\n"
-            f"➕ <b>Qo'shilgan stikerlar soni:</b> {added_count} ta",
+            f"➕ <b>Qo'shilgan emojilar soni:</b> {added_count} ta",
             reply_markup=markup,
             parse_mode=ParseMode.HTML
         )

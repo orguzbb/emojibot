@@ -683,22 +683,78 @@ body {
     font-weight: 600;
 }
 
+.svg-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 .btn-change-svg {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid var(--border-color);
     color: var(--text-main);
     font-size: 11px;
     font-weight: 600;
-    padding: 6px 12px;
+    padding: 6px 10px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.2s ease;
-    flex-shrink: 0;
 }
 
 .btn-change-svg:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-remove-svg {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 700;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-remove-svg:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+}
+
+.empty-svg-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 6px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 10px;
+}
+
+.empty-svg-icon {
+    font-size: 32px;
+    margin-bottom: 2px;
+    opacity: 0.8;
+}
+
+.empty-svg-preview span {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.empty-svg-sub {
+    font-size: 11px;
+    color: var(--text-muted);
 }
 
 /* ==================== LIVE PREVIEW CARD ==================== */

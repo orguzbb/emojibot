@@ -178,6 +178,7 @@ async def serve_ticket_templates():
 # ==================== REST API ENDPOINTS ====================
 
 @app.get("/api/info")
+@app.get("/api/info/")
 async def get_info():
     """Returns bot meta information, emoji prices and font lists"""
     p = Path(TEMPLATES_DIR)
@@ -199,6 +200,7 @@ async def get_info():
 
 
 @app.get("/api/user_info")
+@app.get("/api/user_info/")
 async def get_user_info_endpoint(user_id: int = Query(...)):
     """Returns user balance, price per emoji, user created packs and admin flag"""
     balance = get_user_balance(user_id)
@@ -218,8 +220,10 @@ async def get_user_info_endpoint(user_id: int = Query(...)):
 class SendInvoiceRequest(BaseModel):
     user_id: int
     count: int = 1
-    text: str
+    text: Optional[str] = "EMOJI"
     font: str = "stapel"
+    scale: Optional[float] = 1.0
+    input_type: Optional[str] = "text"
     mode: str = "single"
     pack_name: Optional[str] = None
     template_id: Optional[str] = "1.tgs"
@@ -227,12 +231,13 @@ class SendInvoiceRequest(BaseModel):
 
 
 @app.post("/api/send_invoice_to_chat")
+@app.post("/api/send_invoice_to_chat/")
 async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
     """Sends a Telegram Stars (XTR) invoice directly to user's Telegram chat"""
     unit_price = get_emoji_price()
     total_cost = max(1, req.count * unit_price)
 
-    clean_text = req.text.strip().upper()[:16]
+    clean_text = req.text.strip().upper()[:16] if req.text else "EMOJI"
     if not clean_text:
         clean_text = "EMOJI"
 
@@ -255,11 +260,11 @@ async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
     try:
         await bot.send_invoice(
             chat_id=req.user_id,
-            title="Stiker generatsiya",
-            description=f"'{clean_text}' uchun {req.count} ta stiker to'lovi.",
+            title="Emoji to'plam generatsiyasi",
+            description=f"'{clean_text}' uchun {req.count} ta emoji to'lovi.",
             payload=payload,
             currency="XTR",
-            prices=[LabeledPrice(label=f"Stars ({req.count} ta)", amount=total_cost)]
+            prices=[LabeledPrice(label=f"Stars ({req.count} ta emoji)", amount=total_cost)]
         )
         return {"ok": True, "total_cost": total_cost, "user_id": req.user_id}
     except Exception as e:
@@ -268,6 +273,7 @@ async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
 
 
 @app.get("/api/templates")
+@app.get("/api/templates/")
 async def get_templates_list():
     """Returns full list of available 117 animated emoji templates"""
     p = Path(TEMPLATES_DIR)
@@ -288,6 +294,7 @@ async def get_templates_list():
 
 
 @app.post("/api/preview")
+@app.post("/api/preview/")
 async def generate_preview(req: PreviewRequest):
     """Renders a single template with text/font/scale or SVG and returns Lottie JSON"""
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
@@ -321,6 +328,7 @@ async def generate_preview(req: PreviewRequest):
 
 
 @app.post("/api/batch_preview")
+@app.post("/api/batch_preview/")
 async def generate_batch_preview(req: BatchPreviewRequest):
     """Renders multiple templates in a single batch request for speed"""
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
@@ -403,7 +411,7 @@ async def background_add_stickers(
                 f"🎉 <b>Barcha stikerlar muvaffaqiyatli yuklandi!</b>\n\n"
                 f"✍️ <b>Matn:</b> <code>{clean_text}</code>\n"
                 f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
-                f"⚡ <b>Jami stikerlar:</b> {total_count} ta to'liq tayyor!\n\n"
+                f"⚡ <b>Jami emojilar:</b> {total_count} ta to'liq tayyor!\n\n"
                 f"<i>Foydalanish uchun to'plamni oching:</i>"
             ),
             reply_markup=markup,
@@ -414,6 +422,7 @@ async def background_add_stickers(
 
 
 @app.post("/api/generate")
+@app.post("/api/generate/")
 async def generate_emoji_pack(req: GenerateRequest):
     """
     Bulletproof Generation Endpoint:
@@ -618,7 +627,7 @@ async def generate_emoji_pack(req: GenerateRequest):
                     f"🎉 <b>Tabriklaymiz! Yangi emoji to'plamingiz yaratildi!</b>\n\n"
                     f"{type_info}"
                     f"📦 <b>To'plam nomi:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
-                    f"⚡ <b>Jami stikerlar:</b> {len(input_stickers)} ta\n"
+                    f"⚡ <b>Jami emojilar:</b> {len(input_stickers)} ta\n"
                     f"💰 <b>Qolgan balansingiz:</b> {new_bal} ⭐ Stars\n\n"
                     f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>"
                 ),
@@ -662,6 +671,7 @@ async def generate_emoji_pack(req: GenerateRequest):
 
 
 @app.get("/api/user_packs")
+@app.get("/api/user_packs/")
 async def get_user_packs_endpoint(user_id: int = Query(...)):
     """Retrieves user's created packs"""
     packs = get_user_packs(user_id)
@@ -669,6 +679,7 @@ async def get_user_packs_endpoint(user_id: int = Query(...)):
 
 
 @app.post("/api/add_to_pack")
+@app.post("/api/add_to_pack/")
 async def add_to_existing_pack_endpoint(req: AddToPackRequest):
     """Adds a single sticker to an existing user's custom emoji set"""
     bot = get_bot()

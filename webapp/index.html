@@ -150,9 +150,6 @@
                             </svg>
                             <span>SVG Vektor Fayl (.svg)</span>
                         </label>
-                        <button type="button" class="btn-sample-svg" id="btn-load-sample-svg" title="Namuna 'A' logosini yuklash">
-                            <span>✨ Namuna "A" Logosi</span>
-                        </button>
                     </div>
 
                     <!-- Hidden file input (Strictly accept .svg only) -->
@@ -176,15 +173,20 @@
                     </div>
 
                     <!-- Current Active SVG Chip / Preview -->
-                    <div class="svg-active-card" id="svg-active-card">
+                    <div class="svg-active-card hidden" id="svg-active-card">
                         <div class="svg-thumb-preview" id="svg-thumb-preview"></div>
                         <div class="svg-file-info">
-                            <span class="svg-file-title" id="svg-file-name">sample_logo.svg</span>
-                            <span class="svg-file-status">✓ Vektor faol va tayyor</span>
+                            <span class="svg-file-title" id="svg-file-name">Fayl.svg</span>
+                            <span class="svg-file-status">✓ SVG faol va tayyor</span>
                         </div>
-                        <button type="button" class="btn-change-svg" id="btn-change-svg" title="Boshqa SVG tanlash">
-                            Almashtirish
-                        </button>
+                        <div class="svg-card-actions">
+                            <button type="button" class="btn-change-svg" id="btn-change-svg" title="Boshqa SVG tanlash">
+                                Almashtirish
+                            </button>
+                            <button type="button" class="btn-remove-svg" id="btn-remove-svg" title="SVG ni o'chirish">
+                                ✕
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -322,7 +324,7 @@
                 </div>
                 <h2 class="logo-hero-title">104 ta Logo Shablonlar To'plami</h2>
                 <p class="logo-hero-desc">
-                    Ismingiz uchun 14.tgs dan 117.tgs gacha barcha turli uslubdagi doiraviy va logo stikerlarni 1 bosishda to'liq to'plam sifatida yarating!
+                    Ismingiz uchun 14.tgs dan 117.tgs gacha barcha turli uslubdagi doiraviy va logo emojilarni 1 bosishda to'liq to'plam sifatida yarating!
                 </p>
 
                 <button type="button" class="btn-create-fullpack" id="btn-create-fullpack">
@@ -582,7 +584,7 @@
             </div>
             <h3 class="balance-modal-title">To'lov Usulini Tanlang</h3>
             <p class="balance-modal-desc">
-                Tanlangan <b id="pay-choice-count">1 ta</b> stiker uchun to'lovni tasdiqlang.
+                Tanlangan <b id="pay-choice-count">1 ta</b> emoji uchun to'lovni tasdiqlang.
             </p>
 
             <div class="balance-calc-card">
@@ -666,7 +668,7 @@
     </div>
 
     <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=3.8.0"></script>
-    <script src="app.js?v=3.8.0"></script>
+    <script src="ticket_templates.js?v=3.8.5"></script>
+    <script src="app.js?v=3.8.5"></script>
 </body>
 </html>

@@ -32,10 +32,7 @@ for (let i = 14; i <= 117; i++) {
     });
 }
 
-// User stylized 'A' vector logo as the default sample SVG
-const DEFAULT_SAMPLE_SVG = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 684 598"><path fill="#000000" fill-rule="evenodd" d="M 349.333 80.000 C 369.333 113.333 410.000 180.667 471.333 282.000 C 416.790 286.079 380.052 301.761 361.121 329.047 C 349.525 345.759 346.037 364.743 350.658 386.000 C 373.189 366.502 400.970 356.753 434.000 356.753 C 434.000 361.325 434.619 365.408 435.856 369.000 L 395.279 369.000 L 444.667 451.000 L 473.333 451.000 L 435.333 388.000 C 449.699 389.289 460.921 394.289 469.000 403.000 L 511.000 473.000 L 562.000 473.000 C 529.742 418.847 483.409 341.513 423.000 241.000 L 580.000 216.000 C 520.158 221.737 465.158 238.737 415.000 267.000 C 371.333 194.000 338.000 138.000 315.000 99.000 C 313.250 96.029 313.250 89.971 315.000 87.000 C 321.333 76.333 332.778 74.000 349.333 80.000 Z M 270.000 340.000 C 287.000 313.000 318.000 279.000 363.000 238.000 L 294.000 353.000 L 270.000 340.000 Z M 97.000 507.000 L 247.000 258.000 L 165.000 452.000 L 97.000 507.000 Z"/></svg>`;
-
-// App State (Nothing selected by default on load, empty text for user input)
+// App State (Nothing selected by default on load, empty text/svg for user input)
 const state = {
     user: null,
     userBalance: 0,
@@ -45,8 +42,8 @@ const state = {
     selectedExistingPack: "",
     inputType: "text", // "text" or "svg"
     text: "",
-    svgData: DEFAULT_SAMPLE_SVG,
-    svgFileName: "sample_logo.svg",
+    svgData: "",
+    svgFileName: "",
     font: "stapel",
     scale: 1.0,
     activeTab: "name",
@@ -91,10 +88,11 @@ const dom = {
     // SVG Controls
     svgFileInput: document.getElementById('svg-file-input'),
     svgDropzone: document.getElementById('svg-dropzone'),
+    svgActiveCard: document.getElementById('svg-active-card'),
     svgThumbPreview: document.getElementById('svg-thumb-preview'),
     svgFileName: document.getElementById('svg-file-name'),
     btnChangeSvg: document.getElementById('btn-change-svg'),
-    btnLoadSampleSvg: document.getElementById('btn-load-sample-svg'),
+    btnRemoveSvg: document.getElementById('btn-remove-svg'),
     
     // Inputs
     nameInput: document.getElementById('name-input'),
@@ -377,7 +375,7 @@ async function initApp() {
             }
         }
         
-        updateLoadingProgress(70, "Shablonlar va stikerlar yuklanmoqda...");
+        updateLoadingProgress(70, "Shablonlar va emojilar yuklanmoqda...");
         
         // 1. Render initial Live Hero Preview & SVG Thumbnail
         updateSvgThumbnail();
@@ -422,8 +420,16 @@ function updateLoadingProgress(percent, statusText) {
 // ==================== ROBUST MULTI-FALLBACK API ====================
 
 async function apiFetch(endpoint, options = {}) {
+    let cleanEndpoint = endpoint;
+    let queryPart = '';
+    if (endpoint.includes('?')) {
+        const parts = endpoint.split('?');
+        cleanEndpoint = parts[0];
+        queryPart = '&' + parts[1];
+    }
+    
     const urls = [
-        `/api/index.php?endpoint=${endpoint}`,
+        `/api/index.php?endpoint=${cleanEndpoint}${queryPart}`,
         `/api/${endpoint}`
     ];
     
@@ -698,6 +704,11 @@ function setInputMode(mode) {
         dom.modeTabSvg?.classList.add('active');
         dom.modeSectionText?.classList.add('hidden');
         dom.modeSectionSvg?.classList.remove('hidden');
+        
+        // Auto-switch to logo tab because SVG icons belong to 104 Logo icon templates (14-117)
+        if (state.activeTab === 'name') {
+            switchTab('logo');
+        }
         updateSvgThumbnail();
     } else {
         dom.modeTabSvg?.classList.remove('active');
@@ -711,9 +722,15 @@ function setInputMode(mode) {
 }
 
 function updateSvgThumbnail() {
-    if (dom.svgFileName) dom.svgFileName.textContent = state.svgFileName || "sample_logo.svg";
-    if (dom.svgThumbPreview) {
-        dom.svgThumbPreview.innerHTML = state.svgData || DEFAULT_SAMPLE_SVG;
+    if (state.svgData && state.svgFileName) {
+        dom.svgDropzone?.classList.add('hidden');
+        dom.svgActiveCard?.classList.remove('hidden');
+        if (dom.svgFileName) dom.svgFileName.textContent = state.svgFileName;
+        if (dom.svgThumbPreview) dom.svgThumbPreview.innerHTML = state.svgData;
+    } else {
+        dom.svgDropzone?.classList.remove('hidden');
+        dom.svgActiveCard?.classList.add('hidden');
+        if (dom.svgThumbPreview) dom.svgThumbPreview.innerHTML = '';
     }
 }
 
@@ -752,13 +769,14 @@ function loadSvgFile(file) {
     reader.readAsText(file);
 }
 
-function loadDefaultSampleSvg() {
-    state.svgData = DEFAULT_SAMPLE_SVG;
-    state.svgFileName = "sample_logo.svg";
+function removeSvg() {
+    state.svgData = "";
+    state.svgFileName = "";
+    if (dom.svgFileInput) dom.svgFileInput.value = "";
     state.previewCache.clear();
     updateSvgThumbnail();
-    showToast("✨ Namuna 'A' logosi tanlandi", "✨", 2000);
-    haptic('success');
+    showToast("SVG olib tashlandi", "🗑");
+    haptic('light');
     updateLivePreview();
     debouncedFullUpdate();
 }
@@ -771,6 +789,22 @@ async function updateLivePreview() {
     dom.currentTemplateTag.textContent = `${isTicket ? 'Ticket' : 'Logo'} #${num}`;
     
     if (state.inputType === 'svg') {
+        if (!state.svgData) {
+            dom.previewTextDisplay.textContent = "SVG tanlanmagan";
+            dom.previewFontDisplay.textContent = "🎨 Vektor";
+            if (state.livePlayer) {
+                try { state.livePlayer.destroy(); } catch (e) {}
+                state.livePlayer = null;
+            }
+            dom.liveLottiePlayer.innerHTML = `
+                <div class="empty-svg-preview">
+                    <div class="empty-svg-icon">🎨</div>
+                    <span>SVG faylingizni yuklang</span>
+                    <div class="empty-svg-sub">Vektor avtomatik tanlangan logo shablonga joylashtiriladi</div>
+                </div>
+            `;
+            return;
+        }
         dom.previewTextDisplay.textContent = state.svgFileName || "SVG Vektor";
         dom.previewFontDisplay.textContent = `🎨 Vektor (${Math.round(state.scale * 100)}%)`;
     } else {
@@ -784,7 +818,7 @@ async function updateLivePreview() {
     
     if (lottieData) {
         if (state.livePlayer) {
-            state.livePlayer.destroy();
+            try { state.livePlayer.destroy(); } catch (e) {}
         }
         dom.liveLottiePlayer.innerHTML = '';
         state.livePlayer = lottie.loadAnimation({
@@ -1372,14 +1406,14 @@ async function executeGeneration(pendingAction) {
     haptic('medium');
     
     if (mode === 'add_to_pack') {
-        showProgressModal("Mavjud to'plamga qo'shilmoqda...", `\"${packName}\" to'plamiga ${totalCount} ta stiker qo'shilmoqda...`, 15);
+        showProgressModal("Mavjud to'plamga qo'shilmoqda...", `\"${packName}\" to'plamiga ${totalCount} ta emoji qo'shilmoqda...`, 15);
     } else if (rawMode === 'all') {
         showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 104 ta logo shablon qayta ishlanmoqda...", 10);
     } else if (mode === "single") {
         const num = getTemplateNumber(selectedFiles[0]);
         showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 20);
     } else {
-        showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan stikerlar paketga jamlanmoqda...", 15);
+        showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan emojilar paketga jamlanmoqda...", 15);
     }
     
     try {
@@ -1469,7 +1503,7 @@ async function addToExistingPack() {
     const isSvg = state.inputType === 'svg';
     const cleanText = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : (isSvg ? "SVG" : "EMOJI");
     
-    showProgressModal("Paketga qo'shilmoqda...", `\"${firstPack[1]}\" to'plamiga stiker qo'shilmoqda...`, 40);
+    showProgressModal("Paketga qo'shilmoqda...", `\"${firstPack[1]}\" to'plamiga emoji qo'shilmoqda...`, 40);
     
     try {
         const payload = {
@@ -1542,9 +1576,9 @@ function setupEventListeners() {
         }
     });
     
-    // Reset to user's provided Stylized 'A' Logo
-    dom.btnLoadSampleSvg?.addEventListener('click', () => {
-        loadDefaultSampleSvg();
+    // SVG Remove Button
+    dom.btnRemoveSvg?.addEventListener('click', () => {
+        removeSvg();
     });
 
     function updateCharCount() {

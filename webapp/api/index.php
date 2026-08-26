@@ -1,5 +1,5 @@
 <?php
-// Bulletproof API Bridge for Shared Hosting on xuss.us
+// Unified High-Performance API Proxy for xuss.us LiteSpeed/Apache
 ini_set('display_errors', 0);
 error_reporting(0);
 set_time_limit(0);
@@ -9,7 +9,8 @@ ini_set('max_execution_time', 0);
 $endpoint = $_GET['endpoint'] ?? '';
 if (!$endpoint) {
     $uri = $_SERVER['REQUEST_URI'] ?? '';
-    if (preg_match('#/api/([a-zA-Z0-9_\-]+)#', $uri, $matches)) {
+    $path = parse_url($uri, PHP_URL_PATH);
+    if (preg_match('#/api/([a-zA-Z0-9_\-]+)#', $path, $matches)) {
         $endpoint = $matches[1];
     }
 }
@@ -20,18 +21,20 @@ if (!$endpoint) {
 
 // Forward to local Python FastAPI backend
 $queryString = $_SERVER['QUERY_STRING'] ?? '';
-// Remove endpoint parameter from query string if present
 $cleanQuery = preg_replace('/(&?endpoint=[^&]*)/', '', $queryString);
 $cleanQuery = trim($cleanQuery, '&');
 
 $targetUrl = 'http://127.0.0.1:8000/api/' . $endpoint . ($cleanQuery ? '?' . $cleanQuery : '');
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $targetUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
 curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_SERVER['REQUEST_METHOD'] ?? 'GET');
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
 $headers = ['Content-Type: application/json'];
 if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
@@ -39,7 +42,7 @@ if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
 }
 curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-if (in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['POST', 'PUT', 'PATCH'])) {
+if (in_array($method, ['POST', 'PUT', 'PATCH'])) {
     $body = file_get_contents('php://input');
     curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
 }
