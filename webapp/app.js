@@ -387,11 +387,9 @@ function applyBadgeColorToLottieJSON(jsonObj, badgeColor, badgeBgColor, textColo
             ];
         }
 
-        const cPrimary = parseHex(badgeColor);
-        const cSecondary = parseHex(badgeBgColor);
-        const cText = parseHex(textColor);
-
-        if (!cPrimary && !cSecondary && !cText) return jsonObj;
+        const cPrimary = parseHex(badgeColor) || [1.0, 1.0, 1.0];
+        const cSecondary = parseHex(badgeBgColor) || [0.0, 0.0, 0.0];
+        const cText = parseHex(textColor) || [1.0, 1.0, 1.0];
 
         const cloned = JSON.parse(JSON.stringify(jsonObj));
 
@@ -401,25 +399,31 @@ function applyBadgeColorToLottieJSON(jsonObj, badgeColor, badgeBgColor, textColo
             if (nm === 'SVG_Symbol' || nm.includes('SVG Path') || nm.includes('Logo path')) {
                 return;
             }
-            const isTextNode = isInText || nm === 'TextGroup' || nm === 'Text Layer' || nm === 'NAME' || nm === 'EMOJI 1' || (nm.length === 1 && /^[a-zA-Z0-9]$/.test(nm));
+            const isTextNode = isInText || nm === 'TextGroup';
 
             if ((item.ty === 'fl' || item.ty === 'st') && item.c && Array.isArray(item.c.k)) {
                 const k = item.c.k;
                 if (k.length >= 3 && typeof k[0] === 'number') {
                     const alpha = k[3] !== undefined ? k[3] : 1.0;
-                    if (isTextNode) {
-                        if (cText && item.ty === 'fl') {
-                            item.c.k = [cText[0], cText[1], cText[2], alpha];
+                    
+                    if (!item._orig_role) {
+                        if (isTextNode) {
+                            item._orig_role = 'text';
+                        } else if (k[0] > 0.82 && k[1] > 0.82 && k[2] > 0.82) {
+                            item._orig_role = 'outer';
+                        } else if (k[0] < 0.18 && k[1] < 0.18 && k[2] < 0.18) {
+                            item._orig_role = 'inner';
+                        } else {
+                            item._orig_role = 'none';
                         }
-                    } else {
-                        // Outer frame/border (white/light elements, cr > 0.82)
-                        if (cPrimary && k[0] > 0.82 && k[1] > 0.82 && k[2] > 0.82) {
-                            item.c.k = [cPrimary[0], cPrimary[1], cPrimary[2], alpha];
-                        }
-                        // Inner base (black/dark elements, cr < 0.18)
-                        else if (cSecondary && k[0] < 0.18 && k[1] < 0.18 && k[2] < 0.18) {
-                            item.c.k = [cSecondary[0], cSecondary[1], cSecondary[2], alpha];
-                        }
+                    }
+
+                    if (item._orig_role === 'outer') {
+                        item.c.k = [cPrimary[0], cPrimary[1], cPrimary[2], alpha];
+                    } else if (item._orig_role === 'inner') {
+                        item.c.k = [cSecondary[0], cSecondary[1], cSecondary[2], alpha];
+                    } else if (item._orig_role === 'text' && item.ty === 'fl') {
+                        item.c.k = [cText[0], cText[1], cText[2], alpha];
                     }
                 }
             }
@@ -463,6 +467,15 @@ function setActiveColorTarget(target) {
 }
 
 function syncColorControlsUI() {
+    const isLogoTab = state.activeTab === 'logo' || state.inputType === 'svg';
+    if (dom.logoColorSection) {
+        if (isLogoTab) {
+            dom.logoColorSection.classList.remove('hidden');
+        } else {
+            dom.logoColorSection.classList.add('hidden');
+        }
+    }
+
     const curColor = getActiveTargetColor();
     const hexClean = curColor.replace('#', '').toUpperCase();
     if (dom.logoHexInput && document.activeElement !== dom.logoHexInput) {
@@ -824,19 +837,27 @@ function renderUserPacks() {
 }
 
 function getPreviewCacheKey(file, scale) {
-    const bColor = state.badgeColor || '#FFFFFF';
-    const bgCol = state.badgeBgColor || '#000000';
-    const tCol = state.textColor || '#FFFFFF';
+    const isLogo = parseInt(getTemplateNumber(file)) >= 14 || state.inputType === 'svg';
     if (state.inputType === 'svg') {
         const svgHash = (state.svgData || "").length + "_" + (state.svgData || "").slice(0, 30);
+        const bColor = state.badgeColor || '#FFFFFF';
+        const bgCol = state.badgeBgColor || '#000000';
+        const tCol = state.textColor || '#FFFFFF';
         return `${file}_svg_${scale}_${svgHash}_${bColor}_${bgCol}_${tCol}`;
     }
     const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
+    if (!isLogo) {
+        return `${file}_${state.font}_${scale}_${cleanTxt}`;
+    }
+    const bColor = state.badgeColor || '#FFFFFF';
+    const bgCol = state.badgeBgColor || '#000000';
+    const tCol = state.textColor || '#FFFFFF';
     return `${file}_${state.font}_${scale}_${cleanTxt}_${bColor}_${bgCol}_${tCol}`;
 }
 
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
     const isSvg = state.inputType === 'svg';
+    const isLogo = parseInt(getTemplateNumber(templateFile)) >= 14 || isSvg;
     const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : (isSvg ? "SVG" : "ISMINGIZ");
     const cacheKey = getPreviewCacheKey(templateFile, scale);
     
@@ -855,15 +876,17 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
                 font: font,
                 scale: scale,
                 svg_data: isSvg ? state.svgData : null,
-                badge_color: state.badgeColor || null,
-                badge_bg_color: state.badgeBgColor || null,
-                text_color: state.textColor || null
+                badge_color: isLogo ? (state.badgeColor || null) : null,
+                badge_bg_color: isLogo ? (state.badgeBgColor || null) : null,
+                text_color: isLogo ? (state.textColor || null) : null
             })
         });
         
         let animationData = await res.json();
         if (animationData && !animationData.detail) {
-            animationData = applyBadgeColorToLottieJSON(animationData, state.badgeColor, state.badgeBgColor, state.textColor);
+            if (isLogo) {
+                animationData = applyBadgeColorToLottieJSON(animationData, state.badgeColor, state.badgeBgColor, state.textColor);
+            }
             state.previewCache.set(cacheKey, animationData);
             return animationData;
         }
@@ -873,7 +896,9 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
         if (!isSvg) {
             let fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
             if (fallbackData) {
-                fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor);
+                if (isLogo) {
+                    fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor);
+                }
                 return fallbackData;
             }
         }
@@ -891,10 +916,11 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
                             (!state.textColor || state.textColor === '#FFFFFF');
     
     templateFiles.forEach(file => {
+        const isLogo = parseInt(getTemplateNumber(file)) >= 14 || isSvg;
         const cacheKey = getPreviewCacheKey(file, scale);
         if (state.previewCache.has(cacheKey)) {
             results[file] = state.previewCache.get(cacheKey);
-        } else if (!isSvg && cleanTxt === "ISMINGIZ" && isDefaultColors) {
+        } else if (!isSvg && cleanTxt === "ISMINGIZ" && (isDefaultColors || !isLogo)) {
             const preData = getPreRenderedTemplateData(file, font, scale);
             if (preData) {
                 state.previewCache.set(cacheKey, preData);
@@ -931,7 +957,8 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
         const data = await res.json();
         if (data.previews) {
             Object.entries(data.previews).forEach(([fname, lottieData]) => {
-                let finalData = applyBadgeColorToLottieJSON(lottieData, state.badgeColor, state.badgeBgColor, state.textColor);
+                const isLogo = parseInt(getTemplateNumber(fname)) >= 14 || isSvg;
+                let finalData = isLogo ? applyBadgeColorToLottieJSON(lottieData, state.badgeColor, state.badgeBgColor, state.textColor) : lottieData;
                 const cacheKey = getPreviewCacheKey(fname, scale);
                 state.previewCache.set(cacheKey, finalData);
                 results[fname] = finalData;
@@ -942,7 +969,10 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
             needed.forEach(file => {
                 let fallbackData = getPreRenderedTemplateData(file, font, scale);
                 if (fallbackData) {
-                    fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor);
+                    const isLogo = parseInt(getTemplateNumber(file)) >= 14;
+                    if (isLogo) {
+                        fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor);
+                    }
                     results[file] = fallbackData;
                 }
             });
@@ -1970,9 +2000,13 @@ function setupEventListeners() {
         e.target.value = val;
         if (val.length === 3 || val.length === 6) {
             setTargetColor('#' + val, false);
-            if (state.livePlayer && dom.liveLottiePlayer) {
+            const isLogo = parseInt(getTemplateNumber(state.selectedTemplate)) >= 14 || state.inputType === 'svg';
+            if (isLogo && state.livePlayer && dom.liveLottiePlayer) {
                 const cacheK = getPreviewCacheKey(state.selectedTemplate, state.scale);
-                const currentData = state.previewCache.get(cacheK);
+                let currentData = state.previewCache.get(cacheK);
+                if (!currentData) {
+                    currentData = getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
+                }
                 if (currentData) {
                     const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
                     try {
@@ -2004,9 +2038,13 @@ function setupEventListeners() {
     dom.logoColorPicker?.addEventListener('input', (e) => {
         const val = e.target.value;
         setTargetColor(val, false);
-        if (state.livePlayer && dom.liveLottiePlayer) {
+        const isLogo = parseInt(getTemplateNumber(state.selectedTemplate)) >= 14 || state.inputType === 'svg';
+        if (isLogo && state.livePlayer && dom.liveLottiePlayer) {
             const cacheK = getPreviewCacheKey(state.selectedTemplate, state.scale);
-            const currentData = state.previewCache.get(cacheK);
+            let currentData = state.previewCache.get(cacheK);
+            if (!currentData) {
+                currentData = getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
+            }
             if (currentData) {
                 const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
                 try {

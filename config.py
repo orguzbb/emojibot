@@ -11,7 +11,7 @@ TEMPLATES_DIR = BASE_DIR / "shablonlar"
 FONTS_DIR = BASE_DIR / "fonts"
 DEFAULT_FONT_PATH = FONTS_DIR / "stapel.ttf"
 
-WEBAPP_URL = "https://xs134.xuss.us/?v=5.3.0"
+WEBAPP_URL = "https://xs134.xuss.us/?v=5.3.1"
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 8000
 

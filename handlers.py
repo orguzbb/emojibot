@@ -1252,15 +1252,22 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
             with open(tgs_file, "rb") as f:
                 template_bytes = f.read()
 
+            tpl_num = 0
+            try:
+                tpl_num = int(''.join(filter(str.isdigit, tgs_file.stem)))
+            except Exception:
+                pass
+            is_logo = tpl_num >= 14 or bool(svg_data)
+
             processed_bytes = process_tgs_template(
                 template_bytes=template_bytes,
                 text=clean_text,
                 font_path=str(font_file_path),
                 svg_data=svg_data,
                 input_type="svg" if svg_data else "text",
-                badge_color=badge_color,
-                badge_bg_color=badge_bg_color,
-                text_color=text_color
+                badge_color=badge_color if is_logo else None,
+                badge_bg_color=badge_bg_color if is_logo else None,
+                text_color=text_color if is_logo else None
             )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -1349,6 +1356,13 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
     status_msg = await bot.send_message(chat_id, "⏳ <i>Emoji tayyorlanmoqda...</i>", parse_mode=ParseMode.HTML)
 
     try:
+        tpl_num = 0
+        try:
+            tpl_num = int(''.join(filter(str.isdigit, target_tgs.stem)))
+        except Exception:
+            pass
+        is_logo = tpl_num >= 14 or bool(svg_data)
+
         with open(target_tgs, "rb") as f:
             proc_bytes = process_tgs_template(
                 template_bytes=f.read(),
@@ -1356,9 +1370,9 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
                 font_path=str(font_file_path),
                 svg_data=svg_data,
                 input_type="svg" if svg_data else "text",
-                badge_color=badge_color,
-                badge_bg_color=badge_bg_color,
-                text_color=text_color
+                badge_color=badge_color if is_logo else None,
+                badge_bg_color=badge_bg_color if is_logo else None,
+                text_color=text_color if is_logo else None
             )
 
         rand_suffix = random.randint(1000, 99999)
@@ -1427,6 +1441,13 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
 
         added_count = 0
         for idx, tfile in enumerate(tgs_files):
+            tpl_num = 0
+            try:
+                tpl_num = int(''.join(filter(str.isdigit, tfile.stem)))
+            except Exception:
+                pass
+            is_logo = tpl_num >= 14 or bool(svg_data)
+
             with open(tfile, "rb") as f:
                 proc_bytes = process_tgs_template(
                     template_bytes=f.read(),
@@ -1434,9 +1455,9 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
                     font_path=str(font_file_path),
                     svg_data=svg_data,
                     input_type="svg" if svg_data else "text",
-                    badge_color=badge_color,
-                    badge_bg_color=badge_bg_color,
-                    text_color=text_color
+                    badge_color=badge_color if is_logo else None,
+                    badge_bg_color=badge_bg_color if is_logo else None,
+                    text_color=text_color if is_logo else None
                 )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -1503,6 +1524,13 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
 
         input_stickers = []
         for idx, tgs_file in enumerate(tgs_files):
+            tpl_num = 0
+            try:
+                tpl_num = int(''.join(filter(str.isdigit, tgs_file.stem)))
+            except Exception:
+                pass
+            is_logo = tpl_num >= 14 or bool(svg_data)
+
             with open(tgs_file, "rb") as f:
                 template_bytes = f.read()
 
@@ -1512,9 +1540,9 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
                 font_path=str(font_file_path),
                 svg_data=svg_data,
                 input_type="svg" if svg_data else "text",
-                badge_color=badge_color,
-                badge_bg_color=badge_bg_color,
-                text_color=text_color
+                badge_color=badge_color if is_logo else None,
+                badge_bg_color=badge_bg_color if is_logo else None,
+                text_color=text_color if is_logo else None
             )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]

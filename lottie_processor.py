@@ -1231,10 +1231,10 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
 
 def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_color: str = None, text_color: str = None):
     """
-    Recolors:
-    1. badge_color: outer badge edge/frame (white/light elements, cr > 0.82)
-    2. badge_bg_color: inner base (black/dark elements, cr < 0.18)
-    3. text_color: text fill across text layers/groups (TextGroup, Text Layer, letter shapes)
+    Recolors logo templates:
+    1. badge_color: outer badge frame/border (white/light elements, cr > 0.82)
+    2. badge_bg_color: inner base/background (black/dark elements, cr < 0.18)
+    3. text_color: text fill across text layers/groups (inside TextGroup)
     Excludes custom user SVG elements (SVG_Symbol).
     """
     c_primary = None
@@ -1275,7 +1275,7 @@ def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_
         if nm in ("SVG_Symbol",) or "SVG Path" in nm or "Logo path" in nm:
             return
 
-        is_text_node = is_in_text or nm in ("TextGroup", "Text Layer", "NAME", "EMOJI 1", "Letters") or (len(nm) == 1 and nm.isalnum())
+        is_text_node = is_in_text or nm == "TextGroup"
 
         ty = item.get("ty")
         if ty in ("fl", "st") and "c" in item:
@@ -1300,10 +1300,10 @@ def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_
             walk_item(sh, is_text_node)
 
     for l in data.get("layers", []):
-        walk_item(l)
+        walk_item(l, False)
     for a in data.get("assets", []):
         for l in a.get("layers", []):
-            walk_item(l)
+            walk_item(l, False)
 
 
 def process_tgs_template(
