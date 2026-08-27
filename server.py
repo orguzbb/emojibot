@@ -83,6 +83,11 @@ FONTS_MAP = {
 _bot_instance: Optional[Bot] = None
 
 
+def set_bot(bot: Bot):
+    global _bot_instance
+    _bot_instance = bot
+
+
 def get_bot() -> Bot:
     global _bot_instance
     if _bot_instance is None or getattr(_bot_instance.session, 'closed', False):
