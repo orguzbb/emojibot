@@ -8,7 +8,7 @@ import asyncio
 from pathlib import Path
 from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi import FastAPI, HTTPException, Request, Response, Query, Body
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,20 +38,20 @@ from database import (
     save_user_pack,
     get_user_packs,
     get_user_balance,
-    add_user_balance,
     deduct_user_balance,
+    add_user_balance,
     get_emoji_price,
     get_referral_bonus,
     get_referral_stats
 )
 from handlers import FONTS_MAP, DEFAULT_EMOJIS, to_name_slug
 
-logger = logging.getLogger("server")
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("GnEmojiServer")
 
-app = FastAPI(title="GnEmoji Mini App Server", version="1.0.0")
+app = FastAPI(title="GnEmoji Mini App API", version="4.3.0")
 
-# Enable CORS for Telegram WebApp
+# Enable CORS for Telegram WebApp and web clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -60,37 +60,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static files directory
-WEBAPP_DIR = Path(__file__).resolve().parent / "webapp"
+
+@app.options("/{full_path:path}")
+async def universal_options_handler(full_path: str):
+    """Universal 200 OK handler for all CORS OPTIONS preflights"""
+    res = Response(status_code=200)
+    res.headers["Access-Control-Allow-Origin"] = "*"
+    res.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
+    res.headers["Access-Control-Allow-Headers"] = "*"
+    return res
+
+BASE_DIR = Path(__file__).resolve().parent
+WEBAPP_DIR = BASE_DIR / "webapp"
 app.mount("/static", StaticFiles(directory=str(WEBAPP_DIR)), name="static")
 
-# Shared Bot instance for Telegram API interactions
-bot_instance: Optional[Bot] = None
+FONTS_MAP = {
+    "stapel": {"name": "Stapel", "file": "stapel.ttf"},
+    "inter": {"name": "Inter", "file": "inter.ttf"},
+    "grobold": {"name": "Grobold", "file": "grobold.ttf"}
+}
 
-
-def set_bot(bot: Bot):
-    global bot_instance
-    bot_instance = bot
+_bot_instance: Optional[Bot] = None
 
 
 def get_bot() -> Bot:
-    global bot_instance
-    if bot_instance is None or getattr(bot_instance.session, 'closed', False):
-        bot_instance = Bot(
+    global _bot_instance
+    if _bot_instance is None or getattr(_bot_instance.session, 'closed', False):
+        _bot_instance = Bot(
             token=BOT_TOKEN,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
-    return bot_instance
+    return _bot_instance
 
 
-# ==================== PYDANTIC MODELS ====================
-
-# In-memory cache for raw template bytes to make preview generation ultra fast
 _TEMPLATE_BYTES_CACHE = {}
 
+
 def get_template_bytes(template_name: str) -> Optional[bytes]:
+    if not template_name:
+        template_name = "14.tgs"
     if not template_name.endswith(".tgs"):
         template_name = f"{template_name}.tgs"
+        
     if template_name in _TEMPLATE_BYTES_CACHE:
         return _TEMPLATE_BYTES_CACHE[template_name]
     
@@ -104,28 +115,28 @@ def get_template_bytes(template_name: str) -> Optional[bytes]:
 
 
 class PreviewRequest(BaseModel):
-    template_id: str
+    template_id: Optional[str] = "14.tgs"
     text: Optional[str] = "ISMINGIZ"
-    font: str = "stapel"
+    font: Optional[str] = "stapel"
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
     svg_data: Optional[str] = None
 
 
 class BatchPreviewRequest(BaseModel):
-    template_ids: List[str]
+    template_ids: Optional[List[str]] = None
     text: Optional[str] = "ISMINGIZ"
-    font: str = "stapel"
+    font: Optional[str] = "stapel"
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
     svg_data: Optional[str] = None
 
 
 class GenerateRequest(BaseModel):
-    user_id: int
+    user_id: Optional[int] = None
     text: Optional[str] = "EMOJI"
-    font: str = "stapel"
-    mode: str = "single"  # "single", "selected", "all", "add_to_pack"
+    font: Optional[str] = "stapel"
+    mode: Optional[str] = "single"  # "single", "selected", "all", "add_to_pack"
     pack_name: Optional[str] = None
     template_id: Optional[str] = "1.tgs"
     selected_templates: Optional[List[str]] = None
@@ -136,19 +147,19 @@ class GenerateRequest(BaseModel):
 
 
 class AddToPackRequest(BaseModel):
-    user_id: int
-    pack_name: str
+    user_id: Optional[int] = None
+    pack_name: Optional[str] = None
     text: Optional[str] = "EMOJI"
-    font: str = "stapel"
-    template_id: str = "1.tgs"
+    font: Optional[str] = "stapel"
+    template_id: Optional[str] = "1.tgs"
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
     svg_data: Optional[str] = None
 
 
 class CreateInvoiceRequest(BaseModel):
-    user_id: int
-    count: int = 1
+    user_id: Optional[int] = None
+    count: Optional[int] = 1
     text: Optional[str] = ""
 
 
@@ -261,13 +272,19 @@ async def get_user_info_endpoint(user_id: int = Query(1323217434), ref: Optional
     }
 
 
-@app.api_route("/api/create_invoice", methods=["GET", "POST"])
-@app.api_route("/api/create_invoice/", methods=["GET", "POST"])
-async def create_invoice_endpoint(req: CreateInvoiceRequest):
+@app.api_route("/api/create_invoice", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/create_invoice/", methods=["GET", "POST", "OPTIONS"])
+async def create_invoice_endpoint(req: Optional[CreateInvoiceRequest] = Body(None)):
     """Creates a Telegram Stars invoice link for direct in-app payment"""
+    if req is None:
+        req = CreateInvoiceRequest()
+    if not req.user_id:
+        req.user_id = 1323217434
+        
     bot = get_bot()
     unit_price = get_emoji_price()
-    total_cost = max(1, req.count * unit_price)
+    count = req.count or 1
+    total_cost = max(1, count * unit_price)
 
     payload = f"topup_stars:{req.user_id}:{total_cost}"
 
@@ -290,13 +307,13 @@ async def create_invoice_endpoint(req: CreateInvoiceRequest):
 
 
 class SendInvoiceRequest(BaseModel):
-    user_id: int
-    count: int = 1
+    user_id: Optional[int] = None
+    count: Optional[int] = 1
     text: Optional[str] = "EMOJI"
-    font: str = "stapel"
+    font: Optional[str] = "stapel"
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
-    mode: str = "single"
+    mode: Optional[str] = "single"
     pack_name: Optional[str] = None
     template_id: Optional[str] = "1.tgs"
     selected_templates: Optional[List[str]] = None
@@ -304,10 +321,16 @@ class SendInvoiceRequest(BaseModel):
 
 @app.api_route("/api/send_invoice_to_chat", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/send_invoice_to_chat/", methods=["GET", "POST", "OPTIONS"])
-async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
+async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body(None)):
     """Sends a Telegram Stars (XTR) invoice directly to user's Telegram chat"""
+    if req is None:
+        req = SendInvoiceRequest()
+    if not req.user_id:
+        req.user_id = 1323217434
+        
     unit_price = get_emoji_price()
-    total_cost = max(1, req.count * unit_price)
+    count = req.count or 1
+    total_cost = max(1, count * unit_price)
 
     clean_text = req.text.strip().upper()[:16] if req.text else "EMOJI"
     if not clean_text:
@@ -333,10 +356,10 @@ async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
         await bot.send_invoice(
             chat_id=req.user_id,
             title="Emoji to'plam generatsiyasi",
-            description=f"'{clean_text}' uchun {req.count} ta emoji to'lovi.",
+            description=f"'{clean_text}' uchun {count} ta emoji to'lovi.",
             payload=payload,
             currency="XTR",
-            prices=[LabeledPrice(label=f"Stars ({req.count} ta emoji)", amount=total_cost)]
+            prices=[LabeledPrice(label=f"Stars ({count} ta emoji)", amount=total_cost)]
         )
         return {"ok": True, "total_cost": total_cost, "user_id": req.user_id}
     except Exception as e:
@@ -367,19 +390,29 @@ async def get_templates_list():
 
 @app.api_route("/api/preview", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/preview/", methods=["GET", "POST", "OPTIONS"])
-async def generate_preview(req: PreviewRequest):
+async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
     """Renders a single template with text/font/scale or SVG and returns Lottie JSON"""
+    if req is None:
+        req = PreviewRequest()
+        
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
     clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
     if not clean_text:
         clean_text = "SVG" if is_svg_mode else "ISMINGIZ"
 
-    font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
+    font_key = req.font or "stapel"
+    font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     if not font_file_path.exists():
         font_file_path = Path(DEFAULT_FONT_PATH)
 
-    raw_bytes = get_template_bytes(req.template_id)
+    tpl_name = str(req.template_id or "14.tgs")
+    if not tpl_name.endswith(".tgs"):
+        tpl_name = f"{tpl_name}.tgs"
+        
+    raw_bytes = get_template_bytes(tpl_name)
+    if not raw_bytes:
+        raw_bytes = get_template_bytes("14.tgs")
     if not raw_bytes:
         raise HTTPException(status_code=404, detail="Shablon fayli topilmadi")
 
@@ -390,7 +423,7 @@ async def generate_preview(req: PreviewRequest):
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data,
-            input_type=req.input_type or "text"
+            input_type=req.input_type or ("svg" if is_svg_mode else "text")
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
@@ -401,14 +434,21 @@ async def generate_preview(req: PreviewRequest):
 
 @app.api_route("/api/batch_preview", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/batch_preview/", methods=["GET", "POST", "OPTIONS"])
-async def generate_batch_preview(req: BatchPreviewRequest):
+async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)):
     """Renders multiple templates in a single batch request for speed"""
+    if req is None:
+        req = BatchPreviewRequest()
+        
+    if not req.template_ids:
+        return JSONResponse(content={"previews": {}})
+        
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
     clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
     if not clean_text:
         clean_text = "SVG" if is_svg_mode else "ISMINGIZ"
 
-    font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
+    font_key = req.font or "stapel"
+    font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     if not font_file_path.exists():
         font_file_path = Path(DEFAULT_FONT_PATH)
@@ -425,7 +465,7 @@ async def generate_batch_preview(req: BatchPreviewRequest):
                 font_path=str(font_file_path),
                 text_scale=req.scale or 1.0,
                 svg_data=req.svg_data,
-                input_type=req.input_type or "text"
+                input_type=req.input_type or ("svg" if is_svg_mode else "text")
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
             filename = tpl_id if tpl_id.endswith(".tgs") else f"{tpl_id}.tgs"
@@ -495,7 +535,7 @@ async def background_add_stickers(
 
 @app.api_route("/api/generate", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/generate/", methods=["GET", "POST", "OPTIONS"])
-async def generate_emoji_pack(req: GenerateRequest):
+async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
     """
     Bulletproof Generation Endpoint:
     - Verifies user balance (deducts once)
@@ -503,6 +543,10 @@ async def generate_emoji_pack(req: GenerateRequest):
     - Adds initial batch synchronously and runs remaining batch in background
     - Returns instant success response to Mini App
     """
+    if req is None:
+        req = GenerateRequest()
+    if not req.user_id:
+        req.user_id = 1323217434
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
     clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
     if not clean_text:
@@ -744,23 +788,29 @@ async def generate_emoji_pack(req: GenerateRequest):
 
 @app.api_route("/api/user_packs", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/user_packs/", methods=["GET", "POST", "OPTIONS"])
-async def get_user_packs_endpoint(user_id: int = Query(...)):
+async def get_user_packs_endpoint(user_id: Optional[int] = Query(None)):
     """Retrieves user's created packs"""
+    if not user_id:
+        return {"packs": []}
     packs = get_user_packs(user_id)
     return {"packs": packs}
 
 
 @app.api_route("/api/add_to_pack", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/add_to_pack/", methods=["GET", "POST", "OPTIONS"])
-async def add_to_existing_pack_endpoint(req: AddToPackRequest):
+async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(None)):
     """Adds a single sticker to an existing user's custom emoji set"""
+    if req is None or not req.user_id or not req.pack_name:
+        raise HTTPException(status_code=400, detail="Foydalanuvchi ID yoki to'plam nomi ko'rsatilmadi")
     bot = get_bot()
-    font_info = FONTS_MAP.get(req.font, FONTS_MAP["stapel"])
+    font_info = FONTS_MAP.get(req.font or "stapel", FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     if not font_file_path.exists():
         font_file_path = Path(DEFAULT_FONT_PATH)
 
-    tgs_name = req.template_id if req.template_id.endswith(".tgs") else f"{req.template_id}.tgs"
+    tgs_name = str(req.template_id or "1.tgs")
+    if not tgs_name.endswith(".tgs"):
+        tgs_name = f"{tgs_name}.tgs"
     tgs_path = Path(TEMPLATES_DIR) / tgs_name
     if not tgs_path.exists():
         tgs_path = next(Path(TEMPLATES_DIR).glob("*.tgs"))
