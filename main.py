@@ -11,7 +11,7 @@ from config import BOT_TOKEN, SERVER_HOST, SERVER_PORT, WEBAPP_URL
 from database import init_db
 from admin_handlers import admin_router
 from handlers import router
-from server import app
+from server import app, set_bot
 
 # Logging configuration
 logging.basicConfig(
@@ -23,42 +23,55 @@ logger = logging.getLogger("main")
 
 
 async def run_bot():
-    """Runs the Aiogram Telegram Bot polling loop"""
-    logger.info("Initializing Telegram Bot...")
-    bot = Bot(
-        token=BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
-    from server import set_bot
-    set_bot(bot)
-
-    dp = Dispatcher()
-    dp.include_router(admin_router)
-    dp.include_router(router)
-
-    # Delete webhook if any
-    await bot.delete_webhook(drop_pending_updates=True)
-    
-    me = await bot.get_me()
-    logger.info(f"Telegram Bot started: @{me.username} ({me.first_name})")
-
-    try:
-        from aiogram.types import MenuButtonWebApp, WebAppInfo
-        await bot.set_chat_menu_button(
-            menu_button=MenuButtonWebApp(
-                text="📱 Mini App",
-                web_app=WebAppInfo(url=WEBAPP_URL)
-            )
+    """Runs the Aiogram Telegram Bot polling loop with automatic reconnection"""
+    while True:
+        logger.info("Initializing Telegram Bot...")
+        bot = Bot(
+            token=BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
-        logger.info(f"Bot chat menu button set to Mini App: {WEBAPP_URL}")
-    except Exception as e:
-        logger.warning(f"Could not set chat menu button: {e}")
-    
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
-        logger.info("Telegram Bot stopped.")
+        set_bot(bot)
+
+        dp = Dispatcher()
+        dp.include_router(admin_router)
+        dp.include_router(router)
+
+        try:
+            # Delete webhook if any, keep pending updates
+            try:
+                await bot.delete_webhook(drop_pending_updates=False)
+            except Exception as w_err:
+                logger.warning(f"delete_webhook notice: {w_err}")
+            
+            me = await bot.get_me()
+            logger.info(f"Telegram Bot connected: @{me.username} ({me.first_name})")
+
+            try:
+                from aiogram.types import MenuButtonWebApp, WebAppInfo
+                await bot.set_chat_menu_button(
+                    menu_button=MenuButtonWebApp(
+                        text="📱 Mini App",
+                        web_app=WebAppInfo(url=WEBAPP_URL)
+                    )
+                )
+                logger.info(f"Bot chat menu button configured: {WEBAPP_URL}")
+            except Exception as e:
+                logger.warning(f"Could not set chat menu button: {e}")
+
+            logger.info("Starting Telegram Bot polling loop...")
+            await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("Bot polling stopped by system.")
+            await bot.session.close()
+            break
+        except Exception as e:
+            logger.error(f"Bot polling encountered error: {e}", exc_info=True)
+            try:
+                await bot.session.close()
+            except:
+                pass
+            logger.info("Reconnecting bot in 3 seconds...")
+            await asyncio.sleep(3)
 
 
 async def run_web_server():
@@ -72,7 +85,10 @@ async def run_web_server():
         access_log=False
     )
     server = uvicorn.Server(config)
-    await server.serve()
+    try:
+        await server.serve()
+    except Exception as e:
+        logger.error(f"Web server error: {e}", exc_info=True)
 
 
 async def main():
@@ -83,7 +99,8 @@ async def main():
     logger.info("🚀 GnEmoji Bot & Mini App Server ishga tushmoqda...")
     await asyncio.gather(
         run_bot(),
-        run_web_server()
+        run_web_server(),
+        return_exceptions=True
     )
 
 
