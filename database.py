@@ -1,7 +1,8 @@
+from __future__ import annotations
 import sqlite3
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Optional, List, Dict, Tuple, Any, Union
 
 DB_PATH = Path(__file__).resolve().parent / "bot_database.db"
 

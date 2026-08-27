@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 import time
@@ -8,6 +9,7 @@ import json
 import copy
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Optional, Union, Dict, List, Any, Tuple
 from fontTools.ttLib import TTFont
 from fontTools.misc.transform import Transform
 from fontTools.pens.transformPen import TransformPen
@@ -33,7 +35,7 @@ def cache_svg(svg_content: str, title: str = "SVG") -> str:
     return svg_id
 
 
-def get_cached_svg(svg_id: str) -> dict | None:
+def get_cached_svg(svg_id: str) -> Optional[dict]:
     return SVG_CACHE.get(svg_id)
 
 
@@ -294,7 +296,7 @@ def draw_svg_to_pen(root_element, pen):
     walk(root_element, Transform())
 
 
-def validate_and_clean_svg(raw_svg: str | bytes) -> str:
+def validate_and_clean_svg(raw_svg: Union[str, bytes]) -> str:
     """
     Validates and cleans SVG content:
     - Removes XML headers and comments

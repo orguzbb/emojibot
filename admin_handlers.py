@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import gzip
 import json
@@ -5,6 +6,7 @@ import logging
 import asyncio
 import re
 from pathlib import Path
+from typing import Union, Optional, List, Dict, Any
 
 from aiogram import Bot, Router, F
 from aiogram.filters import Command
@@ -1021,7 +1023,7 @@ async def cb_admin_stats(callback: CallbackQuery):
 
 @admin_router.message(Command("broadcast"))
 @admin_router.callback_query(F.data == "admin:broadcast_start")
-async def cmd_broadcast_start(event: Message | CallbackQuery, state: FSMContext):
+async def cmd_broadcast_start(event: Union[Message, CallbackQuery], state: FSMContext):
     user_id = event.from_user.id
     if not is_admin(user_id):
         return

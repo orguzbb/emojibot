@@ -1,3 +1,4 @@
+from __future__ import annotations
 import time
 import re
 import json
@@ -6,7 +7,7 @@ import logging
 import asyncio
 import urllib.parse
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 from aiogram import Bot, Router, F
 from aiogram.filters import CommandStart, Command
@@ -232,7 +233,7 @@ async def cb_menu_main(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "menu_wallet")
 @router.message(Command("balance"))
 @router.message(Command("wallet"))
-async def handle_wallet_menu(event: Message | CallbackQuery, state: FSMContext):
+async def handle_wallet_menu(event: Union[Message, CallbackQuery], state: FSMContext):
     await state.clear()
     user_id = event.from_user.id
     balance = get_user_balance(user_id)
@@ -394,7 +395,7 @@ async def handle_custom_amount_input(message: Message, state: FSMContext, bot: B
 @router.callback_query(F.data == "menu_promo")
 @router.message(Command("promo"))
 @router.message(Command("promokod"))
-async def handle_promo_menu(event: Message | CallbackQuery, state: FSMContext):
+async def handle_promo_menu(event: Union[Message, CallbackQuery], state: FSMContext):
     # If sent via command with argument e.g. /promo START5
     if isinstance(event, Message):
         parts = event.text.split(maxsplit=1)
@@ -470,7 +471,7 @@ async def handle_promocode_input(message: Message, state: FSMContext):
 @router.callback_query(F.data == "menu_referral")
 @router.message(Command("ref"))
 @router.message(Command("referral"))
-async def handle_referral_menu(event: Message | CallbackQuery):
+async def handle_referral_menu(event: Union[Message, CallbackQuery]):
     user_id = event.from_user.id
     ref_bonus = get_referral_bonus()
     stats = get_referral_stats(user_id)
@@ -586,7 +587,7 @@ async def process_successful_payment(message: Message, bot: Bot):
 
 @router.callback_query(F.data == "cmd_mypacks_cb")
 @router.message(Command("mypacks"))
-async def cb_mypacks(event: Message | CallbackQuery):
+async def cb_mypacks(event: Union[Message, CallbackQuery]):
     user_id = event.from_user.id
     packs = get_user_packs(user_id)
 
@@ -618,7 +619,7 @@ async def cb_mypacks(event: Message | CallbackQuery):
 
 @router.callback_query(F.data == "cmd_help_cb")
 @router.message(Command("help"))
-async def cb_help(event: Message | CallbackQuery):
+async def cb_help(event: Union[Message, CallbackQuery]):
     price = get_emoji_price()
     ref_bonus = get_referral_bonus()
     help_text = (
