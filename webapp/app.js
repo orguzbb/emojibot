@@ -387,9 +387,9 @@ function applyBadgeColorToLottieJSON(jsonObj, badgeColor, badgeBgColor, textColo
             ];
         }
 
-        const cPrimary = parseHex(badgeColor) || [1.0, 1.0, 1.0];
-        const cSecondary = parseHex(badgeBgColor) || [0.0, 0.0, 0.0];
-        const cText = parseHex(textColor) || [1.0, 1.0, 1.0];
+        const cPrimary = parseHex(badgeColor);
+        const cSecondary = parseHex(badgeBgColor);
+        const cText = parseHex(textColor);
 
         const cloned = JSON.parse(JSON.stringify(jsonObj));
 
@@ -399,30 +399,30 @@ function applyBadgeColorToLottieJSON(jsonObj, badgeColor, badgeBgColor, textColo
             if (nm === 'SVG_Symbol' || nm.includes('SVG Path') || nm.includes('Logo path')) {
                 return;
             }
-            const isTextNode = isInText || nm === 'TextGroup';
+            const isTextNode = isInText || nm === 'TextGroup' || nm === 'EMOJI' || (nm.length === 1 && /^[A-Za-z0-9]$/.test(nm) && item.ty === 'gr');
 
             if ((item.ty === 'fl' || item.ty === 'st') && item.c && Array.isArray(item.c.k)) {
                 const k = item.c.k;
                 if (k.length >= 3 && typeof k[0] === 'number') {
                     const alpha = k[3] !== undefined ? k[3] : 1.0;
                     
-                    if (!item._orig_role) {
+                    if (!item._role) {
                         if (isTextNode) {
-                            item._orig_role = 'text';
-                        } else if (k[0] > 0.82 && k[1] > 0.82 && k[2] > 0.82) {
-                            item._orig_role = 'outer';
-                        } else if (k[0] < 0.18 && k[1] < 0.18 && k[2] < 0.18) {
-                            item._orig_role = 'inner';
+                            item._role = 'text';
+                        } else if (item.ty === 'st' || (k[0] > 0.82 && k[1] > 0.82 && k[2] > 0.82)) {
+                            item._role = 'outer';
+                        } else if (item.ty === 'fl' && k[0] < 0.18 && k[1] < 0.18 && k[2] < 0.18) {
+                            item._role = 'inner';
                         } else {
-                            item._orig_role = 'none';
+                            item._role = 'none';
                         }
                     }
 
-                    if (item._orig_role === 'outer') {
+                    if (item._role === 'outer' && cPrimary) {
                         item.c.k = [cPrimary[0], cPrimary[1], cPrimary[2], alpha];
-                    } else if (item._orig_role === 'inner') {
+                    } else if (item._role === 'inner' && cSecondary) {
                         item.c.k = [cSecondary[0], cSecondary[1], cSecondary[2], alpha];
-                    } else if (item._orig_role === 'text' && item.ty === 'fl') {
+                    } else if (item._role === 'text' && cText && item.ty === 'fl') {
                         item.c.k = [cText[0], cText[1], cText[2], alpha];
                     }
                 }
@@ -884,9 +884,6 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
         
         let animationData = await res.json();
         if (animationData && !animationData.detail) {
-            if (isLogo) {
-                animationData = applyBadgeColorToLottieJSON(animationData, state.badgeColor, state.badgeBgColor, state.textColor);
-            }
             state.previewCache.set(cacheKey, animationData);
             return animationData;
         }
@@ -957,11 +954,9 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
         const data = await res.json();
         if (data.previews) {
             Object.entries(data.previews).forEach(([fname, lottieData]) => {
-                const isLogo = parseInt(getTemplateNumber(fname)) >= 14 || isSvg;
-                let finalData = isLogo ? applyBadgeColorToLottieJSON(lottieData, state.badgeColor, state.badgeBgColor, state.textColor) : lottieData;
                 const cacheKey = getPreviewCacheKey(fname, scale);
-                state.previewCache.set(cacheKey, finalData);
-                results[fname] = finalData;
+                state.previewCache.set(cacheKey, lottieData);
+                results[fname] = lottieData;
             });
         }
     } catch (e) {
@@ -1162,6 +1157,7 @@ async function updateLivePreview() {
         const lottieData = await fetchLottiePreview(state.selectedTemplate, cleanTxt, state.font, state.scale);
         
         if (lottieData && dom.liveLottiePlayer) {
+            state.currentHeroTemplateData = lottieData;
             if (state.livePlayer) {
                 try { state.livePlayer.destroy(); } catch (e) {}
                 state.livePlayer = null;
@@ -2002,11 +1998,7 @@ function setupEventListeners() {
             setTargetColor('#' + val, false);
             const isLogo = parseInt(getTemplateNumber(state.selectedTemplate)) >= 14 || state.inputType === 'svg';
             if (isLogo && state.livePlayer && dom.liveLottiePlayer) {
-                const cacheK = getPreviewCacheKey(state.selectedTemplate, state.scale);
-                let currentData = state.previewCache.get(cacheK);
-                if (!currentData) {
-                    currentData = getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
-                }
+                const currentData = state.currentHeroTemplateData || getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
                 if (currentData) {
                     const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
                     try {
@@ -2021,7 +2013,7 @@ function setupEventListeners() {
                     } catch (err) {}
                 }
             }
-            debouncedLiveTextUpdate();
+            debouncedFullUpdate();
         }
     });
 
@@ -2040,11 +2032,7 @@ function setupEventListeners() {
         setTargetColor(val, false);
         const isLogo = parseInt(getTemplateNumber(state.selectedTemplate)) >= 14 || state.inputType === 'svg';
         if (isLogo && state.livePlayer && dom.liveLottiePlayer) {
-            const cacheK = getPreviewCacheKey(state.selectedTemplate, state.scale);
-            let currentData = state.previewCache.get(cacheK);
-            if (!currentData) {
-                currentData = getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
-            }
+            const currentData = state.currentHeroTemplateData || getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
             if (currentData) {
                 const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
                 try {
@@ -2059,6 +2047,7 @@ function setupEventListeners() {
                 } catch (err) {}
             }
         }
+        debouncedFullUpdate();
     });
 
     dom.logoColorPicker?.addEventListener('change', (e) => {

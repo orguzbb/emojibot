@@ -676,13 +676,14 @@ def generate_text_shapes(text: str, font_path: str, target_layer: dict, scale_fa
                 "hd": False
             })
 
-        items.append({
-            "ty": "st",
-            "nm": "Stroke",
-            "c": info["stroke"],
-            "w": info["stroke_w"],
-            "o": {"a": 0, "k": 100}
-        })
+        if info.get("stroke_w") and isinstance(info["stroke_w"], dict) and info["stroke_w"].get("k", 0) > 0:
+            items.append({
+                "ty": "st",
+                "nm": "Stroke",
+                "c": info["stroke"],
+                "w": info["stroke_w"],
+                "o": {"a": 0, "k": 100}
+            })
 
         items.append({
             "ty": "fl",
@@ -1137,8 +1138,8 @@ def is_text_container(item):
     """
     Checks if a shape group is a text container:
     1. Has multiple child groups named after single characters ('A', 'B', 'K', 'X', etc.)
-    2. Or is explicitly named 'TextGroup', 'Text', 'NAME', 'Letters', etc.
-    3. Or has child shape paths named 'Logo path' / 'Char' / 'Glyph'
+    2. Or is explicitly named 'TextGroup', 'NAME', 'Letters', 'caption', 'word'
+    3. Or has child shape paths named 'Logo path' or child groups named 'Svg Group'
     """
     if not isinstance(item, dict):
         return False, []
@@ -1160,12 +1161,15 @@ def is_text_container(item):
     if any(k in nm for k in ['textgroup', 'name', 'letters', 'caption', 'word']):
         return True, ('text_group', list(range(len(children))))
         
-    # Check 3: child shape paths named 'Logo path'
+    # Check 3: child shape paths named 'Logo path' or child groups named 'Svg Group'
     logo_paths = [
         i for i, s in enumerate(children)
-        if isinstance(s, dict) and s.get('ty') == 'sh' and 'logo path' in str(s.get('nm', '')).lower()
+        if isinstance(s, dict) and (
+            (s.get('ty') == 'sh' and 'logo path' in str(s.get('nm', '')).lower()) or
+            (s.get('ty') == 'gr' and 'svg group' in str(s.get('nm', '')).lower())
+        )
     ]
-    if len(logo_paths) >= 2:
+    if len(logo_paths) >= 1:
         return True, ('logo_paths', logo_paths)
         
     return False, []
@@ -1232,8 +1236,8 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
 def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_color: str = None, text_color: str = None):
     """
     Recolors logo templates:
-    1. badge_color: outer badge frame/border (white/light elements, cr > 0.82)
-    2. badge_bg_color: inner base/background (black/dark elements, cr < 0.18)
+    1. badge_color: outer badge frame/border (strokes ty=='st' or light elements cr > 0.82)
+    2. badge_bg_color: inner base/background (fills ty=='fl' and dark elements cr < 0.18)
     3. text_color: text fill across text layers/groups (inside TextGroup)
     Excludes custom user SVG elements (SVG_Symbol).
     """
@@ -1264,9 +1268,6 @@ def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_
         if c_t and c_t != 'none' and isinstance(c_t, list):
             c_text = c_t[:3]
 
-    if not c_primary and not c_secondary and not c_text:
-        return
-
     def walk_item(item, is_in_text=False):
         if not isinstance(item, dict):
             return
@@ -1275,7 +1276,7 @@ def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_
         if nm in ("SVG_Symbol",) or "SVG Path" in nm or "Logo path" in nm:
             return
 
-        is_text_node = is_in_text or nm == "TextGroup"
+        is_text_node = is_in_text or nm in ("TextGroup", "EMOJI") or (nm and len(nm) == 1 and nm.isalnum() and item.get("ty") == "gr")
 
         ty = item.get("ty")
         if ty in ("fl", "st") and "c" in item:
@@ -1283,16 +1284,24 @@ def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_
             if isinstance(c_val, list) and len(c_val) >= 3 and isinstance(c_val[0], (int, float)):
                 cr, cg, cb = c_val[:3]
                 alpha = c_val[3] if len(c_val) > 3 else 1.0
-                if is_text_node:
-                    if c_text and ty == "fl":
-                        item["c"]["k"] = [c_text[0], c_text[1], c_text[2], alpha]
-                else:
-                    # Outer white/light badge frame/border (cr > 0.82 and cg > 0.82 and cb > 0.82)
-                    if c_primary and cr > 0.82 and cg > 0.82 and cb > 0.82:
-                        item["c"]["k"] = [c_primary[0], c_primary[1], c_primary[2], alpha]
-                    # Inner dark/black badge base (cr < 0.18 and cg < 0.18 and cb < 0.18)
-                    elif c_secondary and cr < 0.18 and cg < 0.18 and cb < 0.18:
-                        item["c"]["k"] = [c_secondary[0], c_secondary[1], c_secondary[2], alpha]
+
+                # Tag role permanently once based on structure & initial colors
+                if "_role" not in item:
+                    if is_text_node:
+                        item["_role"] = "text"
+                    elif ty == "st" or (cr > 0.82 and cg > 0.82 and cb > 0.82):
+                        item["_role"] = "outer"
+                    elif ty == "fl" and cr < 0.18 and cg < 0.18 and cb < 0.18:
+                        item["_role"] = "inner"
+                    else:
+                        item["_role"] = "none"
+
+                if item["_role"] == "outer" and c_primary:
+                    item["c"]["k"] = [c_primary[0], c_primary[1], c_primary[2], alpha]
+                elif item["_role"] == "inner" and c_secondary:
+                    item["c"]["k"] = [c_secondary[0], c_secondary[1], c_secondary[2], alpha]
+                elif item["_role"] == "text" and c_text:
+                    item["c"]["k"] = [c_text[0], c_text[1], c_text[2], alpha]
 
         for it in item.get("it", []):
             walk_item(it, is_text_node)
@@ -1350,9 +1359,8 @@ def process_tgs_template(
                 if changed:
                     layer['shapes'] = new_shapes
 
-    # Apply custom badge/border/inner/text colors if requested
-    if badge_color or badge_bg_color or text_color:
-        apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
+    # Tag roles and apply custom badge/border/inner/text colors
+    apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
 
     return gzip.compress(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 
