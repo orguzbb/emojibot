@@ -311,19 +311,6 @@ async def create_invoice_endpoint(req: Optional[CreateInvoiceRequest] = Body(Non
         raise HTTPException(status_code=500, detail=f"Invoice yaratishda xatolik: {e}")
 
 
-class SendInvoiceRequest(BaseModel):
-    user_id: Optional[int] = None
-    count: Optional[int] = 1
-    text: Optional[str] = "EMOJI"
-    font: Optional[str] = "stapel"
-    scale: Optional[float] = 1.0
-    input_type: Optional[str] = "text"
-    mode: Optional[str] = "single"
-    pack_name: Optional[str] = None
-    template_id: Optional[str] = "1.tgs"
-    selected_templates: Optional[List[str]] = None
-
-
 @app.api_route("/api/send_invoice_to_chat", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/send_invoice_to_chat/", methods=["GET", "POST", "OPTIONS"])
 async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body(None)):
@@ -337,31 +324,53 @@ async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body
     count = req.count or 1
     total_cost = max(1, count * unit_price)
 
-    clean_text = req.text.strip().upper()[:16] if req.text else "EMOJI"
-    if not clean_text:
-        clean_text = "EMOJI"
+    is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
+    
+    if is_svg_mode:
+        try:
+            clean_svg = validate_and_clean_svg(req.svg_data)
+            svg_title = req.text or "SVG"
+            svg_id = cache_svg(clean_svg, svg_title)
+            clean_text = svg_id
+            font_key = "svg"
+            action_type = "svg_all" if req.mode == "all" else ("svg_one" if req.mode == "single" else "svg_selected")
+            inv_title = f"{svg_title[:20]} SVG Emojilar"
+            inv_desc = f"'{svg_title[:20]}' (SVG) uchun {count} ta emoji to'lovi."
+        except Exception as e:
+            logger.error(f"SVG validation error in invoice: {e}")
+            clean_text = "SVG"
+            font_key = "svg"
+            action_type = "svg_one"
+            inv_title = "SVG Emoji to'plami"
+            inv_desc = f"SVG uchun {count} ta emoji to'lovi."
+    else:
+        clean_text = req.text.strip().upper()[:16] if req.text else "EMOJI"
+        if not clean_text:
+            clean_text = "EMOJI"
+        font_key = req.font or "stapel"
+        action_type = "gen_all" if req.mode == "all" else ("gen_one" if req.mode == "single" else "gen_selected")
+        inv_title = "Emoji to'plam generatsiyasi"
+        inv_desc = f"'{clean_text}' uchun {count} ta emoji to'lovi."
 
     bot = get_bot()
-
-    action_type = "gen_all" if req.mode == "all" else ("gen_one" if req.mode == "single" else "gen_selected")
 
     if req.selected_templates and len(req.selected_templates) > 0:
         raw_files = ",".join(req.selected_templates)
     elif req.mode == "single":
-        raw_files = req.template_id or "1.tgs"
+        raw_files = req.template_id or ("14.tgs" if is_svg_mode else "1.tgs")
     else:
         raw_files = "all"
 
     dest_flag = f"add_{req.pack_name}" if (req.mode == "add_to_pack" and req.pack_name) else "new"
     extra_param = f"{raw_files}|{dest_flag}"
 
-    payload = f"buy_pack:{req.user_id}:{req.font}:{clean_text}:{action_type}:{extra_param}:{total_cost}"
+    payload = f"buy_pack:{req.user_id}:{font_key}:{clean_text}:{action_type}:{extra_param}:{total_cost}"
 
     try:
         await bot.send_invoice(
             chat_id=req.user_id,
-            title="Emoji to'plam generatsiyasi",
-            description=f"'{clean_text}' uchun {count} ta emoji to'lovi.",
+            title=inv_title,
+            description=inv_desc,
             payload=payload,
             currency="XTR",
             prices=[LabeledPrice(label=f"Stars ({count} ta emoji)", amount=total_cost)]
@@ -411,24 +420,25 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
     if not font_file_path.exists():
         font_file_path = Path(DEFAULT_FONT_PATH)
 
-    tpl_name = str(req.template_id or "14.tgs")
+    tpl_name = str(req.template_id or ("14.tgs" if is_svg_mode else "1.tgs"))
     if not tpl_name.endswith(".tgs"):
         tpl_name = f"{tpl_name}.tgs"
         
     raw_bytes = get_template_bytes(tpl_name)
     if not raw_bytes:
-        raw_bytes = get_template_bytes("14.tgs")
+        raw_bytes = get_template_bytes("14.tgs" if is_svg_mode else "1.tgs")
     if not raw_bytes:
         raise HTTPException(status_code=404, detail="Shablon fayli topilmadi")
 
     try:
+        effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
             text=clean_text,
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0,
-            svg_data=req.svg_data,
-            input_type=req.input_type or ("svg" if is_svg_mode else "text")
+            svg_data=req.svg_data if is_svg_mode else None,
+            input_type=effective_input_type
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
@@ -609,13 +619,14 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
         with open(tgs_file, "rb") as f:
             raw_bytes = f.read()
 
+        effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
             text=clean_text,
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0,
-            svg_data=req.svg_data,
-            input_type=req.input_type or "text"
+            svg_data=req.svg_data if is_svg_mode else None,
+            input_type=effective_input_type
         )
 
         emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -827,13 +838,14 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
         with open(tgs_path, "rb") as f:
             raw_bytes = f.read()
 
+        effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
             text=clean_text,
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0,
-            svg_data=req.svg_data,
-            input_type=req.input_type or "text"
+            svg_data=req.svg_data if is_svg_mode else None,
+            input_type=effective_input_type
         )
 
         sticker_item = InputSticker(

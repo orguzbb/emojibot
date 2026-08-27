@@ -662,8 +662,10 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
         throw new Error(animationData.detail || "Xato");
     } catch (err) {
         console.warn("API preview fallback:", err);
-        const fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
-        if (fallbackData) return fallbackData;
+        if (!isSvg) {
+            const fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
+            if (fallbackData) return fallbackData;
+        }
         return null;
     }
 }
@@ -718,10 +720,12 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
             });
         }
     } catch (e) {
-        needed.forEach(file => {
-            const fallbackData = getPreRenderedTemplateData(file, font, scale);
-            if (fallbackData) results[file] = fallbackData;
-        });
+        if (!isSvg) {
+            needed.forEach(file => {
+                const fallbackData = getPreRenderedTemplateData(file, font, scale);
+                if (fallbackData) results[file] = fallbackData;
+            });
+        }
     }
     
     return results;
@@ -1447,7 +1451,8 @@ async function handlePayViaBotStars() {
             body: JSON.stringify({
                 user_id: uid,
                 count: totalCount,
-                input_type: inputType || "text",
+                input_type: inputType || (state.inputType === 'svg' ? 'svg' : 'text'),
+                svg_data: svgData || (state.inputType === 'svg' ? state.svgData : null),
                 text: cleanText,
                 font: state.font,
                 scale: state.scale,

@@ -27,7 +27,14 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramRetryAfter, TelegramAPIError
 
 from config import BOT_USERNAME, TEMPLATES_DIR, FONTS_DIR, WEBAPP_URL
-from lottie_processor import process_tgs_template, process_all_templates
+from lottie_processor import (
+    process_tgs_template,
+    process_all_templates,
+    validate_and_clean_svg,
+    cache_svg,
+    get_cached_svg,
+    to_svg_slug
+)
 from database import (
     add_or_update_user,
     increment_user_packs,
@@ -63,6 +70,11 @@ FONTS_MAP = {
         "name": "Grobold",
         "file": "Grobold.ttf",
         "desc": "Qalin & Zamonaviy"
+    },
+    "svg": {
+        "name": "SVG Vektor",
+        "file": "stapel.ttf",
+        "desc": "Vektor Grafikasi"
     }
 }
 
@@ -653,7 +665,76 @@ async def handle_web_app_data(message: Message):
         logger.error(f"Web app data parse error: {e}")
 
 
-# ==================== TEXT INPUT & FONT SELECTION ====================
+# ==================== SVG UPLOAD & TEXT INPUT & FONT SELECTION ====================
+
+@router.message(F.document)
+async def handle_document_input(message: Message, bot: Bot):
+    doc = message.document
+    if not doc:
+        return
+
+    file_name = doc.file_name or "vector.svg"
+    if not file_name.lower().endswith(".svg"):
+        await message.answer("⚠️ Iltimos, faqat <code>.svg</code> kengaytmali vektor fayl yuboring!", parse_mode=ParseMode.HTML)
+        return
+
+    user = message.from_user
+    add_or_update_user(user_id=user.id, username=user.username, first_name=user.first_name)
+
+    status_msg = await message.answer("⏳ <i>SVG vektor fayli tekshirilmoqda...</i>", parse_mode=ParseMode.HTML)
+
+    try:
+        file_info = await bot.get_file(doc.file_id)
+        downloaded = await bot.download_file(file_info.file_path)
+        raw_bytes = downloaded.read() if hasattr(downloaded, 'read') else downloaded
+
+        clean_svg = validate_and_clean_svg(raw_bytes)
+        title = file_name.rsplit(".", 1)[0]
+        svg_id = cache_svg(clean_svg, title)
+
+        p = Path(TEMPLATES_DIR)
+        tgs_count = len(list(p.glob("*.tgs"))) if p.exists() else 117
+        price = get_emoji_price()
+        balance = get_user_balance(user.id)
+
+        text = (
+            f"🎨 <b>SVG Vektor qabul qilindi!</b>\n\n"
+            f"📄 <b>Fayl:</b> <code>{file_name}</code>\n"
+            f"💰 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b> (Balansingiz: <b>{balance} ⭐</b>)\n\n"
+            f"Qanday tarzda tayyorlashni xohlaysiz?"
+        )
+
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text=f"🌟 Barcha {tgs_count} ta shablon (To'liq to'plam)",
+                        callback_data=f"choose_dest:svg_all:svg:{svg_id}:all"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🎯 Bitta shablonni tanlash",
+                        callback_data=f"svg_pick:{svg_id}:0"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")
+                ]
+            ]
+        )
+
+        try:
+            await status_msg.delete()
+        except:
+            pass
+
+        await message.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+    except Exception as e:
+        logger.error(f"SVG document handling error: {e}", exc_info=True)
+        await status_msg.edit_text(f"❌ SVG faylini o'qishda xatolik: {e}")
+
 
 @router.message(F.text)
 async def handle_name_input(message: Message):
@@ -663,6 +744,46 @@ async def handle_name_input(message: Message):
     raw_text = message.text.strip()
     if raw_text.startswith("/"):
         return
+
+    # Check if raw_text is SVG XML code
+    if "<svg" in raw_text.lower() and "</svg>" in raw_text.lower():
+        try:
+            clean_svg = validate_and_clean_svg(raw_text)
+            svg_id = cache_svg(clean_svg, "SVG_Vector")
+            p = Path(TEMPLATES_DIR)
+            tgs_count = len(list(p.glob("*.tgs"))) if p.exists() else 117
+            price = get_emoji_price()
+            balance = get_user_balance(user.id)
+
+            text = (
+                f"🎨 <b>SVG Vektor kodi qabul qilindi!</b>\n\n"
+                f"💰 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b> (Balansingiz: <b>{balance} ⭐</b>)\n\n"
+                f"Qanday tarzda tayyorlashni xohlaysiz?"
+            )
+
+            markup = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text=f"🌟 Barcha {tgs_count} ta shablon (To'liq to'plam)",
+                            callback_data=f"choose_dest:svg_all:svg:{svg_id}:all"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text="🎯 Bitta shablonni tanlash",
+                            callback_data=f"svg_pick:{svg_id}:0"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")
+                    ]
+                ]
+            )
+            await message.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+            return
+        except Exception as e:
+            logger.warning(f"Failed to parse raw SVG text: {e}")
 
     clean_text = re.sub(r'[^a-zA-Z0-9а-яА-ЯёЁ_ \-]', '', raw_text).strip().upper()
     if not clean_text:
@@ -747,7 +868,7 @@ async def handle_font_selected(callback: CallbackQuery):
     await callback.answer()
 
 
-# --- BITTA SHABLONNI TANLASH MENYUSI (PAGINATSIYA BILAN) ---
+# --- BITTA SHABLONNI TANLASH MENYUSI (MATN UCHUN) ---
 @router.callback_query(F.data.startswith("pick_single:"))
 async def handle_pick_single_menu(callback: CallbackQuery):
     parts = callback.data.split(":")
@@ -809,6 +930,71 @@ async def handle_pick_single_menu(callback: CallbackQuery):
     await callback.answer()
 
 
+# --- BITTA SHABLONNI TANLASH MENYUSI (SVG UCHUN) ---
+@router.callback_query(F.data.startswith("svg_pick:"))
+async def handle_svg_pick_single_menu(callback: CallbackQuery):
+    parts = callback.data.split(":")
+    svg_id = parts[1]
+    page = int(parts[2]) if len(parts) > 2 else 0
+
+    p = Path(TEMPLATES_DIR)
+    tgs_files = sorted(p.glob("*.tgs"), key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name)) if p.exists() else []
+
+    if not tgs_files:
+        await callback.answer("❌ Shablonlar topilmadi.", show_alert=True)
+        return
+
+    PER_PAGE = 20
+    total_pages = (len(tgs_files) + PER_PAGE - 1) // PER_PAGE
+    page = max(0, min(page, total_pages - 1))
+
+    start_idx = page * PER_PAGE
+    end_idx = start_idx + PER_PAGE
+    current_batch = tgs_files[start_idx:end_idx]
+
+    cached = get_cached_svg(svg_id)
+    svg_title = cached.get("title", "SVG") if cached else "SVG"
+
+    text = (
+        f"🎯 <b>Aynan qaysi shablonga SVG joylamoqchisiz?</b>\n"
+        f"🎨 <b>SVG:</b> <code>{svg_title}</code>\n"
+        f"Jami: <b>{len(tgs_files)} ta</b> shablon (Sahifa: <b>{page + 1}/{total_pages}</b>)\n\n"
+        "Kerakli shablon raqamini bosing: 👇"
+    )
+
+    buttons = []
+    row = []
+    for f in current_batch:
+        btn_label = f.stem
+        row.append(
+            InlineKeyboardButton(
+                text=f"#{btn_label}",
+                callback_data=f"choose_dest:svg_one:svg:{svg_id}:{f.name}"
+            )
+        )
+        if len(row) == 4:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"svg_pick:{svg_id}:{page - 1}"))
+    nav_row.append(InlineKeyboardButton(text=f"📄 {page + 1}/{total_pages}", callback_data="ignore"))
+    if page < total_pages - 1:
+        nav_row.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"svg_pick:{svg_id}:{page + 1}"))
+
+    buttons.append(nav_row)
+    buttons.append([
+        InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")
+    ])
+
+    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
 @router.callback_query(F.data == "ignore")
 async def cb_ignore(callback: CallbackQuery):
     await callback.answer()
@@ -846,10 +1032,11 @@ async def handle_choose_destination(callback: CallbackQuery):
             )
         ])
 
+    back_cb = f"svg_pick:{clean_text}:0" if (font_key == "svg" and action_type == "svg_one") else ("menu_main" if font_key == "svg" else f"font:{font_key}:{clean_text}")
     buttons.append([
         InlineKeyboardButton(
             text="◀️ Orqaga",
-            callback_data=f"font:{font_key}:{clean_text}"
+            callback_data=back_cb
         )
     ])
 
@@ -1006,20 +1193,31 @@ async def execute_generation_by_params(bot: Bot, user_id: int, clean_text: str, 
         elif dest_info == "new":
             dest_mode = "new"
 
+    is_svg = action_type.startswith("svg_") or font_key == "svg"
+    svg_data = None
+    if is_svg:
+        cached = get_cached_svg(clean_text)
+        if cached:
+            svg_data = cached["svg"]
+            clean_text = cached.get("title", "SVG")
+        else:
+            svg_data = clean_text if "<svg" in clean_text.lower() else None
+            clean_text = "SVG"
+
     if dest_mode == "add" and pack_target:
-        await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pack_target, raw_target, chat_id)
-    elif action_type == "gen_all":
-        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id)
-    elif action_type == "gen_one":
-        await execute_single_sticker_generation(bot, user_id, clean_text, font_key, raw_target, chat_id)
-    elif action_type == "gen_selected" or "," in raw_target:
+        await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pack_target, raw_target, chat_id, svg_data=svg_data)
+    elif action_type in ("gen_all", "svg_all"):
+        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id, svg_data=svg_data)
+    elif action_type in ("gen_one", "svg_one"):
+        await execute_single_sticker_generation(bot, user_id, clean_text, font_key, raw_target, chat_id, svg_data=svg_data)
+    elif action_type in ("gen_selected", "svg_selected") or "," in raw_target:
         templates = [t.strip() for t in raw_target.split(",") if t.strip()]
-        await execute_selected_templates_generation(bot, user_id, clean_text, font_key, templates, chat_id)
+        await execute_selected_templates_generation(bot, user_id, clean_text, font_key, templates, chat_id, svg_data=svg_data)
     else:
-        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id)
+        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id, svg_data=svg_data)
 
 
-async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, template_filenames: List[str], chat_id: int):
+async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, template_filenames: List[str], chat_id: int, svg_data: Optional[str] = None):
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     
@@ -1034,9 +1232,10 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
         await bot.send_message(chat_id, "❌ Shablonlar topilmadi.")
         return
 
+    item_label = f"🎨 <b>SVG: \"{clean_text}\"</b>" if svg_data else f"🎨 <b>\"{clean_text}\" ({font_info['name']})</b>"
     status_msg = await bot.send_message(
         chat_id,
-        f"🎨 <b>\"{clean_text}\"</b> uchun <b>{len(target_files)} ta</b> emoji tayyorlanmoqda...\n⏳ <i>Iltimos, biroz kuting...</i>",
+        f"{item_label} uchun <b>{len(target_files)} ta</b> emoji tayyorlanmoqda...\n⏳ <i>Iltimos, biroz kuting...</i>",
         parse_mode=ParseMode.HTML
     )
 
@@ -1049,7 +1248,9 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
             processed_bytes = process_tgs_template(
                 template_bytes=template_bytes,
                 text=clean_text,
-                font_path=str(font_file_path)
+                font_path=str(font_file_path),
+                svg_data=svg_data,
+                input_type="svg" if svg_data else "text"
             )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -1061,10 +1262,15 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
                 )
             )
 
-        name_slug = to_name_slug(clean_text)
-        short_code = random.randint(100, 9999)
+        if svg_data:
+            name_slug = to_svg_slug(clean_text)
+            pack_title = f"{clean_text} Vector Emojis"
+        else:
+            name_slug = to_name_slug(clean_text)
+            pack_title = f"{clean_text} Emojis"
+
+        short_code = random.randint(100, 99999)
         pack_name = f"{name_slug}_{short_code}_by_{BOT_USERNAME}"
-        pack_title = f"{clean_text} Emojis"
         total_stickers = len(input_stickers)
 
         await bot.create_new_sticker_set(
@@ -1103,10 +1309,10 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
             ]
         )
 
+        type_text = f"🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"✍️ <b>Matn:</b> {clean_text}\n🎨 <b>Shrift:</b> {font_info['name']}"
         await status_msg.edit_text(
             f"🎉 <b>Tabriklaymiz! Emoji to'plamingiz tayyor!</b>\n\n"
-            f"✍️ <b>Matn:</b> {clean_text}\n"
-            f"🎨 <b>Shrift:</b> {font_info['name']}\n"
+            f"{type_text}\n"
             f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_name}</a>\n"
             f"⚡ <b>Jami emojilar:</b> {total_stickers} ta\n\n"
             f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>",
@@ -1121,25 +1327,36 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
 
 # ==================== GENERATION EXECUTION FUNCTIONS ====================
 
-async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, tgs_filename: str, chat_id: int):
+async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, tgs_filename: str, chat_id: int, svg_data: Optional[str] = None):
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     target_tgs = Path(TEMPLATES_DIR) / tgs_filename
-
     if not target_tgs.exists():
-        await bot.send_message(chat_id, f"❌ Shablon {tgs_filename} topilmadi.")
-        return
+        target_tgs = Path(TEMPLATES_DIR) / f"{tgs_filename}.tgs"
+    if not target_tgs.exists():
+        target_tgs = next(Path(TEMPLATES_DIR).glob("*.tgs"))
 
     status_msg = await bot.send_message(chat_id, "⏳ <i>Emoji tayyorlanmoqda...</i>", parse_mode=ParseMode.HTML)
 
     try:
         with open(target_tgs, "rb") as f:
-            proc_bytes = process_tgs_template(f.read(), clean_text, str(font_file_path))
+            proc_bytes = process_tgs_template(
+                template_bytes=f.read(),
+                text=clean_text,
+                font_path=str(font_file_path),
+                svg_data=svg_data,
+                input_type="svg" if svg_data else "text"
+            )
 
         rand_suffix = random.randint(1000, 99999)
-        slug_text = re.sub(r'[^a-zA-Z0-9_]', '', clean_text.lower()) or "custom"
+        if svg_data:
+            slug_text = to_svg_slug(clean_text)
+            pack_title = f"{clean_text} Vector Emoji"
+        else:
+            slug_text = to_name_slug(clean_text)
+            pack_title = f"{clean_text} ({font_info['name']})"
+
         pack_name = f"{slug_text}_{rand_suffix}_by_{BOT_USERNAME}"
-        pack_title = f"{clean_text} ({font_info['name']})"
 
         sticker_item = InputSticker(
             sticker=BufferedInputFile(proc_bytes, filename="emoji_1.tgs"),
@@ -1165,10 +1382,10 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
             ]
         )
 
+        type_text = f"🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"✍️ <b>Matn:</b> {clean_text}\n🎨 <b>Shrift:</b> {font_info['name']}"
         await status_msg.edit_text(
             f"🎉 <b>Tabriklaymiz! Emoji yaratildi!</b>\n\n"
-            f"✍️ <b>Matn:</b> {clean_text}\n"
-            f"🎨 <b>Shrift:</b> {font_info['name']}\n"
+            f"{type_text}\n"
             f"📦 <b>To'plam nomi:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
             f"⚡ <b>Jami emojilar:</b> 1 ta\n\n"
             f"<i>Pastdagi tugma orqali to'plamni Telegramga qo'shib olishingiz mumkin:</i>",
@@ -1181,7 +1398,7 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
         await status_msg.edit_text(f"❌ Xatolik yuz berdi: {e}")
 
 
-async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, pack_name: str, tgs_mode: str, chat_id: int):
+async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, pack_name: str, tgs_mode: str, chat_id: int, svg_data: Optional[str] = None):
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
 
@@ -1190,14 +1407,21 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
     try:
         p = Path(TEMPLATES_DIR)
         if tgs_mode == 'all':
-            tgs_files = sorted(p.glob("*.tgs"), key=lambda f: (len(f.name), f.name))
+            tgs_files = sorted(p.glob("*.tgs"), key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name))
         else:
-            tgs_files = [p / tgs_mode]
+            target = p / tgs_mode if (p / tgs_mode).exists() else (p / f"{tgs_mode}.tgs")
+            tgs_files = [target] if target.exists() else [next(p.glob("*.tgs"))]
 
         added_count = 0
         for idx, tfile in enumerate(tgs_files):
             with open(tfile, "rb") as f:
-                proc_bytes = process_tgs_template(f.read(), clean_text, str(font_file_path))
+                proc_bytes = process_tgs_template(
+                    template_bytes=f.read(),
+                    text=clean_text,
+                    font_path=str(font_file_path),
+                    svg_data=svg_data,
+                    input_type="svg" if svg_data else "text"
+                )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
             sticker_item = InputSticker(
@@ -1235,7 +1459,7 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
         await status_msg.edit_text(f"❌ Qo'shishda xatolik: {e}\n<i>Eslatma: Faqat o'zingiz yaratgan paketlarga stiker qo'sha olasiz.</i>", parse_mode=ParseMode.HTML)
 
 
-async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, chat_id: int):
+async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, chat_id: int, svg_data: Optional[str] = None):
     if user_id in ACTIVE_USERS:
         await bot.send_message(chat_id, "⚠️ Sizda hozirda emoji paket tayyorlanmoqda. Iltimos, kuting!")
         return
@@ -1244,9 +1468,10 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
 
+    item_label = f"🎨 <b>SVG: \"{clean_text}\"</b>" if svg_data else f"🎨 <b>\"{clean_text}\" ({font_info['name']})</b>"
     status_msg = await bot.send_message(
         chat_id,
-        f"🎨 <b>\"{clean_text}\"</b> uchun <b>{font_info['name']}</b> shriftida barcha shablonlar tayyorlanmoqda...\n"
+        f"{item_label} uchun barcha shablonlar tayyorlanmoqda...\n"
         f"⏳ <i>Iltimos, biroz kuting...</i>",
         parse_mode=ParseMode.HTML
     )
@@ -1268,7 +1493,9 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
             processed_bytes = process_tgs_template(
                 template_bytes=template_bytes,
                 text=clean_text,
-                font_path=str(font_file_path)
+                font_path=str(font_file_path),
+                svg_data=svg_data,
+                input_type="svg" if svg_data else "text"
             )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -1280,10 +1507,15 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
                 )
             )
 
-        name_slug = to_name_slug(clean_text)
-        short_code = random.randint(100, 9999)
+        if svg_data:
+            name_slug = to_svg_slug(clean_text)
+            pack_title = f"{clean_text} Vector Emojis"
+        else:
+            name_slug = to_name_slug(clean_text)
+            pack_title = f"{clean_text} Emojis"
+
+        short_code = random.randint(100, 99999)
         pack_name = f"{name_slug}_{short_code}_by_{BOT_USERNAME}"
-        pack_title = f"{clean_text} Emojis"
         total_stickers = len(input_stickers)
         emoji_pack_created = False
 
@@ -1320,7 +1552,7 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
                         percent = int(((idx + 1) / total_stickers) * 100)
                         try:
                             await status_msg.edit_text(
-                                f"🎨 <b>\"{clean_text}\" ({font_info['name']})</b>\n\n"
+                                f"{item_label}\n\n"
                                 f"⏳ Emoji to'plam yaratilmoqda: <b>{idx+1}/{total_stickers}</b> ({percent}%)\n"
                                 f"<i>Iltimos, biroz kuting...</i>",
                                 parse_mode=ParseMode.HTML
@@ -1365,12 +1597,12 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
             except:
                 pass
 
+            type_text = f"🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"🔤 <b>Matn:</b> <code>{clean_text}</code>\n🎨 <b>Shrift:</b> <b>{font_info['name']}</b>"
             await bot.send_message(
                 chat_id=chat_id,
                 text=(
                     f"✅ <b>Sizning shaxsiy emoji paketingiz tayyor bo'ldi!</b>\n\n"
-                    f"🔤 <b>Matn:</b> <code>{clean_text}</code>\n"
-                    f"🎨 <b>Shrift:</b> <b>{font_info['name']}</b>\n"
+                    f"{type_text}\n"
                     f"📦 <b>Animatsiyalar soni:</b> {len(input_stickers)} ta\n"
                     f"🔗 <b>Havola:</b> <a href=\"{pack_link}\">{pack_link}</a>\n\n"
                     f"👇 Quyidagi tugma orqali to'plamni Telegramingizga qo'shib oling:"
