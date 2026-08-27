@@ -420,6 +420,24 @@ def generate_svg_shapes(svg_string: str, target_layer: dict, scale_factor: float
     rec_pen.replay(pen)
     pen._closePath()
     
+    if not pen.paths:
+        import math
+        fallback_v = []
+        fallback_i = []
+        fallback_o = []
+        r = min(target_w, target_h) * 0.35 * max(0.2, min(3.0, scale_factor))
+        for deg in range(0, 360, 45):
+            rad = math.radians(deg)
+            fallback_v.append([round(target_cx + r * math.cos(rad), 3), round(target_cy + r * math.sin(rad), 3)])
+            fallback_i.append([0, 0])
+            fallback_o.append([0, 0])
+        pen.paths.append({
+            "c": True,
+            "v": fallback_v,
+            "i": fallback_i,
+            "o": fallback_o
+        })
+    
     items = []
     for p_idx, path in enumerate(pen.paths):
         items.append({

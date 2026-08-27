@@ -219,12 +219,23 @@ function haptic(style = 'light') {
 let toastTimeout = null;
 function showToast(msg, icon = 'ℹ️', duration = 3000) {
     if (toastTimeout) clearTimeout(toastTimeout);
-    dom.toastMsg.textContent = msg;
-    dom.toastIcon.textContent = icon;
-    dom.toast.classList.remove('hidden');
+    let str = msg;
+    if (msg instanceof Error) {
+        str = msg.message;
+    } else if (typeof msg === 'object' && msg !== null) {
+        if (msg.message) str = msg.message;
+        else if (msg.detail) str = typeof msg.detail === 'string' ? msg.detail : JSON.stringify(msg.detail);
+        else str = JSON.stringify(msg);
+    }
+    if (typeof str === 'string' && (str.includes('[object Object]') || str.trim() === '❌' || str.trim() === '⚠️')) {
+        str = "Xatolik yuz berdi. Qaytadan urinib ko'ring.";
+    }
+    if (dom.toastMsg) dom.toastMsg.textContent = str || "Xabar";
+    if (dom.toastIcon) dom.toastIcon.textContent = icon;
+    if (dom.toast) dom.toast.classList.remove('hidden');
     
     toastTimeout = setTimeout(() => {
-        dom.toast.classList.add('hidden');
+        dom.toast?.classList.add('hidden');
     }, duration);
 }
 
@@ -443,14 +454,24 @@ async function apiFetch(endpoint, options = {}) {
             }
             const errData = await res.json().catch(() => null);
             if (errData && errData.detail) {
-                throw new Error(errData.detail);
+                let detailMsg = errData.detail;
+                if (Array.isArray(detailMsg)) {
+                    detailMsg = detailMsg.map(d => (d && (d.msg || d.detail)) ? (d.msg || d.detail) : JSON.stringify(d)).join("; ");
+                } else if (typeof detailMsg === 'object' && detailMsg !== null) {
+                    detailMsg = detailMsg.msg || detailMsg.detail || JSON.stringify(detailMsg);
+                }
+                throw new Error(String(detailMsg));
             }
             lastError = new Error(`Server xatosi (${res.status})`);
         } catch (e) {
-            if (e.message && !e.message.startsWith("Server xatosi") && !e.message.startsWith("HTTP")) {
-                throw e;
+            let errorMsg = e.message || String(e);
+            if (typeof e === 'object' && e !== null && !e.message) {
+                errorMsg = JSON.stringify(e);
             }
-            lastError = e;
+            if (errorMsg && !errorMsg.startsWith("Server xatosi") && !errorMsg.startsWith("HTTP")) {
+                throw new Error(errorMsg);
+            }
+            lastError = new Error(errorMsg);
         }
     }
     throw lastError || new Error("API ulanishida xatolik yuz berdi");
@@ -706,6 +727,37 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
     return results;
 }
 
+// ==================== TAB & MODE NAVIGATION ====================
+
+function switchTab(tabKey) {
+    state.activeTab = tabKey;
+    if (tabKey === 'name') {
+        dom.tabBtnName?.classList.add('active');
+        dom.tabBtnLogo?.classList.remove('active');
+        dom.tabContentName?.classList.add('active');
+        dom.tabContentLogo?.classList.remove('active');
+        if (state.inputType !== 'svg') {
+            state.selectedTemplate = Array.from(state.selectedTickets)[0] || "1.tgs";
+        }
+    } else {
+        dom.tabBtnLogo?.classList.add('active');
+        dom.tabBtnName?.classList.remove('active');
+        dom.tabContentLogo?.classList.add('active');
+        dom.tabContentName?.classList.remove('active');
+        state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+    }
+    updateLivePreview();
+    updateSelectionStatus();
+}
+
+const debouncedFullUpdate = debounce(() => {
+    if (state.activeTab === 'name') {
+        renderTicketsGrid(dom.templateSearch?.value || '');
+    } else {
+        renderLogosGrid(dom.logoSearch?.value || '');
+    }
+}, 300);
+
 // ==================== SVG LOGIC & HANDLERS ====================
 
 function setInputMode(mode) {
@@ -719,8 +771,9 @@ function setInputMode(mode) {
         dom.modeSectionSvg?.classList.remove('hidden');
         
         // Auto-switch to logo tab because SVG icons belong to 104 Logo icon templates (14-117)
-        if (state.activeTab === 'name') {
-            switchTab('logo');
+        switchTab('logo');
+        if (!state.selectedTemplate || state.selectedTemplate === '1.tgs' || parseInt(getTemplateNumber(state.selectedTemplate)) <= 13) {
+            state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
         }
         updateSvgThumbnail();
     } else {
@@ -761,23 +814,31 @@ function loadSvgFile(file) {
     
     const reader = new FileReader();
     reader.onload = (e) => {
-        const content = e.target.result;
-        if (!content || !content.toLowerCase().includes('<svg')) {
-            showToast("❌ Yaroqsiz SVG fayl! <svg> tegi topilmadi.", "❌", 4000);
-            haptic('error');
-            return;
+        try {
+            const content = e.target.result;
+            if (!content || !content.toLowerCase().includes('<svg')) {
+                showToast("❌ Yaroqsiz SVG fayl! <svg> tegi topilmadi.", "❌", 4000);
+                haptic('error');
+                return;
+            }
+            state.svgData = content;
+            state.svgFileName = name;
+            state.previewCache.clear();
+            if (!state.selectedTemplate || parseInt(getTemplateNumber(state.selectedTemplate)) <= 13) {
+                state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+            }
+            updateSvgThumbnail();
+            showToast(`✅ Vektor SVG yuklandi: ${name}`, "🎨", 2500);
+            haptic('success');
+            updateLivePreview();
+            debouncedFullUpdate();
+        } catch (err) {
+            console.error("SVG parsing error:", err);
+            showToast(`❌ Xatolik: ${err.message || err}`, "❌");
         }
-        state.svgData = content;
-        state.svgFileName = name;
-        state.previewCache.clear();
-        updateSvgThumbnail();
-        showToast(`✅ Vektor SVG yuklandi: ${name}`, "🎨", 2500);
-        haptic('success');
-        updateLivePreview();
-        debouncedFullUpdate();
     };
     reader.onerror = () => {
-        showToast("❌ Faylni o'qishda xatolik", "❌");
+        showToast("❌ Faylni o'qishda xatolik yuz berdi", "❌");
     };
     reader.readAsText(file);
 }
@@ -799,48 +860,57 @@ function removeSvg() {
 async function updateLivePreview() {
     const num = getTemplateNumber(state.selectedTemplate);
     const isTicket = parseInt(num) <= 13;
-    dom.currentTemplateTag.textContent = `${isTicket ? 'Ticket' : 'Logo'} #${num}`;
+    if (dom.currentTemplateTag) {
+        dom.currentTemplateTag.textContent = `${isTicket ? 'Ticket' : 'Logo'} #${num}`;
+    }
     
     if (state.inputType === 'svg') {
         if (!state.svgData) {
-            dom.previewTextDisplay.textContent = "SVG tanlanmagan";
-            dom.previewFontDisplay.textContent = "🎨 Vektor";
+            if (dom.previewTextDisplay) dom.previewTextDisplay.textContent = "SVG tanlanmagan";
+            if (dom.previewFontDisplay) dom.previewFontDisplay.textContent = "🎨 Vektor";
             if (state.livePlayer) {
                 try { state.livePlayer.destroy(); } catch (e) {}
                 state.livePlayer = null;
             }
-            dom.liveLottiePlayer.innerHTML = `
-                <div class="empty-svg-preview">
-                    <div class="empty-svg-icon">🎨</div>
-                    <span>SVG faylingizni yuklang</span>
-                    <div class="empty-svg-sub">Vektor avtomatik tanlangan logo shablonga joylashtiriladi</div>
-                </div>
-            `;
+            if (dom.liveLottiePlayer) {
+                dom.liveLottiePlayer.innerHTML = `
+                    <div class="empty-svg-preview">
+                        <div class="empty-svg-icon">🎨</div>
+                        <span>SVG faylingizni yuklang</span>
+                        <div class="empty-svg-sub">Vektor avtomatik tanlangan logo shablonga joylashtiriladi</div>
+                    </div>
+                `;
+            }
             return;
         }
-        dom.previewTextDisplay.textContent = state.svgFileName || "SVG Vektor";
-        dom.previewFontDisplay.textContent = `🎨 Vektor (${Math.round(state.scale * 100)}%)`;
+        if (dom.previewTextDisplay) dom.previewTextDisplay.textContent = state.svgFileName || "SVG Vektor";
+        if (dom.previewFontDisplay) dom.previewFontDisplay.textContent = `🎨 Vektor (${Math.round(state.scale * 100)}%)`;
     } else {
-        dom.previewTextDisplay.textContent = state.text ? state.text.trim().toUpperCase() : "—";
+        if (dom.previewTextDisplay) dom.previewTextDisplay.textContent = state.text ? state.text.trim().toUpperCase() : "—";
         const fontNames = { stapel: 'Stapel', inter: 'Inter', grobold: 'Grobold' };
-        dom.previewFontDisplay.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
+        if (dom.previewFontDisplay) dom.previewFontDisplay.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
     }
     
     const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
-    const lottieData = await fetchLottiePreview(state.selectedTemplate, cleanTxt, state.font, state.scale);
-    
-    if (lottieData) {
-        if (state.livePlayer) {
-            try { state.livePlayer.destroy(); } catch (e) {}
+    try {
+        const lottieData = await fetchLottiePreview(state.selectedTemplate, cleanTxt, state.font, state.scale);
+        
+        if (lottieData && dom.liveLottiePlayer) {
+            if (state.livePlayer) {
+                try { state.livePlayer.destroy(); } catch (e) {}
+                state.livePlayer = null;
+            }
+            dom.liveLottiePlayer.innerHTML = '';
+            state.livePlayer = lottie.loadAnimation({
+                container: dom.liveLottiePlayer,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: lottieData
+            });
         }
-        dom.liveLottiePlayer.innerHTML = '';
-        state.livePlayer = lottie.loadAnimation({
-            container: dom.liveLottiePlayer,
-            renderer: 'svg',
-            loop: true,
-            autoplay: true,
-            animationData: lottieData
-        });
+    } catch (err) {
+        console.warn("Live preview failed:", err);
     }
 }
 
@@ -1667,25 +1737,6 @@ function setupEventListeners() {
         haptic('selection');
         switchTab('logo');
     });
-    
-    function switchTab(tabKey) {
-        state.activeTab = tabKey;
-        if (tabKey === 'name') {
-            dom.tabBtnName.classList.add('active');
-            dom.tabBtnLogo.classList.remove('active');
-            dom.tabContentName.classList.add('active');
-            dom.tabContentLogo.classList.remove('active');
-            state.selectedTemplate = Array.from(state.selectedTickets)[0] || "1.tgs";
-        } else {
-            dom.tabBtnLogo.classList.add('active');
-            dom.tabBtnName.classList.remove('active');
-            dom.tabContentLogo.classList.add('active');
-            dom.tabContentName.classList.remove('active');
-            state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
-        }
-        updateLivePreview();
-        updateSelectionStatus();
-    }
     
     // Destination selector (New Pack vs Existing Pack)
     dom.destPillNew?.addEventListener('click', () => {
