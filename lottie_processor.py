@@ -19,13 +19,15 @@ from fontTools.pens.boundsPen import BoundsPen
 SVG_CACHE = {}
 
 
-def cache_svg(svg_content: str, title: str = "SVG") -> str:
+def cache_svg(svg_content: str, title: str = "SVG", badge_color: str = None) -> str:
     if not svg_content:
         return ""
-    svg_id = hashlib.md5(svg_content.encode('utf-8')).hexdigest()[:12]
+    content_key = f"{svg_content}_{badge_color or ''}"
+    svg_id = hashlib.md5(content_key.encode('utf-8')).hexdigest()[:12]
     SVG_CACHE[svg_id] = {
         "svg": svg_content,
         "title": title[:30] if title else "SVG",
+        "badge_color": badge_color,
         "time": time.time()
     }
     if len(SVG_CACHE) > 500:
@@ -1218,6 +1220,65 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
     return new_list, modified
 
 
+def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_color: str = None):
+    """
+    Recolors the outer badge edge/frame (white/light elements) and inner base (black/dark elements)
+    of Logo templates to custom user colors (e.g. #EEB419).
+    Excludes the user's custom SVG shape or user's text group.
+    """
+    c_primary = None
+    if badge_color:
+        b_str = badge_color.strip()
+        if not b_str.startswith('#') and len(b_str) in (3, 6, 8):
+            b_str = f"#{b_str}"
+        c_p = parse_svg_color(b_str)
+        if c_p and c_p != 'none' and isinstance(c_p, list):
+            c_primary = c_p[:3]
+
+    c_secondary = None
+    if badge_bg_color:
+        bg_str = badge_bg_color.strip()
+        if not bg_str.startswith('#') and len(bg_str) in (3, 6, 8):
+            bg_str = f"#{bg_str}"
+        c_s = parse_svg_color(bg_str)
+        if c_s and c_s != 'none' and isinstance(c_s, list):
+            c_secondary = c_s[:3]
+
+    if not c_primary and not c_secondary:
+        return
+
+    def walk_item(item):
+        if not isinstance(item, dict):
+            return
+        
+        nm = str(item.get("nm", ""))
+        if nm in ("SVG_Symbol", "TextGroup") or "SVG Path" in nm or "Logo path" in nm:
+            return
+
+        ty = item.get("ty")
+        if ty in ("fl", "st") and "c" in item:
+            c_val = item["c"].get("k")
+            if isinstance(c_val, list) and len(c_val) >= 3 and isinstance(c_val[0], (int, float)):
+                cr, cg, cb = c_val[:3]
+                # Outer white/light badge frame/border (cr > 0.82 and cg > 0.82 and cb > 0.82)
+                if c_primary and cr > 0.82 and cg > 0.82 and cb > 0.82:
+                    item["c"]["k"] = [c_primary[0], c_primary[1], c_primary[2], c_val[3] if len(c_val) > 3 else 1.0]
+                # Inner dark/black badge base (cr < 0.18 and cg < 0.18 and cb < 0.18)
+                elif c_secondary and cr < 0.18 and cg < 0.18 and cb < 0.18:
+                    item["c"]["k"] = [c_secondary[0], c_secondary[1], c_secondary[2], c_val[3] if len(c_val) > 3 else 1.0]
+
+        for it in item.get("it", []):
+            walk_item(it)
+        for sh in item.get("shapes", []):
+            walk_item(sh)
+
+    for l in data.get("layers", []):
+        walk_item(l)
+    for a in data.get("assets", []):
+        for l in a.get("layers", []):
+            walk_item(l)
+
+
 def process_tgs_template(
     template_bytes: bytes,
     text: str = None,
@@ -1226,10 +1287,13 @@ def process_tgs_template(
     scale: float = 1.0,
     text_scale: float = None,
     svg_data: str = None,
-    input_type: str = None
+    input_type: str = None,
+    badge_color: str = None,
+    badge_bg_color: str = None
 ) -> bytes:
     """
-    Processes a single .tgs template replacing text with either font-rendered text or SVG vector graphics.
+    Processes a single .tgs template replacing text with either font-rendered text or SVG vector graphics,
+    and applies custom badge colors (e.g. #EEB419) to the frame/border.
     """
     effective_scale = text_scale if text_scale is not None else scale
     effective_svg = svg_content if svg_content is not None else svg_data
@@ -1256,6 +1320,10 @@ def process_tgs_template(
                 )
                 if changed:
                     layer['shapes'] = new_shapes
+
+    # Apply custom badge/border colors if requested
+    if badge_color or badge_bg_color:
+        apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color)
 
     return gzip.compress(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 

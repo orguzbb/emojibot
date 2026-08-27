@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=5.1.0">
+    <link rel="stylesheet" href="style.css?v=5.2.0">
 </head>
 <body>
 
@@ -204,6 +204,63 @@
                     </div>
                     <div class="slider-track-wrap">
                         <input type="range" id="size-slider" min="0.4" max="1.8" step="0.05" value="1.0" class="custom-range-slider">
+                    </div>
+                </div>
+
+                <!-- Logo Ramka / Chekka Rangi Sozlamasi (Faqat Logo Emojilar uchun) -->
+                <div class="logo-color-customizer-section" id="logo-color-section">
+                    <div class="color-picker-header">
+                        <div class="color-label-wrap">
+                            <span class="color-dot-indicator" id="color-dot-preview"></span>
+                            <span class="color-picker-label">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12"></path>
+                                    <circle cx="12" cy="12" r="4"></circle>
+                                </svg>
+                                Logo Chekka (Ramka) Rangi
+                            </span>
+                        </div>
+                        <span class="color-current-hex" id="color-hex-badge">#FFFFFF</span>
+                    </div>
+                    
+                    <div class="color-picker-controls-row">
+                        <!-- Direct HEX text input with # symbol -->
+                        <div class="hex-input-wrap">
+                            <span class="hex-prefix">#</span>
+                            <input type="text" id="logo-hex-input" class="hex-text-input" placeholder="EEB419" maxlength="7" value="FFFFFF" spellcheck="false" autocomplete="off">
+                        </div>
+
+                        <!-- Native color picker wrapper button -->
+                        <div class="color-picker-btn-wrapper">
+                            <input type="color" id="logo-color-picker" value="#ffffff" class="native-color-input">
+                            <button type="button" class="btn-color-picker-trigger" id="btn-color-picker-trigger" title="Rang palitrasi">
+                                <span class="color-swatch-circle" id="picker-swatch-circle" style="background-color: #ffffff;"></span>
+                                <span>Tanlash</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Reset Button -->
+                        <button type="button" class="btn-reset-badge-color" id="btn-reset-badge-color" title="Standart oq rangga qaytarish">
+                            ↺ Oq
+                        </button>
+                    </div>
+
+                    <!-- Preset Palette Swatches -->
+                    <div class="preset-colors-row" id="preset-colors-bar">
+                        <button type="button" class="color-swatch-btn" data-color="#EEB419" style="--c: #EEB419;" title="Oltin (#EEB419)"></button>
+                        <button type="button" class="color-swatch-btn active" data-color="#FFFFFF" style="--c: #FFFFFF;" title="Oq (Standart)"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#FF3B30" style="--c: #FF3B30;" title="Qizil"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#FF9500" style="--c: #FF9500;" title="To'q sariq"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#FFD60A" style="--c: #FFD60A;" title="Sariq"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#34C759" style="--c: #34C759;" title="Yashil"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#00C7BE" style="--c: #00C7BE;" title="Feruza"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#007AFF" style="--c: #007AFF;" title="Moviy"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#5856D6" style="--c: #5856D6;" title="Binafsha"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#AF52DE" style="--c: #AF52DE;" title="Siyohrang"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#FF2D55" style="--c: #FF2D55;" title="Pushti"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#8E8E93" style="--c: #8E8E93;" title="Kumush"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#000000" style="--c: #000000;" title="Qora"></button>
                     </div>
                 </div>
 
@@ -683,7 +740,7 @@
     </div>
 
     <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=5.1.0"></script>
-    <script src="app.js?v=5.1.0"></script>
+    <script src="ticket_templates.js?v=5.2.0"></script>
+    <script src="app.js?v=5.2.0"></script>
 </body>
 </html>

@@ -127,6 +127,8 @@ class PreviewRequest(BaseModel):
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
     svg_data: Optional[str] = None
+    badge_color: Optional[str] = None
+    badge_bg_color: Optional[str] = None
 
 
 class BatchPreviewRequest(BaseModel):
@@ -136,6 +138,8 @@ class BatchPreviewRequest(BaseModel):
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
     svg_data: Optional[str] = None
+    badge_color: Optional[str] = None
+    badge_bg_color: Optional[str] = None
 
 
 class GenerateRequest(BaseModel):
@@ -149,6 +153,8 @@ class GenerateRequest(BaseModel):
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
     svg_data: Optional[str] = None
+    badge_color: Optional[str] = None
+    badge_bg_color: Optional[str] = None
     init_data: Optional[str] = None
 
 
@@ -161,12 +167,30 @@ class AddToPackRequest(BaseModel):
     scale: Optional[float] = 1.0
     input_type: Optional[str] = "text"
     svg_data: Optional[str] = None
+    badge_color: Optional[str] = None
+    badge_bg_color: Optional[str] = None
 
 
 class CreateInvoiceRequest(BaseModel):
     user_id: Optional[int] = None
     count: Optional[int] = 1
     text: Optional[str] = ""
+
+
+class SendInvoiceRequest(BaseModel):
+    user_id: Optional[int] = None
+    count: Optional[int] = 1
+    text: Optional[str] = "EMOJI"
+    font: Optional[str] = "stapel"
+    scale: Optional[float] = 1.0
+    mode: Optional[str] = "single"
+    pack_name: Optional[str] = None
+    template_id: Optional[str] = "1.tgs"
+    selected_templates: Optional[List[str]] = None
+    input_type: Optional[str] = "text"
+    svg_data: Optional[str] = None
+    badge_color: Optional[str] = None
+    badge_bg_color: Optional[str] = None
 
 
 # ==================== WEB APP FRONTEND ROUTE ====================
@@ -331,7 +355,7 @@ async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body
         try:
             clean_svg = validate_and_clean_svg(req.svg_data)
             svg_title = req.text or "SVG"
-            svg_id = cache_svg(clean_svg, svg_title)
+            svg_id = cache_svg(clean_svg, svg_title, badge_color=req.badge_color)
             clean_text = svg_id
             font_key = "svg"
             action_type = "svg_all" if req.mode == "all" else ("svg_one" if req.mode == "single" else "svg_selected")
@@ -439,7 +463,9 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
-            input_type=effective_input_type
+            input_type=effective_input_type,
+            badge_color=req.badge_color,
+            badge_bg_color=req.badge_bg_color
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
@@ -481,7 +507,9 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 font_path=str(font_file_path),
                 text_scale=req.scale or 1.0,
                 svg_data=req.svg_data,
-                input_type=req.input_type or ("svg" if is_svg_mode else "text")
+                input_type=req.input_type or ("svg" if is_svg_mode else "text"),
+                badge_color=req.badge_color,
+                badge_bg_color=req.badge_bg_color
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
             filename = tpl_id if tpl_id.endswith(".tgs") else f"{tpl_id}.tgs"
@@ -627,7 +655,9 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
-            input_type=effective_input_type
+            input_type=effective_input_type,
+            badge_color=req.badge_color,
+            badge_bg_color=req.badge_bg_color
         )
 
         emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -846,7 +876,9 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
             font_path=str(font_file_path),
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
-            input_type=effective_input_type
+            input_type=effective_input_type,
+            badge_color=req.badge_color,
+            badge_bg_color=req.badge_bg_color
         )
 
         sticker_item = InputSticker(

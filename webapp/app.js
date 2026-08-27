@@ -44,6 +44,7 @@ const state = {
     text: "",
     svgData: "",
     svgFileName: "",
+    badgeColor: "#FFFFFF",
     font: "stapel",
     scale: 1.0,
     activeTab: "name",
@@ -102,6 +103,17 @@ const dom = {
     fontPills: document.getElementById('font-pills'),
     sizeSlider: document.getElementById('size-slider'),
     sizeValDisplay: document.getElementById('size-val-display'),
+    
+    // Logo Color Customizer
+    logoColorSection: document.getElementById('logo-color-section'),
+    colorDotPreview: document.getElementById('color-dot-preview'),
+    colorHexBadge: document.getElementById('color-hex-badge'),
+    logoHexInput: document.getElementById('logo-hex-input'),
+    logoColorPicker: document.getElementById('logo-color-picker'),
+    pickerSwatchCircle: document.getElementById('picker-swatch-circle'),
+    btnColorPickerTrigger: document.getElementById('btn-color-picker-trigger'),
+    btnResetBadgeColor: document.getElementById('btn-reset-badge-color'),
+    presetColorsBar: document.getElementById('preset-colors-bar'),
     
     // Destination Selector (New vs Existing)
     destPillNew: document.getElementById('dest-pill-new'),
@@ -346,6 +358,116 @@ function getPreRenderedTemplateData(filename, font, scale = 1.0) {
     return null;
 }
 
+// Client-side Lottie badge recolorer for 0ms latency real-time preview
+function applyBadgeColorToLottieJSON(jsonObj, hexColor) {
+    if (!jsonObj || !hexColor) return jsonObj;
+    try {
+        let cleanHex = hexColor.trim();
+        if (!cleanHex.startsWith('#') && (cleanHex.length === 3 || cleanHex.length === 6 || cleanHex.length === 8)) {
+            cleanHex = '#' + cleanHex;
+        }
+        if (!/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(cleanHex)) {
+            return jsonObj;
+        }
+        let h = cleanHex.slice(1);
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        const r = parseInt(h.slice(0, 2), 16) / 255.0;
+        const g = parseInt(h.slice(2, 4), 16) / 255.0;
+        const b = parseInt(h.slice(4, 6), 16) / 255.0;
+
+        const cloned = JSON.parse(JSON.stringify(jsonObj));
+
+        function walk(item) {
+            if (!item || typeof item !== 'object') return;
+            const nm = String(item.nm || '');
+            if (nm === 'SVG_Symbol' || nm === 'TextGroup' || nm.includes('SVG Path') || nm.includes('Logo path')) {
+                return;
+            }
+            if ((item.ty === 'fl' || item.ty === 'st') && item.c && Array.isArray(item.c.k)) {
+                const k = item.c.k;
+                if (k.length >= 3 && typeof k[0] === 'number') {
+                    if (k[0] > 0.82 && k[1] > 0.82 && k[2] > 0.82) {
+                        item.c.k = [r, g, b, k[3] !== undefined ? k[3] : 1.0];
+                    }
+                }
+            }
+            if (Array.isArray(item.it)) {
+                item.it.forEach(walk);
+            }
+            if (Array.isArray(item.shapes)) {
+                item.shapes.forEach(walk);
+            }
+        }
+
+        if (Array.isArray(cloned.layers)) {
+            cloned.layers.forEach(walk);
+        }
+        if (Array.isArray(cloned.assets)) {
+            cloned.assets.forEach(a => {
+                if (Array.isArray(a.layers)) {
+                    a.layers.forEach(walk);
+                }
+            });
+        }
+        return cloned;
+    } catch (e) {
+        console.warn("Client recolor error:", e);
+        return jsonObj;
+    }
+}
+
+function setBadgeColor(rawHex, triggerUpdate = true) {
+    if (!rawHex) rawHex = "#FFFFFF";
+    let clean = String(rawHex).trim();
+    if (!clean.startsWith('#') && (clean.length === 3 || clean.length === 6 || clean.length === 8)) {
+        clean = '#' + clean;
+    }
+    
+    if (!/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(clean)) {
+        return;
+    }
+    
+    let hexUpper = clean.toUpperCase();
+    if (hexUpper.length === 4) {
+        hexUpper = '#' + hexUpper[1] + hexUpper[1] + hexUpper[2] + hexUpper[2] + hexUpper[3] + hexUpper[3];
+    }
+    
+    state.badgeColor = hexUpper;
+
+    if (dom.colorDotPreview) {
+        dom.colorDotPreview.style.backgroundColor = hexUpper;
+        dom.colorDotPreview.style.boxShadow = `0 0 10px ${hexUpper}`;
+    }
+    if (dom.colorHexBadge) {
+        dom.colorHexBadge.textContent = hexUpper;
+    }
+    if (dom.logoHexInput && document.activeElement !== dom.logoHexInput) {
+        dom.logoHexInput.value = hexUpper.replace('#', '');
+    }
+    if (dom.logoColorPicker) {
+        dom.logoColorPicker.value = hexUpper.slice(0, 7);
+    }
+    if (dom.pickerSwatchCircle) {
+        dom.pickerSwatchCircle.style.backgroundColor = hexUpper;
+    }
+    
+    if (dom.presetColorsBar) {
+        dom.presetColorsBar.querySelectorAll('.color-swatch-btn').forEach(btn => {
+            if (btn.dataset.color && btn.dataset.color.toUpperCase() === hexUpper) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    if (triggerUpdate) {
+        state.previewCache.clear();
+        updateLivePreview();
+        debouncedFullUpdate();
+    }
+}
+
 // ==================== INITIALIZATION ====================
 
 async function initApp() {
@@ -389,6 +511,12 @@ async function initApp() {
         
         updateLoadingProgress(70, "Shablonlar va emojilar yuklanmoqda...");
         
+        // 0. Initialize Badge Color to default
+        setBadgeColor("#FFFFFF", false);
+        if (dom.logoColorSection && state.activeTab === 'name' && state.inputType !== 'svg') {
+            dom.logoColorSection.classList.add('hidden');
+        }
+
         // 1. Render initial Live Hero Preview & SVG Thumbnail
         updateSvgThumbnail();
         await updateLivePreview();
@@ -623,12 +751,13 @@ function renderUserPacks() {
 }
 
 function getPreviewCacheKey(file, scale) {
+    const bColor = state.badgeColor || '#FFFFFF';
     if (state.inputType === 'svg') {
         const svgHash = (state.svgData || "").length + "_" + (state.svgData || "").slice(0, 30);
-        return `${file}_svg_${scale}_${svgHash}`;
+        return `${file}_svg_${scale}_${svgHash}_${bColor}`;
     }
     const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
-    return `${file}_${state.font}_${scale}_${cleanTxt}`;
+    return `${file}_${state.font}_${scale}_${cleanTxt}_${bColor}`;
 }
 
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
@@ -650,12 +779,16 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
                 text: cleanTxt,
                 font: font,
                 scale: scale,
-                svg_data: isSvg ? state.svgData : null
+                svg_data: isSvg ? state.svgData : null,
+                badge_color: state.badgeColor || null
             })
         });
         
-        const animationData = await res.json();
+        let animationData = await res.json();
         if (animationData && !animationData.detail) {
+            if (state.badgeColor && state.badgeColor !== '#FFFFFF') {
+                animationData = applyBadgeColorToLottieJSON(animationData, state.badgeColor);
+            }
             state.previewCache.set(cacheKey, animationData);
             return animationData;
         }
@@ -663,8 +796,13 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
     } catch (err) {
         console.warn("API preview fallback:", err);
         if (!isSvg) {
-            const fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
-            if (fallbackData) return fallbackData;
+            let fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
+            if (fallbackData) {
+                if (state.badgeColor && state.badgeColor !== '#FFFFFF') {
+                    fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor);
+                }
+                return fallbackData;
+            }
         }
         return null;
     }
@@ -680,7 +818,7 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
         const cacheKey = getPreviewCacheKey(file, scale);
         if (state.previewCache.has(cacheKey)) {
             results[file] = state.previewCache.get(cacheKey);
-        } else if (!isSvg && cleanTxt === "ISMINGIZ") {
+        } else if (!isSvg && cleanTxt === "ISMINGIZ" && (!state.badgeColor || state.badgeColor === '#FFFFFF')) {
             const preData = getPreRenderedTemplateData(file, font, scale);
             if (preData) {
                 state.previewCache.set(cacheKey, preData);
@@ -707,23 +845,33 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
                 text: cleanTxt,
                 font: font,
                 scale: scale,
-                svg_data: isSvg ? state.svgData : null
+                svg_data: isSvg ? state.svgData : null,
+                badge_color: state.badgeColor || null
             })
         });
         
         const data = await res.json();
         if (data.previews) {
             Object.entries(data.previews).forEach(([fname, lottieData]) => {
+                let finalData = lottieData;
+                if (state.badgeColor && state.badgeColor !== '#FFFFFF') {
+                    finalData = applyBadgeColorToLottieJSON(finalData, state.badgeColor);
+                }
                 const cacheKey = getPreviewCacheKey(fname, scale);
-                state.previewCache.set(cacheKey, lottieData);
-                results[fname] = lottieData;
+                state.previewCache.set(cacheKey, finalData);
+                results[fname] = finalData;
             });
         }
     } catch (e) {
         if (!isSvg) {
             needed.forEach(file => {
-                const fallbackData = getPreRenderedTemplateData(file, font, scale);
-                if (fallbackData) results[file] = fallbackData;
+                let fallbackData = getPreRenderedTemplateData(file, font, scale);
+                if (fallbackData) {
+                    if (state.badgeColor && state.badgeColor !== '#FFFFFF') {
+                        fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor);
+                    }
+                    results[file] = fallbackData;
+                }
             });
         }
     }
@@ -743,12 +891,18 @@ function switchTab(tabKey) {
         if (state.inputType !== 'svg') {
             state.selectedTemplate = Array.from(state.selectedTickets)[0] || "1.tgs";
         }
+        if (dom.logoColorSection && state.inputType !== 'svg') {
+            dom.logoColorSection.classList.add('hidden');
+        }
     } else {
         dom.tabBtnLogo?.classList.add('active');
         dom.tabBtnName?.classList.remove('active');
         dom.tabContentLogo?.classList.add('active');
         dom.tabContentName?.classList.remove('active');
         state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+        if (dom.logoColorSection) {
+            dom.logoColorSection.classList.remove('hidden');
+        }
     }
     updateLivePreview();
     updateSelectionStatus();
@@ -773,6 +927,7 @@ function setInputMode(mode) {
         dom.modeTabSvg?.classList.add('active');
         dom.modeSectionText?.classList.add('hidden');
         dom.modeSectionSvg?.classList.remove('hidden');
+        if (dom.logoColorSection) dom.logoColorSection.classList.remove('hidden');
         
         // Auto-switch to logo tab because SVG icons belong to 104 Logo icon templates (14-117)
         switchTab('logo');
@@ -785,6 +940,9 @@ function setInputMode(mode) {
         dom.modeTabText?.classList.add('active');
         dom.modeSectionSvg?.classList.add('hidden');
         dom.modeSectionText?.classList.remove('hidden');
+        if (state.activeTab === 'name' && dom.logoColorSection) {
+            dom.logoColorSection.classList.add('hidden');
+        }
     }
     haptic('light');
     updateLivePreview();
@@ -1419,6 +1577,7 @@ async function startGeneration(mode = 'selected') {
         cleanText: isSvg ? (state.text ? state.text.trim().toUpperCase() : "SVG") : cleanText,
         inputType: state.inputType,
         svgData: isSvg ? state.svgData : null,
+        badgeColor: state.badgeColor || null,
         mode: targetMode,
         rawMode: mode,
         packName,
@@ -1462,6 +1621,7 @@ async function handlePayViaBotStars() {
                 text: cleanText,
                 font: state.font,
                 scale: state.scale,
+                badge_color: state.badgeColor || null,
                 mode: mode,
                 pack_name: packName,
                 template_id: selectedFiles[0] || state.selectedTemplate,
@@ -1531,6 +1691,7 @@ async function executeGeneration(pendingAction) {
             text: cleanText,
             font: state.font,
             scale: state.scale,
+            badge_color: state.badgeColor || null,
             mode: mode,
             pack_name: packName,
             template_id: selectedFiles[0] || state.selectedTemplate,
@@ -1713,6 +1874,88 @@ function setupEventListeners() {
         
         // Debounce grid update so dragging remains 60fps smooth
         debouncedFullUpdate();
+    });
+
+    // Logo Color Customizer Listeners (Real-time live color preview)
+    dom.logoHexInput?.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
+        e.target.value = val;
+        if (val.length === 3 || val.length === 6) {
+            setBadgeColor('#' + val, false);
+            if (state.livePlayer && dom.liveLottiePlayer) {
+                const cacheK = getPreviewCacheKey(state.selectedTemplate, state.scale);
+                const currentData = state.previewCache.get(cacheK);
+                if (currentData) {
+                    const recolored = applyBadgeColorToLottieJSON(currentData, '#' + val);
+                    try {
+                        state.livePlayer.destroy();
+                        state.livePlayer = lottie.loadAnimation({
+                            container: dom.liveLottiePlayer,
+                            renderer: 'svg',
+                            loop: true,
+                            autoplay: true,
+                            animationData: recolored
+                        });
+                    } catch (err) {}
+                }
+            }
+            debouncedLiveTextUpdate();
+        }
+    });
+
+    dom.logoHexInput?.addEventListener('change', (e) => {
+        let val = e.target.value.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
+        if (val.length === 3 || val.length === 6) {
+            setBadgeColor('#' + val, true);
+        } else {
+            setBadgeColor(state.badgeColor || '#FFFFFF', false);
+        }
+    });
+
+    dom.logoColorPicker?.addEventListener('input', (e) => {
+        const val = e.target.value;
+        setBadgeColor(val, false);
+        if (state.livePlayer && dom.liveLottiePlayer) {
+            const cacheK = getPreviewCacheKey(state.selectedTemplate, state.scale);
+            const currentData = state.previewCache.get(cacheK);
+            if (currentData) {
+                const recolored = applyBadgeColorToLottieJSON(currentData, val);
+                try {
+                    state.livePlayer.destroy();
+                    state.livePlayer = lottie.loadAnimation({
+                        container: dom.liveLottiePlayer,
+                        renderer: 'svg',
+                        loop: true,
+                        autoplay: true,
+                        animationData: recolored
+                    });
+                } catch (err) {}
+            }
+        }
+    });
+
+    dom.logoColorPicker?.addEventListener('change', (e) => {
+        setBadgeColor(e.target.value, true);
+    });
+
+    dom.btnColorPickerTrigger?.addEventListener('click', () => {
+        dom.logoColorPicker?.click();
+    });
+
+    dom.btnResetBadgeColor?.addEventListener('click', () => {
+        haptic('light');
+        setBadgeColor('#FFFFFF', true);
+        showToast("Ramka rangi standart oq holatiga qaytarildi", "↺");
+    });
+
+    dom.presetColorsBar?.querySelectorAll('.color-swatch-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            haptic('selection');
+            const col = btn.dataset.color;
+            if (col) {
+                setBadgeColor(col, true);
+            }
+        });
     });
     
     // Clear Name Button
