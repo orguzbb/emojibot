@@ -13,8 +13,6 @@ from fontTools.misc.transform import Transform
 from fontTools.pens.transformPen import TransformPen
 from fontTools.pens.basePen import BasePen
 from fontTools.pens.boundsPen import BoundsPen
-from fontTools.svgLib.path import parse_path
-from fontTools.svgLib.path.shapes import PathBuilder, _strip_xml_ns
 
 SVG_CACHE = {}
 
