@@ -1197,30 +1197,34 @@ async def execute_generation_by_params(bot: Bot, user_id: int, clean_text: str, 
     is_svg = action_type.startswith("svg_") or font_key == "svg"
     svg_data = None
     badge_color = None
+    badge_bg_color = None
+    text_color = None
     if is_svg:
         cached = get_cached_svg(clean_text)
         if cached:
             svg_data = cached["svg"]
             badge_color = cached.get("badge_color")
+            badge_bg_color = cached.get("badge_bg_color")
+            text_color = cached.get("text_color")
             clean_text = cached.get("title", "SVG")
         else:
             svg_data = clean_text if "<svg" in clean_text.lower() else None
             clean_text = "SVG"
 
     if dest_mode == "add" and pack_target:
-        await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pack_target, raw_target, chat_id, svg_data=svg_data, badge_color=badge_color)
+        await execute_add_to_pack_generation(bot, user_id, clean_text, font_key, pack_target, raw_target, chat_id, svg_data=svg_data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
     elif action_type in ("gen_all", "svg_all"):
-        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id, svg_data=svg_data, badge_color=badge_color)
+        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id, svg_data=svg_data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
     elif action_type in ("gen_one", "svg_one"):
-        await execute_single_sticker_generation(bot, user_id, clean_text, font_key, raw_target, chat_id, svg_data=svg_data, badge_color=badge_color)
+        await execute_single_sticker_generation(bot, user_id, clean_text, font_key, raw_target, chat_id, svg_data=svg_data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
     elif action_type in ("gen_selected", "svg_selected") or "," in raw_target:
         templates = [t.strip() for t in raw_target.split(",") if t.strip()]
-        await execute_selected_templates_generation(bot, user_id, clean_text, font_key, templates, chat_id, svg_data=svg_data, badge_color=badge_color)
+        await execute_selected_templates_generation(bot, user_id, clean_text, font_key, templates, chat_id, svg_data=svg_data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
     else:
-        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id, svg_data=svg_data, badge_color=badge_color)
+        await execute_full_pack_generation(bot, user_id, clean_text, font_key, chat_id, svg_data=svg_data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
 
 
-async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, template_filenames: List[str], chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None):
+async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, template_filenames: List[str], chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None, badge_bg_color: Optional[str] = None, text_color: Optional[str] = None):
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     
@@ -1254,7 +1258,9 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
                 font_path=str(font_file_path),
                 svg_data=svg_data,
                 input_type="svg" if svg_data else "text",
-                badge_color=badge_color
+                badge_color=badge_color,
+                badge_bg_color=badge_bg_color,
+                text_color=text_color
             )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -1331,7 +1337,7 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
 
 # ==================== GENERATION EXECUTION FUNCTIONS ====================
 
-async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, tgs_filename: str, chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None):
+async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, tgs_filename: str, chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None, badge_bg_color: Optional[str] = None, text_color: Optional[str] = None):
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
     target_tgs = Path(TEMPLATES_DIR) / tgs_filename
@@ -1350,7 +1356,9 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
                 font_path=str(font_file_path),
                 svg_data=svg_data,
                 input_type="svg" if svg_data else "text",
-                badge_color=badge_color
+                badge_color=badge_color,
+                badge_bg_color=badge_bg_color,
+                text_color=text_color
             )
 
         rand_suffix = random.randint(1000, 99999)
@@ -1403,7 +1411,7 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
         await status_msg.edit_text(f"❌ Xatolik yuz berdi: {e}")
 
 
-async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, pack_name: str, tgs_mode: str, chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None):
+async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, pack_name: str, tgs_mode: str, chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None, badge_bg_color: Optional[str] = None, text_color: Optional[str] = None):
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
     font_file_path = Path(FONTS_DIR) / font_info["file"]
 
@@ -1426,7 +1434,9 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
                     font_path=str(font_file_path),
                     svg_data=svg_data,
                     input_type="svg" if svg_data else "text",
-                    badge_color=badge_color
+                    badge_color=badge_color,
+                    badge_bg_color=badge_bg_color,
+                    text_color=text_color
                 )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -1465,7 +1475,7 @@ async def execute_add_to_pack_generation(bot: Bot, user_id: int, clean_text: str
         await status_msg.edit_text(f"❌ Qo'shishda xatolik: {e}\n<i>Eslatma: Faqat o'zingiz yaratgan paketlarga stiker qo'sha olasiz.</i>", parse_mode=ParseMode.HTML)
 
 
-async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None):
+async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, font_key: str, chat_id: int, svg_data: Optional[str] = None, badge_color: Optional[str] = None, badge_bg_color: Optional[str] = None, text_color: Optional[str] = None):
     if user_id in ACTIVE_USERS:
         await bot.send_message(chat_id, "⚠️ Sizda hozirda emoji paket tayyorlanmoqda. Iltimos, kuting!")
         return
@@ -1502,7 +1512,9 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
                 font_path=str(font_file_path),
                 svg_data=svg_data,
                 input_type="svg" if svg_data else "text",
-                badge_color=badge_color
+                badge_color=badge_color,
+                badge_bg_color=badge_bg_color,
+                text_color=text_color
             )
 
             emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]

@@ -19,15 +19,17 @@ from fontTools.pens.boundsPen import BoundsPen
 SVG_CACHE = {}
 
 
-def cache_svg(svg_content: str, title: str = "SVG", badge_color: str = None) -> str:
+def cache_svg(svg_content: str, title: str = "SVG", badge_color: str = None, badge_bg_color: str = None, text_color: str = None) -> str:
     if not svg_content:
         return ""
-    content_key = f"{svg_content}_{badge_color or ''}"
+    content_key = f"{svg_content}_{badge_color or ''}_{badge_bg_color or ''}_{text_color or ''}"
     svg_id = hashlib.md5(content_key.encode('utf-8')).hexdigest()[:12]
     SVG_CACHE[svg_id] = {
         "svg": svg_content,
         "title": title[:30] if title else "SVG",
         "badge_color": badge_color,
+        "badge_bg_color": badge_bg_color,
+        "text_color": text_color,
         "time": time.time()
     }
     if len(SVG_CACHE) > 500:
@@ -573,7 +575,7 @@ def extract_layer_template_info(target_layer: dict):
     }
 
 
-def generate_text_shapes(text: str, font_path: str, target_layer: dict, scale_factor: float = 1.0) -> list:
+def generate_text_shapes(text: str, font_path: str, target_layer: dict, scale_factor: float = 1.0, text_color: str = None) -> list:
     font = TTFont(str(font_path))
     glyph_set = font.getGlyphSet()
     cmap = font.getBestCmap()
@@ -585,6 +587,13 @@ def generate_text_shapes(text: str, font_path: str, target_layer: dict, scale_fa
         cap_height = float(font['head'].unitsPerEm) * 0.70
 
     info = extract_layer_template_info(target_layer)
+    if text_color:
+        t_str = text_color.strip()
+        if not t_str.startswith('#') and len(t_str) in (3, 6, 8):
+            t_str = f"#{t_str}"
+        tc = parse_svg_color(t_str)
+        if tc and tc != 'none' and isinstance(tc, list):
+            info["fill"] = {"a": 0, "k": [tc[0], tc[1], tc[2], 1.0]}
 
     chars = list(text.strip().upper())
     glyph_names = []
@@ -1162,7 +1171,7 @@ def is_text_container(item):
     return False, []
 
 
-def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None, scale: float = 1.0):
+def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None, scale: float = 1.0, text_color: str = None):
     """
     Recursively finds text shape groups and replaces them with newly rendered font glyphs or SVG shapes.
     """
@@ -1184,7 +1193,7 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
             new_shapes = generate_svg_shapes(svg_content, target_group, scale_factor=scale)
         else:
             clean_txt = text if (text and text.strip()) else "ISMINGIZ"
-            new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=scale)
+            new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=scale, text_color=text_color)
 
         non_letters = [s for i, s in enumerate(shapes_list) if i not in letter_indices]
         trs = [s for s in non_letters if s.get('ty') == 'tr']
@@ -1202,7 +1211,7 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
                     new_shapes = generate_svg_shapes(svg_content, target_group, scale_factor=scale)
                 else:
                     clean_txt = text if (text and text.strip()) else "ISMINGIZ"
-                    new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=scale)
+                    new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=scale, text_color=text_color)
                 children = item.get('it', [])
                 trs = [s for s in children if s.get('ty') == 'tr']
                 item['it'] = new_shapes + trs
@@ -1211,7 +1220,7 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
                 continue
                 
             if 'it' in item and isinstance(item['it'], list):
-                new_it, changed = process_shapes_list(item['it'], font_path, text, svg_content, scale=scale)
+                new_it, changed = process_shapes_list(item['it'], font_path, text, svg_content, scale=scale, text_color=text_color)
                 if changed:
                     item['it'] = new_it
                     modified = True
@@ -1220,11 +1229,13 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
     return new_list, modified
 
 
-def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_color: str = None):
+def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_color: str = None, text_color: str = None):
     """
-    Recolors the outer badge edge/frame (white/light elements) and inner base (black/dark elements)
-    of Logo templates to custom user colors (e.g. #EEB419).
-    Excludes the user's custom SVG shape or user's text group.
+    Recolors:
+    1. badge_color: outer badge edge/frame (white/light elements, cr > 0.82)
+    2. badge_bg_color: inner base (black/dark elements, cr < 0.18)
+    3. text_color: text fill across text layers/groups (TextGroup, Text Layer, letter shapes)
+    Excludes custom user SVG elements (SVG_Symbol).
     """
     c_primary = None
     if badge_color:
@@ -1244,33 +1255,49 @@ def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_
         if c_s and c_s != 'none' and isinstance(c_s, list):
             c_secondary = c_s[:3]
 
-    if not c_primary and not c_secondary:
+    c_text = None
+    if text_color:
+        t_str = text_color.strip()
+        if not t_str.startswith('#') and len(t_str) in (3, 6, 8):
+            t_str = f"#{t_str}"
+        c_t = parse_svg_color(t_str)
+        if c_t and c_t != 'none' and isinstance(c_t, list):
+            c_text = c_t[:3]
+
+    if not c_primary and not c_secondary and not c_text:
         return
 
-    def walk_item(item):
+    def walk_item(item, is_in_text=False):
         if not isinstance(item, dict):
             return
         
         nm = str(item.get("nm", ""))
-        if nm in ("SVG_Symbol", "TextGroup") or "SVG Path" in nm or "Logo path" in nm:
+        if nm in ("SVG_Symbol",) or "SVG Path" in nm or "Logo path" in nm:
             return
+
+        is_text_node = is_in_text or nm in ("TextGroup", "Text Layer", "NAME", "EMOJI 1", "Letters") or (len(nm) == 1 and nm.isalnum())
 
         ty = item.get("ty")
         if ty in ("fl", "st") and "c" in item:
             c_val = item["c"].get("k")
             if isinstance(c_val, list) and len(c_val) >= 3 and isinstance(c_val[0], (int, float)):
                 cr, cg, cb = c_val[:3]
-                # Outer white/light badge frame/border (cr > 0.82 and cg > 0.82 and cb > 0.82)
-                if c_primary and cr > 0.82 and cg > 0.82 and cb > 0.82:
-                    item["c"]["k"] = [c_primary[0], c_primary[1], c_primary[2], c_val[3] if len(c_val) > 3 else 1.0]
-                # Inner dark/black badge base (cr < 0.18 and cg < 0.18 and cb < 0.18)
-                elif c_secondary and cr < 0.18 and cg < 0.18 and cb < 0.18:
-                    item["c"]["k"] = [c_secondary[0], c_secondary[1], c_secondary[2], c_val[3] if len(c_val) > 3 else 1.0]
+                alpha = c_val[3] if len(c_val) > 3 else 1.0
+                if is_text_node:
+                    if c_text and ty == "fl":
+                        item["c"]["k"] = [c_text[0], c_text[1], c_text[2], alpha]
+                else:
+                    # Outer white/light badge frame/border (cr > 0.82 and cg > 0.82 and cb > 0.82)
+                    if c_primary and cr > 0.82 and cg > 0.82 and cb > 0.82:
+                        item["c"]["k"] = [c_primary[0], c_primary[1], c_primary[2], alpha]
+                    # Inner dark/black badge base (cr < 0.18 and cg < 0.18 and cb < 0.18)
+                    elif c_secondary and cr < 0.18 and cg < 0.18 and cb < 0.18:
+                        item["c"]["k"] = [c_secondary[0], c_secondary[1], c_secondary[2], alpha]
 
         for it in item.get("it", []):
-            walk_item(it)
+            walk_item(it, is_text_node)
         for sh in item.get("shapes", []):
-            walk_item(sh)
+            walk_item(sh, is_text_node)
 
     for l in data.get("layers", []):
         walk_item(l)
@@ -1289,11 +1316,12 @@ def process_tgs_template(
     svg_data: str = None,
     input_type: str = None,
     badge_color: str = None,
-    badge_bg_color: str = None
+    badge_bg_color: str = None,
+    text_color: str = None
 ) -> bytes:
     """
     Processes a single .tgs template replacing text with either font-rendered text or SVG vector graphics,
-    and applies custom badge colors (e.g. #EEB419) to the frame/border.
+    and applies custom badge colors (outer border, inner base, and text color).
     """
     effective_scale = text_scale if text_scale is not None else scale
     effective_svg = svg_content if svg_content is not None else svg_data
@@ -1316,14 +1344,15 @@ def process_tgs_template(
                     font_path=font_path,
                     text=text,
                     svg_content=effective_svg,
-                    scale=effective_scale
+                    scale=effective_scale,
+                    text_color=text_color
                 )
                 if changed:
                     layer['shapes'] = new_shapes
 
-    # Apply custom badge/border colors if requested
-    if badge_color or badge_bg_color:
-        apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color)
+    # Apply custom badge/border/inner/text colors if requested
+    if badge_color or badge_bg_color or text_color:
+        apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
 
     return gzip.compress(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 

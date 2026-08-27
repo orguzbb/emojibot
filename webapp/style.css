@@ -2394,23 +2394,13 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
 }
 
 .color-label-wrap {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-}
-
-.color-dot-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background-color: #FFFFFF;
-    border: 1.5px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 0 8px currentColor;
-    display: inline-block;
-    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    gap: 6px;
 }
 
 .color-picker-label {
@@ -2426,16 +2416,87 @@ body {
     color: #f59e0b;
 }
 
-.color-current-hex {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 12px;
-    font-weight: 800;
-    color: var(--accent-cyan);
-    background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.25);
-    padding: 2px 8px;
+.color-summary-badges {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.color-mini-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
     border-radius: var(--radius-sm);
-    letter-spacing: 0.5px;
+    user-select: none;
+}
+
+.badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    display: inline-block;
+}
+
+.color-target-pills-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(8, 12, 20, 0.6);
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.color-target-pill {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 4px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.color-target-pill:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.color-target-pill.active {
+    color: #fff;
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.4);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
+}
+
+.target-indicator-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    display: inline-block;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.color-target-pill.active .target-indicator-dot {
+    border-color: #fff;
+    box-shadow: 0 0 6px currentColor;
 }
 
 .color-picker-controls-row {

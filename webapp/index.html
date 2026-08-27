@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=5.2.0">
+    <link rel="stylesheet" href="style.css?v=5.3.0">
 </head>
 <body>
 
@@ -207,21 +207,40 @@
                     </div>
                 </div>
 
-                <!-- Logo Ramka / Chekka Rangi Sozlamasi (Faqat Logo Emojilar uchun) -->
+                <!-- Ranglarni Sozlash (Tashqi chegara, Ichki qism, Matn rangi) -->
                 <div class="logo-color-customizer-section" id="logo-color-section">
                     <div class="color-picker-header">
                         <div class="color-label-wrap">
-                            <span class="color-dot-indicator" id="color-dot-preview"></span>
                             <span class="color-picker-label">
-                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="10"></circle>
                                     <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12"></path>
                                     <circle cx="12" cy="12" r="4"></circle>
                                 </svg>
-                                Logo Chekka (Ramka) Rangi
+                                Ranglarni sozlash
                             </span>
                         </div>
-                        <span class="color-current-hex" id="color-hex-badge">#FFFFFF</span>
+                        <div class="color-summary-badges">
+                            <span class="color-mini-badge" id="badge-summary-outer" title="Tashqi chegara"><span class="badge-dot" id="dot-summary-outer" style="background-color: #ffffff;"></span> Tashqi</span>
+                            <span class="color-mini-badge" id="badge-summary-inner" title="Ichki qism"><span class="badge-dot" id="dot-summary-inner" style="background-color: #000000;"></span> Ichki</span>
+                            <span class="color-mini-badge" id="badge-summary-text" title="Matn rangi"><span class="badge-dot" id="dot-summary-text" style="background-color: #ffffff;"></span> Matn</span>
+                        </div>
+                    </div>
+
+                    <!-- Target selector tabs (Tashqi / Ichki / Matn) -->
+                    <div class="color-target-pills-row" id="color-target-tabs">
+                        <button type="button" class="color-target-pill active" data-target="outer" id="target-pill-outer">
+                            <span class="target-indicator-dot" id="target-dot-outer" style="background-color: #ffffff;"></span>
+                            <span class="target-pill-label">Tashqi chegara</span>
+                        </button>
+                        <button type="button" class="color-target-pill" data-target="inner" id="target-pill-inner">
+                            <span class="target-indicator-dot" id="target-dot-inner" style="background-color: #000000;"></span>
+                            <span class="target-pill-label">Ichki qism</span>
+                        </button>
+                        <button type="button" class="color-target-pill" data-target="text" id="target-pill-text">
+                            <span class="target-indicator-dot" id="target-dot-text" style="background-color: #ffffff;"></span>
+                            <span class="target-pill-label">Matn rangi</span>
+                        </button>
                     </div>
                     
                     <div class="color-picker-controls-row">
@@ -241,26 +260,26 @@
                         </div>
                         
                         <!-- Reset Button -->
-                        <button type="button" class="btn-reset-badge-color" id="btn-reset-badge-color" title="Standart oq rangga qaytarish">
-                            ↺ Oq
+                        <button type="button" class="btn-reset-badge-color" id="btn-reset-badge-color" title="Standart holatga qaytarish">
+                            ↺ Qaytarish
                         </button>
                     </div>
 
                     <!-- Preset Palette Swatches -->
                     <div class="preset-colors-row" id="preset-colors-bar">
                         <button type="button" class="color-swatch-btn" data-color="#EEB419" style="--c: #EEB419;" title="Oltin (#EEB419)"></button>
-                        <button type="button" class="color-swatch-btn active" data-color="#FFFFFF" style="--c: #FFFFFF;" title="Oq (Standart)"></button>
+                        <button type="button" class="color-swatch-btn active" data-color="#FFFFFF" style="--c: #FFFFFF;" title="Oq"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#000000" style="--c: #000000;" title="Qora"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#1A1A2E" style="--c: #1A1A2E;" title="To'q ko'k"></button>
                         <button type="button" class="color-swatch-btn" data-color="#FF3B30" style="--c: #FF3B30;" title="Qizil"></button>
                         <button type="button" class="color-swatch-btn" data-color="#FF9500" style="--c: #FF9500;" title="To'q sariq"></button>
                         <button type="button" class="color-swatch-btn" data-color="#FFD60A" style="--c: #FFD60A;" title="Sariq"></button>
                         <button type="button" class="color-swatch-btn" data-color="#34C759" style="--c: #34C759;" title="Yashil"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#00C7BE" style="--c: #00C7BE;" title="Feruza"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#00FFCC" style="--c: #00FFCC;" title="Neon feruza"></button>
                         <button type="button" class="color-swatch-btn" data-color="#007AFF" style="--c: #007AFF;" title="Moviy"></button>
                         <button type="button" class="color-swatch-btn" data-color="#5856D6" style="--c: #5856D6;" title="Binafsha"></button>
                         <button type="button" class="color-swatch-btn" data-color="#AF52DE" style="--c: #AF52DE;" title="Siyohrang"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#FF2D55" style="--c: #FF2D55;" title="Pushti"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#8E8E93" style="--c: #8E8E93;" title="Kumush"></button>
-                        <button type="button" class="color-swatch-btn" data-color="#000000" style="--c: #000000;" title="Qora"></button>
+                        <button type="button" class="color-swatch-btn" data-color="#FF2D55" style="--c: #FF2D55;" title="Neon pushti"></button>
                     </div>
                 </div>
 
@@ -740,7 +759,7 @@
     </div>
 
     <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=5.2.0"></script>
-    <script src="app.js?v=5.2.0"></script>
+    <script src="ticket_templates.js?v=5.3.0"></script>
+    <script src="app.js?v=5.3.0"></script>
 </body>
 </html>

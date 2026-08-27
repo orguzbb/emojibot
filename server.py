@@ -121,7 +121,7 @@ def get_template_bytes(template_name: str) -> Optional[bytes]:
 
 
 class PreviewRequest(BaseModel):
-    template_id: Optional[str] = "14.tgs"
+    template_id: Optional[str] = "1.tgs"
     text: Optional[str] = "ISMINGIZ"
     font: Optional[str] = "stapel"
     scale: Optional[float] = 1.0
@@ -129,6 +129,7 @@ class PreviewRequest(BaseModel):
     svg_data: Optional[str] = None
     badge_color: Optional[str] = None
     badge_bg_color: Optional[str] = None
+    text_color: Optional[str] = None
 
 
 class BatchPreviewRequest(BaseModel):
@@ -140,6 +141,7 @@ class BatchPreviewRequest(BaseModel):
     svg_data: Optional[str] = None
     badge_color: Optional[str] = None
     badge_bg_color: Optional[str] = None
+    text_color: Optional[str] = None
 
 
 class GenerateRequest(BaseModel):
@@ -155,6 +157,7 @@ class GenerateRequest(BaseModel):
     svg_data: Optional[str] = None
     badge_color: Optional[str] = None
     badge_bg_color: Optional[str] = None
+    text_color: Optional[str] = None
     init_data: Optional[str] = None
 
 
@@ -169,6 +172,7 @@ class AddToPackRequest(BaseModel):
     svg_data: Optional[str] = None
     badge_color: Optional[str] = None
     badge_bg_color: Optional[str] = None
+    text_color: Optional[str] = None
 
 
 class CreateInvoiceRequest(BaseModel):
@@ -191,6 +195,7 @@ class SendInvoiceRequest(BaseModel):
     svg_data: Optional[str] = None
     badge_color: Optional[str] = None
     badge_bg_color: Optional[str] = None
+    text_color: Optional[str] = None
 
 
 # ==================== WEB APP FRONTEND ROUTE ====================
@@ -355,7 +360,7 @@ async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body
         try:
             clean_svg = validate_and_clean_svg(req.svg_data)
             svg_title = req.text or "SVG"
-            svg_id = cache_svg(clean_svg, svg_title, badge_color=req.badge_color)
+            svg_id = cache_svg(clean_svg, svg_title, badge_color=req.badge_color, badge_bg_color=req.badge_bg_color, text_color=req.text_color)
             clean_text = svg_id
             font_key = "svg"
             action_type = "svg_all" if req.mode == "all" else ("svg_one" if req.mode == "single" else "svg_selected")
@@ -465,7 +470,8 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
             badge_color=req.badge_color,
-            badge_bg_color=req.badge_bg_color
+            badge_bg_color=req.badge_bg_color,
+            text_color=req.text_color
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
@@ -509,7 +515,8 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 svg_data=req.svg_data,
                 input_type=req.input_type or ("svg" if is_svg_mode else "text"),
                 badge_color=req.badge_color,
-                badge_bg_color=req.badge_bg_color
+                badge_bg_color=req.badge_bg_color,
+                text_color=req.text_color
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
             filename = tpl_id if tpl_id.endswith(".tgs") else f"{tpl_id}.tgs"
@@ -657,7 +664,8 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
             badge_color=req.badge_color,
-            badge_bg_color=req.badge_bg_color
+            badge_bg_color=req.badge_bg_color,
+            text_color=req.text_color
         )
 
         emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -878,7 +886,8 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
             badge_color=req.badge_color,
-            badge_bg_color=req.badge_bg_color
+            badge_bg_color=req.badge_bg_color,
+            text_color=req.text_color
         )
 
         sticker_item = InputSticker(
