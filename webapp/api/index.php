@@ -5,6 +5,16 @@ error_reporting(0);
 set_time_limit(0);
 ini_set('max_execution_time', 0);
 
+// Set CORS headers for Mini App
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+
+if (isset($_SERVER['REQUEST_METHOD']) && strtoupper($_SERVER['REQUEST_METHOD']) === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 // Determine the target API endpoint
 $endpoint = $_GET['endpoint'] ?? '';
 if (!$endpoint) {
@@ -25,14 +35,15 @@ $cleanQuery = preg_replace('/(&?endpoint=[^&]*)/', '', $queryString);
 $cleanQuery = trim($cleanQuery, '&');
 
 $targetUrl = 'http://127.0.0.1:8000/api/' . $endpoint . ($cleanQuery ? '?' . $cleanQuery : '');
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $targetUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_POSTREDIR, 7); // Preserve POST across 301, 302, 307 redirects
 curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+curl_setopt($ch, CURLOPT_TIMEOUT, 180);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 

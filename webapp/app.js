@@ -171,6 +171,7 @@ const dom = {
     btnCloseBalanceModal: document.getElementById('btn-close-balance-modal'),
     btnCancelBalance: document.getElementById('btn-cancel-balance'),
     btnTopupWallet: document.getElementById('btn-topup-wallet'),
+    btnReferralInvite: document.getElementById('btn-referral-invite'),
     btnHeaderTopup: document.getElementById('btn-header-topup'),
     modalCurrBal: document.getElementById('modal-curr-bal'),
     modalNeededBal: document.getElementById('modal-needed-bal'),
@@ -457,11 +458,23 @@ async function apiFetch(endpoint, options = {}) {
 
 async function loadUserInfo(userId) {
     try {
-        const res = await apiFetch(`user_info?user_id=${userId}`);
+        let startParam = '';
+        if (window.Telegram?.WebApp?.initDataUnsafe?.start_param) {
+            startParam = encodeURIComponent(window.Telegram.WebApp.initDataUnsafe.start_param);
+        } else {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refFromUrl = urlParams.get('tgWebAppStartParam') || urlParams.get('startapp') || urlParams.get('ref') || urlParams.get('start');
+            if (refFromUrl) startParam = encodeURIComponent(refFromUrl);
+        }
+
+        const query = startParam ? `user_info?user_id=${userId}&ref=${startParam}` : `user_info?user_id=${userId}`;
+        const res = await apiFetch(query);
         const data = await res.json();
         state.userBalance = data.balance ?? 0;
         state.emojiPrice = data.emoji_price ?? 6;
         state.userPacks = data.packs ?? [];
+        state.referralStats = data.referral_stats ?? { count: 0, total_earned: 0 };
+        state.referralBonus = data.referral_bonus ?? 10;
         state.isAdmin = !!data.is_admin;
         
         if (dom.userBalanceVal) {
@@ -1749,6 +1762,19 @@ function setupEventListeners() {
             tg.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=wallet`);
         } else {
             window.open(`https://t.me/${BOT_USERNAME}?start=wallet`, '_blank');
+        }
+    });
+
+    dom.btnReferralInvite?.addEventListener('click', () => {
+        haptic('medium');
+        const uid = state.user?.id || 1323217434;
+        const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${uid}`;
+        const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent('✨ O`z ismingiz yoki SVG logongiz bilan Telegram Premium Animatsiyali Emoji to`plamini yarating!')}`;
+        closeBalanceModal();
+        if (tg?.openTelegramLink) {
+            tg.openTelegramLink(shareUrl);
+        } else {
+            window.open(shareUrl, '_blank');
         }
     });
     

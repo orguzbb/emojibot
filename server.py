@@ -1,4 +1,5 @@
 import os
+import re
 import gzip
 import json
 import random
@@ -39,7 +40,9 @@ from database import (
     get_user_balance,
     add_user_balance,
     deduct_user_balance,
-    get_emoji_price
+    get_emoji_price,
+    get_referral_bonus,
+    get_referral_stats
 )
 from handlers import FONTS_MAP, DEFAULT_EMOJIS, to_name_slug
 
@@ -72,7 +75,7 @@ def set_bot(bot: Bot):
 
 def get_bot() -> Bot:
     global bot_instance
-    if bot_instance is None:
+    if bot_instance is None or getattr(bot_instance.session, 'closed', False):
         bot_instance = Bot(
             token=BOT_TOKEN,
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -199,13 +202,52 @@ async def get_info():
     }
 
 
-@app.get("/api/user_info")
-@app.get("/api/user_info/")
-async def get_user_info_endpoint(user_id: int = Query(...)):
-    """Returns user balance, price per emoji, user created packs and admin flag"""
+@app.api_route("/api/user_info", methods=["GET", "POST"])
+@app.api_route("/api/user_info/", methods=["GET", "POST"])
+async def get_user_info_endpoint(user_id: int = Query(1323217434), ref: Optional[str] = Query(None)):
+    """Returns user balance, price per emoji, user created packs, referral stats and admin flag"""
+    ref_id = None
+    if ref:
+        digits = re.findall(r'\d+', str(ref))
+        if digits:
+            try:
+                cand = int(digits[0])
+                if cand != user_id:
+                    ref_id = cand
+            except (ValueError, TypeError):
+                ref_id = None
+
+    is_new, awarded_ref = add_or_update_user(
+        user_id=user_id,
+        referred_by=ref_id
+    )
+
+    if awarded_ref:
+        ref_bonus = get_referral_bonus()
+        new_ref_bal = add_user_balance(
+            awarded_ref,
+            ref_bonus,
+            tx_type="referral_bonus",
+            description=f"Yangi do'st taklif qilindi: {user_id}"
+        )
+        try:
+            bot = get_bot()
+            await bot.send_message(
+                chat_id=awarded_ref,
+                text=(
+                    f"🎉 <b>Yangi do'stingiz Mini App orqali qo'shildi!</b>\n\n"
+                    f"🎁 Balansingizga <b>+{ref_bonus} ⭐ Stars</b> qo'shildi!\n"
+                    f"💰 Joriy balansingiz: <b>{new_ref_bal} ⭐ Stars</b>"
+                ),
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            logger.warning(f"Referrer notification error {awarded_ref}: {e}")
+
     balance = get_user_balance(user_id)
     price = get_emoji_price()
     packs = get_user_packs(user_id)
+    ref_stats = get_referral_stats(user_id)
     is_admin = user_id in ADMIN_IDS
 
     return {
@@ -213,8 +255,38 @@ async def get_user_info_endpoint(user_id: int = Query(...)):
         "balance": balance,
         "emoji_price": price,
         "packs": packs,
+        "referral_stats": ref_stats,
+        "referral_bonus": get_referral_bonus(),
         "is_admin": is_admin
     }
+
+
+@app.api_route("/api/create_invoice", methods=["GET", "POST"])
+@app.api_route("/api/create_invoice/", methods=["GET", "POST"])
+async def create_invoice_endpoint(req: CreateInvoiceRequest):
+    """Creates a Telegram Stars invoice link for direct in-app payment"""
+    bot = get_bot()
+    unit_price = get_emoji_price()
+    total_cost = max(1, req.count * unit_price)
+
+    payload = f"topup_stars:{req.user_id}:{total_cost}"
+
+    try:
+        invoice_link = await bot.create_invoice_link(
+            title="Balansni to'ldirish",
+            description=f"Balansingizga {total_cost} ⭐ Stars qo'shish to'lovi.",
+            payload=payload,
+            currency="XTR",
+            prices=[LabeledPrice(label=f"{total_cost} ⭐ Stars", amount=total_cost)]
+        )
+        return {
+            "ok": True,
+            "invoice_link": invoice_link,
+            "total_cost": total_cost
+        }
+    except Exception as e:
+        logger.error(f"Create invoice link error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Invoice yaratishda xatolik: {e}")
 
 
 class SendInvoiceRequest(BaseModel):
@@ -230,8 +302,8 @@ class SendInvoiceRequest(BaseModel):
     selected_templates: Optional[List[str]] = None
 
 
-@app.post("/api/send_invoice_to_chat")
-@app.post("/api/send_invoice_to_chat/")
+@app.api_route("/api/send_invoice_to_chat", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/send_invoice_to_chat/", methods=["GET", "POST", "OPTIONS"])
 async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
     """Sends a Telegram Stars (XTR) invoice directly to user's Telegram chat"""
     unit_price = get_emoji_price()
@@ -272,8 +344,8 @@ async def send_invoice_to_chat_endpoint(req: SendInvoiceRequest):
         raise HTTPException(status_code=500, detail=f"Botga hisob-faktura yuborishda xatolik: {e}")
 
 
-@app.get("/api/templates")
-@app.get("/api/templates/")
+@app.api_route("/api/templates", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/templates/", methods=["GET", "POST", "OPTIONS"])
 async def get_templates_list():
     """Returns full list of available 117 animated emoji templates"""
     p = Path(TEMPLATES_DIR)
@@ -293,8 +365,8 @@ async def get_templates_list():
     return {"templates": items}
 
 
-@app.post("/api/preview")
-@app.post("/api/preview/")
+@app.api_route("/api/preview", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/preview/", methods=["GET", "POST", "OPTIONS"])
 async def generate_preview(req: PreviewRequest):
     """Renders a single template with text/font/scale or SVG and returns Lottie JSON"""
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
@@ -327,8 +399,8 @@ async def generate_preview(req: PreviewRequest):
         raise HTTPException(status_code=500, detail="Prevyu yaratishda xatolik yuz berdi")
 
 
-@app.post("/api/batch_preview")
-@app.post("/api/batch_preview/")
+@app.api_route("/api/batch_preview", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/batch_preview/", methods=["GET", "POST", "OPTIONS"])
 async def generate_batch_preview(req: BatchPreviewRequest):
     """Renders multiple templates in a single batch request for speed"""
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
@@ -421,8 +493,8 @@ async def background_add_stickers(
         logger.info(f"Background completion notification warning: {notify_err}")
 
 
-@app.post("/api/generate")
-@app.post("/api/generate/")
+@app.api_route("/api/generate", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/generate/", methods=["GET", "POST", "OPTIONS"])
 async def generate_emoji_pack(req: GenerateRequest):
     """
     Bulletproof Generation Endpoint:
@@ -670,16 +742,16 @@ async def generate_emoji_pack(req: GenerateRequest):
         raise HTTPException(status_code=500, detail="Generatsiyada xatolik yuz berdi. Stars qaytarildi.")
 
 
-@app.get("/api/user_packs")
-@app.get("/api/user_packs/")
+@app.api_route("/api/user_packs", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/user_packs/", methods=["GET", "POST", "OPTIONS"])
 async def get_user_packs_endpoint(user_id: int = Query(...)):
     """Retrieves user's created packs"""
     packs = get_user_packs(user_id)
     return {"packs": packs}
 
 
-@app.post("/api/add_to_pack")
-@app.post("/api/add_to_pack/")
+@app.api_route("/api/add_to_pack", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/add_to_pack/", methods=["GET", "POST", "OPTIONS"])
 async def add_to_existing_pack_endpoint(req: AddToPackRequest):
     """Adds a single sticker to an existing user's custom emoji set"""
     bot = get_bot()

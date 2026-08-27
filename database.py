@@ -115,31 +115,48 @@ def add_or_update_user(
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT user_id, referred_by FROM users WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT user_id, referred_by, packs_created FROM users WHERE user_id = ?", (user_id,))
     existing = cursor.fetchone()
 
     is_new = False
     awarded_referrer = None
 
+    valid_ref = None
+    if referred_by is not None:
+        try:
+            r_int = int(referred_by)
+            if r_int != int(user_id):
+                valid_ref = r_int
+        except (ValueError, TypeError):
+            valid_ref = None
+
     if existing is None:
         is_new = True
-        # Check referrer validity (cannot refer oneself)
-        valid_ref = None
-        if referred_by and referred_by != user_id:
-            valid_ref = referred_by
-            awarded_referrer = referred_by
+        if valid_ref:
+            awarded_referrer = valid_ref
 
         cursor.execute("""
             INSERT INTO users (user_id, username, first_name, balance, referred_by)
             VALUES (?, ?, ?, 0, ?)
         """, (user_id, username, first_name, valid_ref))
     else:
-        cursor.execute("""
-            UPDATE users SET
-                username = ?,
-                first_name = ?
-            WHERE user_id = ?
-        """, (username, first_name, user_id))
+        # If user exists but was never referred by anyone and hasn't created packs
+        if (existing["referred_by"] is None or existing["referred_by"] == 0) and valid_ref and (existing["packs_created"] or 0) == 0:
+            awarded_referrer = valid_ref
+            cursor.execute("""
+                UPDATE users SET
+                    username = COALESCE(?, username),
+                    first_name = COALESCE(?, first_name),
+                    referred_by = ?
+                WHERE user_id = ?
+            """, (username, first_name, valid_ref, user_id))
+        else:
+            cursor.execute("""
+                UPDATE users SET
+                    username = COALESCE(?, username),
+                    first_name = COALESCE(?, first_name)
+                WHERE user_id = ?
+            """, (username, first_name, user_id))
 
     conn.commit()
     conn.close()

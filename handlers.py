@@ -142,11 +142,13 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
 
     if len(args) > 1:
         ref_arg = args[1].strip()
-        if ref_arg.startswith("ref_") or ref_arg.startswith("ref"):
+        digits = re.findall(r'\d+', ref_arg)
+        if digits:
             try:
-                clean_ref = ref_arg.replace("ref_", "").replace("ref", "")
-                ref_id = int(clean_ref)
-            except ValueError:
+                candidate_id = int(digits[0])
+                if candidate_id != user.id:
+                    ref_id = candidate_id
+            except (ValueError, TypeError):
                 ref_id = None
 
     is_new, awarded_ref = add_or_update_user(
@@ -156,7 +158,7 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
         referred_by=ref_id
     )
 
-    if is_new and awarded_ref:
+    if awarded_ref:
         ref_bonus = get_referral_bonus()
         new_ref_bal = add_user_balance(
             awarded_ref,
@@ -516,7 +518,7 @@ async def process_successful_payment(message: Message, bot: Bot):
     logger.info(f"Successful payment received from user {user_id}: {total_amount} Stars, payload={payload}")
 
     # 1. Top-up deposit handling
-    if payload.startswith("topup:"):
+    if payload.startswith("topup:") or payload.startswith("topup_stars:"):
         new_balance = add_user_balance(
             user_id=user_id,
             amount=total_amount,
