@@ -268,6 +268,169 @@ def parse_svg_transform(tf_str: str) -> Transform:
     return t
 
 
+def _strip_xml_ns(tag: str) -> str:
+    if isinstance(tag, str) and tag.startswith("{"):
+        return tag.split("}", 1)[1]
+    return str(tag or "")
+
+
+try:
+    from fontTools.svgLib.path import parse_path as ft_parse_path
+except Exception:
+    ft_parse_path = None
+
+
+class SafePathBuilder:
+    def __init__(self):
+        self.paths = []
+
+    def add_path_from_element(self, el):
+        tag = _strip_xml_ns(el.tag).lower()
+        attrib = el.attrib
+        if tag == 'rect':
+            x = float(attrib.get('x', 0))
+            y = float(attrib.get('y', 0))
+            w = float(attrib.get('width', 0))
+            h = float(attrib.get('height', 0))
+            rx = float(attrib.get('rx', 0))
+            ry = float(attrib.get('ry', rx))
+            if rx == 0 and ry == 0:
+                self.paths.append(f"M {x} {y} h {w} v {h} h {-w} Z")
+            else:
+                self.paths.append(
+                    f"M {x+rx} {y} h {w-2*rx} a {rx} {ry} 0 0 1 {rx} {ry} v {h-2*ry} a {rx} {ry} 0 0 1 {-rx} {ry} h {-w+2*rx} a {rx} {ry} 0 0 1 {-rx} {-ry} v {-h+2*ry} a {rx} {ry} 0 0 1 {rx} {-ry} Z"
+                )
+        elif tag == 'circle':
+            cx = float(attrib.get('cx', 0))
+            cy = float(attrib.get('cy', 0))
+            r = float(attrib.get('r', 0))
+            self.paths.append(f"M {cx-r} {cy} a {r} {r} 0 1 0 {2*r} 0 a {r} {r} 0 1 0 {-2*r} 0 Z")
+        elif tag == 'ellipse':
+            cx = float(attrib.get('cx', 0))
+            cy = float(attrib.get('cy', 0))
+            rx = float(attrib.get('rx', 0))
+            ry = float(attrib.get('ry', 0))
+            self.paths.append(f"M {cx-rx} {cy} a {rx} {ry} 0 1 0 {2*rx} 0 a {rx} {ry} 0 1 0 {-2*rx} 0 Z")
+        elif tag == 'line':
+            x1 = float(attrib.get('x1', 0))
+            y1 = float(attrib.get('y1', 0))
+            x2 = float(attrib.get('x2', 0))
+            y2 = float(attrib.get('y2', 0))
+            self.paths.append(f"M {x1} {y1} L {x2} {y2}")
+        elif tag == 'polygon':
+            pts = attrib.get('points', '').strip()
+            if pts:
+                self.paths.append(f"M {pts} Z")
+        elif tag == 'polyline':
+            pts = attrib.get('points', '').strip()
+            if pts:
+                self.paths.append(f"M {pts}")
+
+
+_COMMAND_RE = re.compile(r'([MmLlHhVvCcSsQqTtAaZz])|([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)')
+
+def _parse_svg_path_pure(d: str, pen):
+    tokens = []
+    for m in _COMMAND_RE.finditer(d):
+        cmd, num = m.groups()
+        if cmd:
+            tokens.append(cmd)
+        elif num:
+            tokens.append(float(num))
+
+    i = 0
+    curr_x, curr_y = 0.0, 0.0
+    start_x, start_y = 0.0, 0.0
+    last_cmd = None
+
+    while i < len(tokens):
+        token = tokens[i]
+        if isinstance(token, str):
+            cmd = token
+            i += 1
+        else:
+            cmd = last_cmd
+
+        if not cmd:
+            break
+
+        if cmd == 'M':
+            curr_x, curr_y = tokens[i], tokens[i+1]
+            start_x, start_y = curr_x, curr_y
+            pen.moveTo((curr_x, curr_y))
+            i += 2
+            last_cmd = 'L'
+        elif cmd == 'm':
+            curr_x += tokens[i]
+            curr_y += tokens[i+1]
+            start_x, start_y = curr_x, curr_y
+            pen.moveTo((curr_x, curr_y))
+            i += 2
+            last_cmd = 'l'
+        elif cmd == 'L':
+            curr_x, curr_y = tokens[i], tokens[i+1]
+            pen.lineTo((curr_x, curr_y))
+            i += 2
+            last_cmd = 'L'
+        elif cmd == 'l':
+            curr_x += tokens[i]
+            curr_y += tokens[i+1]
+            pen.lineTo((curr_x, curr_y))
+            i += 2
+            last_cmd = 'l'
+        elif cmd == 'H':
+            curr_x = tokens[i]
+            pen.lineTo((curr_x, curr_y))
+            i += 1
+            last_cmd = 'H'
+        elif cmd == 'h':
+            curr_x += tokens[i]
+            pen.lineTo((curr_x, curr_y))
+            i += 1
+            last_cmd = 'h'
+        elif cmd == 'V':
+            curr_y = tokens[i]
+            pen.lineTo((curr_x, curr_y))
+            i += 1
+            last_cmd = 'V'
+        elif cmd == 'v':
+            curr_y += tokens[i]
+            pen.lineTo((curr_x, curr_y))
+            i += 1
+            last_cmd = 'v'
+        elif cmd == 'C':
+            x1, y1 = tokens[i], tokens[i+1]
+            x2, y2 = tokens[i+2], tokens[i+3]
+            curr_x, curr_y = tokens[i+4], tokens[i+5]
+            pen.curveToOne((x1, y1), (x2, y2), (curr_x, curr_y))
+            i += 6
+            last_cmd = 'C'
+        elif cmd == 'c':
+            x1, y1 = curr_x + tokens[i], curr_y + tokens[i+1]
+            x2, y2 = curr_x + tokens[i+2], curr_y + tokens[i+3]
+            curr_x += tokens[i+4]
+            curr_y += tokens[i+5]
+            pen.curveToOne((x1, y1), (x2, y2), (curr_x, curr_y))
+            i += 6
+            last_cmd = 'c'
+        elif cmd in ('Z', 'z'):
+            pen.closePath()
+            curr_x, curr_y = start_x, start_y
+            last_cmd = None
+        else:
+            i += 1
+
+
+def parse_path(d_str: str, pen):
+    if ft_parse_path is not None:
+        try:
+            ft_parse_path(d_str, pen)
+            return
+        except Exception:
+            pass
+    _parse_svg_path_pure(d_str, pen)
+
+
 def draw_svg_to_pen(root_element, pen):
     """
     Recursively traverses an SVG XML element tree, propagating and multiplying
@@ -284,7 +447,7 @@ def draw_svg_to_pen(root_element, pen):
             t_pen = TransformPen(pen, combined_tf) if combined_tf != Transform() else pen
             parse_path(el.attrib['d'], t_pen)
         elif tag in ('circle', 'rect', 'ellipse', 'line', 'polygon', 'polyline'):
-            pb = PathBuilder()
+            pb = SafePathBuilder()
             pb.add_path_from_element(el)
             t_pen = TransformPen(pen, combined_tf) if combined_tf != Transform() else pen
             for p in pb.paths:

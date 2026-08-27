@@ -827,7 +827,13 @@ function loadSvgFile(file) {
             }
             state.svgData = content;
             state.svgFileName = name;
+            state.inputType = 'svg';
+            dom.modeTabText?.classList.remove('active');
+            dom.modeTabSvg?.classList.add('active');
+            dom.modeSectionText?.classList.add('hidden');
+            dom.modeSectionSvg?.classList.remove('hidden');
             state.previewCache.clear();
+            switchTab('logo');
             if (!state.selectedTemplate || parseInt(getTemplateNumber(state.selectedTemplate)) <= 13) {
                 state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
             }
@@ -1033,7 +1039,7 @@ async function renderTicketsGrid(filterText = '') {
         const file = tpl.file;
         const num = tpl.id;
         const container = document.getElementById(`thumb-ticket-${num}`);
-        const data = batchData[file] || getPreRenderedTemplateData(file, state.font, state.scale);
+        const data = batchData[file] || (state.inputType === 'svg' ? null : getPreRenderedTemplateData(file, state.font, state.scale));
         
         if (container && data) {
             container.innerHTML = '';
@@ -1109,7 +1115,7 @@ async function renderLogosGrid(filterText = '') {
     Object.entries(batchData).forEach(([file, data]) => {
         const num = getTemplateNumber(file);
         const container = document.getElementById(`thumb-logo-${num}`);
-        const lottieData = data || getPreRenderedTemplateData(file, state.font, state.scale);
+        const lottieData = data || (state.inputType === 'svg' ? null : getPreRenderedTemplateData(file, state.font, state.scale));
         if (container && lottieData) {
             container.innerHTML = '';
             const player = lottie.loadAnimation({
