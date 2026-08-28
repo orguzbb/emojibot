@@ -21,9 +21,10 @@ for (let i = 1; i <= 13; i++) {
     });
 }
 
-// The 104 Logo Emojis (14.tgs to 117.tgs)
+// The 103 Logo Emojis (14.tgs to 117.tgs, excluding 81)
 const LOGO_TEMPLATES = [];
 for (let i = 14; i <= 117; i++) {
+    if (i === 81) continue; // Template 81 removed
     LOGO_TEMPLATES.push({
         id: `${i}`,
         file: `${i}.tgs`,
@@ -44,6 +45,7 @@ const state = {
     text: "",
     svgData: "",
     svgFileName: "",
+    svgPackName: "",
     badgeColor: "#FFFFFF",
     badgeBgColor: "#000000",
     textColor: "#FFFFFF",
@@ -95,6 +97,7 @@ const dom = {
     svgActiveCard: document.getElementById('svg-active-card'),
     svgThumbPreview: document.getElementById('svg-thumb-preview'),
     svgFileName: document.getElementById('svg-file-name'),
+    svgPackNameInput: document.getElementById('svg-pack-name-input'),
     btnChangeSvg: document.getElementById('btn-change-svg'),
     btnRemoveSvg: document.getElementById('btn-remove-svg'),
     
@@ -1079,6 +1082,15 @@ function loadSvgFile(file) {
             state.svgData = content;
             state.svgFileName = name;
             state.inputType = 'svg';
+
+            if (!state.svgPackName && dom.svgPackNameInput) {
+                const autoName = name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9а-яА-ЯёЁ_ \-]/g, '').toUpperCase().slice(0, 20);
+                if (autoName) {
+                    state.svgPackName = autoName;
+                    dom.svgPackNameInput.value = autoName;
+                }
+            }
+
             dom.modeTabText?.classList.remove('active');
             dom.modeTabSvg?.classList.add('active');
             dom.modeSectionText?.classList.add('hidden');
@@ -1107,7 +1119,9 @@ function loadSvgFile(file) {
 function removeSvg() {
     state.svgData = "";
     state.svgFileName = "";
+    state.svgPackName = "";
     if (dom.svgFileInput) dom.svgFileInput.value = "";
+    if (dom.svgPackNameInput) dom.svgPackNameInput.value = "";
     state.previewCache.clear();
     updateSvgThumbnail();
     showToast("SVG olib tashlandi", "🗑");
@@ -1666,9 +1680,13 @@ async function startGeneration(mode = 'selected') {
     const totalCost = totalCount * unitPrice;
     state.lastNeededBal = totalCost;
 
+    const effectiveText = isSvg 
+        ? (state.svgPackName ? state.svgPackName.trim().toUpperCase() : (state.text ? state.text.trim().toUpperCase() : "SVG")) 
+        : cleanText;
+
     currentPendingAction = {
         userId,
-        cleanText: isSvg ? (state.text ? state.text.trim().toUpperCase() : "SVG") : cleanText,
+        cleanText: effectiveText,
         inputType: state.inputType,
         svgData: isSvg ? state.svgData : null,
         badgeColor: state.badgeColor || null,
@@ -1683,7 +1701,7 @@ async function startGeneration(mode = 'selected') {
     };
 
     if (dom.payChoiceCount) dom.payChoiceCount.textContent = `${totalCount} ta`;
-    if (dom.payChoiceText) dom.payChoiceText.textContent = isSvg ? `"${state.svgFileName || 'SVG Vektor'}"` : `"${cleanText}"`;
+    if (dom.payChoiceText) dom.payChoiceText.textContent = `"${effectiveText}"`;
     if (dom.payChoiceCost) dom.payChoiceCost.innerHTML = `${totalCost} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
     if (dom.payChoiceBalance) dom.payChoiceBalance.innerHTML = `${state.userBalance || 0} <img src="images/image.png" class="inline-star-icon" alt="Stars">`;
 
@@ -1934,6 +1952,13 @@ function setupEventListeners() {
     // SVG Remove Button
     dom.btnRemoveSvg?.addEventListener('click', () => {
         removeSvg();
+    });
+
+    // SVG Custom Pack Name Input
+    dom.svgPackNameInput?.addEventListener('input', (e) => {
+        let val = e.target.value.replace(/[^a-zA-Z0-9а-яА-ЯёЁ_ \-]/g, '').toUpperCase();
+        state.svgPackName = val;
+        e.target.value = val;
     });
 
     function updateCharCount() {

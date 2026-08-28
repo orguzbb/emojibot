@@ -103,6 +103,62 @@ def to_name_slug(text: str) -> str:
     return slug[:18]
 
 
+async def create_unique_custom_emoji_set(
+    bot_instance,
+    user_id: int,
+    base_slug: str,
+    pack_title: str,
+    stickers: list
+) -> str:
+    """
+    Creates a new custom emoji set trying the cleanest name first:
+    1. {clean_slug}_by_{BOT_USERNAME}
+    2. {clean_slug}_1_by_{BOT_USERNAME}
+    3. {clean_slug}_2_by_{BOT_USERNAME}
+    ...
+    Automatically detecting occupied names and falling back to next available index.
+    """
+    clean_slug = to_name_slug(base_slug) if base_slug else "emoji"
+    if not clean_slug or not clean_slug[0].isalpha():
+        clean_slug = f"e{clean_slug}"
+    clean_slug = clean_slug[:24]
+
+    candidates = [
+        f"{clean_slug}_by_{BOT_USERNAME}",
+        f"{clean_slug}_1_by_{BOT_USERNAME}",
+        f"{clean_slug}_2_by_{BOT_USERNAME}",
+        f"{clean_slug}_3_by_{BOT_USERNAME}",
+        f"{clean_slug}_4_by_{BOT_USERNAME}",
+        f"{clean_slug}_5_by_{BOT_USERNAME}"
+    ]
+    for n in range(6, 25):
+        candidates.append(f"{clean_slug}_{n}_by_{BOT_USERNAME}")
+    candidates.append(f"{clean_slug}_{random.randint(100, 99999)}_by_{BOT_USERNAME}")
+
+    last_err = None
+    for cand_name in candidates:
+        try:
+            await bot_instance.create_new_sticker_set(
+                user_id=user_id,
+                name=cand_name,
+                title=pack_title,
+                stickers=stickers,
+                sticker_type="custom_emoji"
+            )
+            logger.info(f"Successfully created emoji set '{cand_name}' for user {user_id}")
+            return cand_name
+        except Exception as e:
+            err_str = str(e).lower()
+            if any(k in err_str for k in ["occupied", "already taken", "invalid_short_name", "short_name_occupied", "name_invalid", "already used", "bad request: shortname"]):
+                logger.info(f"Pack name '{cand_name}' is occupied on Telegram. Trying next candidate...")
+                last_err = e
+                continue
+            else:
+                logger.error(f"Error creating sticker set '{cand_name}': {e}")
+                raise e
+    raise last_err or Exception("Barcha nomlar band, iltimos boshqa nom tanlang.")
+
+
 def get_main_menu_markup(user_id: int) -> InlineKeyboardMarkup:
     balance = get_user_balance(user_id)
     ref_bonus = get_referral_bonus()
@@ -1286,17 +1342,14 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
             name_slug = to_name_slug(clean_text)
             pack_title = f"{clean_text} Emojis"
 
-        short_code = random.randint(100, 99999)
-        pack_name = f"{name_slug}_{short_code}_by_{BOT_USERNAME}"
-        total_stickers = len(input_stickers)
-
-        await bot.create_new_sticker_set(
+        pack_name = await create_unique_custom_emoji_set(
+            bot_instance=bot,
             user_id=user_id,
-            name=pack_name,
-            title=pack_title,
-            stickers=[input_stickers[0]],
-            sticker_type="custom_emoji"
+            base_slug=name_slug,
+            pack_title=pack_title,
+            stickers=[input_stickers[0]]
         )
+        total_stickers = len(input_stickers)
 
         for idx in range(1, total_stickers):
             try:
@@ -1383,20 +1436,18 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
             slug_text = to_name_slug(clean_text)
             pack_title = f"{clean_text} ({font_info['name']})"
 
-        pack_name = f"{slug_text}_{rand_suffix}_by_{BOT_USERNAME}"
-
         sticker_item = InputSticker(
             sticker=BufferedInputFile(proc_bytes, filename="emoji_1.tgs"),
             emoji_list=["⭐"],
             format="animated"
         )
 
-        await bot.create_new_sticker_set(
+        pack_name = await create_unique_custom_emoji_set(
+            bot_instance=bot,
             user_id=user_id,
-            name=pack_name,
-            title=pack_title,
-            stickers=[sticker_item],
-            sticker_type="custom_emoji"
+            base_slug=slug_text,
+            pack_title=pack_title,
+            stickers=[sticker_item]
         )
 
         save_user_pack(user_id, pack_name, pack_title)
@@ -1561,21 +1612,15 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
             name_slug = to_name_slug(clean_text)
             pack_title = f"{clean_text} Emojis"
 
-        short_code = random.randint(100, 99999)
-        pack_name = f"{name_slug}_{short_code}_by_{BOT_USERNAME}"
-        total_stickers = len(input_stickers)
-        emoji_pack_created = False
-
         try:
-            logger.info(f"Paket yaratilmoqda (Dastlabki stiker bilan): {pack_name}")
-            created = await bot.create_new_sticker_set(
+            pack_name = await create_unique_custom_emoji_set(
+                bot_instance=bot,
                 user_id=user_id,
-                name=pack_name,
-                title=pack_title,
-                stickers=[input_stickers[0]],
-                sticker_type="custom_emoji"
+                base_slug=name_slug,
+                pack_title=pack_title,
+                stickers=[input_stickers[0]]
             )
-            emoji_pack_created = created
+            emoji_pack_created = True
 
             if emoji_pack_created and total_stickers > 1:
                 for idx in range(1, total_stickers):

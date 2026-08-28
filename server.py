@@ -45,7 +45,7 @@ from database import (
     get_referral_bonus,
     get_referral_stats
 )
-from handlers import FONTS_MAP, DEFAULT_EMOJIS, to_name_slug
+from handlers import FONTS_MAP, DEFAULT_EMOJIS, to_name_slug, create_unique_custom_emoji_set
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("GnEmojiServer")
@@ -756,31 +756,23 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
 
     # Branch B: Create a brand new sticker set
     if is_svg_mode:
-        raw_slug = to_name_slug(clean_text) if clean_text != "SVG" else "svg"
-        if not raw_slug or not raw_slug[0].isalpha():
-            raw_slug = f"v{raw_slug}" if raw_slug else "svg"
-        short_code = random.randint(100, 99999)
-        pack_name = f"{raw_slug}_{short_code}_by_{BOT_USERNAME}"
-        pack_title = f"{clean_text} Vector Emojis" if clean_text != "SVG" else "SVG Vector Emojis"
+        raw_slug = to_name_slug(clean_text) if (clean_text and clean_text != "SVG") else "svg"
+        pack_title = f"{clean_text} Vector Emojis" if (clean_text and clean_text != "SVG") else "SVG Vector Emojis"
     else:
         raw_slug = to_name_slug(clean_text)
-        if not raw_slug or not raw_slug[0].isalpha():
-            raw_slug = f"e{raw_slug}"
-        short_code = random.randint(100, 99999)
-        pack_name = f"{raw_slug}_{short_code}_by_{BOT_USERNAME}"
         pack_title = f"{clean_text} ({font_info['name']})" if req.mode == "single" else f"{clean_text} Emojis"
-    pack_link = f"https://t.me/addemoji/{pack_name}"
 
     try:
         # Step 1: Create new custom emoji sticker set with initial 10 stickers in ONE call
         initial_count = min(10, len(input_stickers))
-        await bot.create_new_sticker_set(
+        pack_name = await create_unique_custom_emoji_set(
+            bot_instance=bot,
             user_id=req.user_id,
-            name=pack_name,
-            title=pack_title,
-            stickers=input_stickers[:initial_count],
-            sticker_type="custom_emoji"
+            base_slug=raw_slug,
+            pack_title=pack_title,
+            stickers=input_stickers[:initial_count]
         )
+        pack_link = f"https://t.me/addemoji/{pack_name}"
 
         # Save to database immediately so it shows up everywhere
         save_user_pack(req.user_id, pack_name, pack_title)

@@ -65,6 +65,9 @@ class AdminStates(StatesGroup):
     waiting_for_user_id_bal = State()
     waiting_for_new_balance = State()
 
+    # Template deletion states
+    waiting_for_template_delete = State()
+
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
@@ -601,6 +604,161 @@ async def cb_admin_list(callback: CallbackQuery):
     )
     await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
     await callback.answer()
+
+
+# ==================== TEMPLATE DELETION ====================
+
+@admin_router.callback_query(F.data.startswith("admin:delete_menu") | F.data.startswith("admin:del_page:"))
+async def cb_admin_delete_menu(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        return
+
+    page = 0
+    if callback.data.startswith("admin:del_page:"):
+        try:
+            page = int(callback.data.split(":")[2])
+        except (IndexError, ValueError):
+            page = 0
+
+    await state.set_state(AdminStates.waiting_for_template_delete)
+
+    p = Path(TEMPLATES_DIR)
+    tgs_files = sorted(p.glob("*.tgs"), key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name)) if p.exists() else []
+
+    if not tgs_files:
+        text = "📁 <b>O'chirish uchun shablonlar mavjud emas.</b>"
+        markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="admin:main")]])
+        await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        await callback.answer()
+        return
+
+    PAGE_SIZE = 10
+    total_pages = (len(tgs_files) + PAGE_SIZE - 1) // PAGE_SIZE
+    page = max(0, min(page, total_pages - 1))
+    current_files = tgs_files[page * PAGE_SIZE : (page + 1) * PAGE_SIZE]
+
+    text = (
+        f"🗑 <b>Shablonlarni o'chirish</b> (Sahifa {page + 1}/{total_pages})\n\n"
+        f"Jami shablonlar soni: <b>{len(tgs_files)} ta</b>\n\n"
+        "O'chirmoqchi bo'lgan shablon raqamini pastdan tanlang yoki <b>raqamini yozib yuboring</b> (masalan: <code>81</code> yoki <code>14.tgs</code>):\n\n"
+        "<i>Bekor qilish uchun /cancel deb yozing.</i>"
+    )
+
+    buttons = []
+    row = []
+    for f in current_files:
+        row.append(InlineKeyboardButton(text=f"🗑 {f.name}", callback_data=f"admin:del_confirm:{f.stem}"))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton(text="⬅️ Oldingi", callback_data=f"admin:del_page:{page - 1}"))
+    if page < total_pages - 1:
+        nav_row.append(InlineKeyboardButton(text="Keyingi ➡️", callback_data=f"admin:del_page:{page + 1}"))
+    if nav_row:
+        buttons.append(nav_row)
+
+    buttons.append([InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="admin:main")])
+
+    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+@admin_router.callback_query(F.data.startswith("admin:del_confirm:"))
+async def cb_admin_del_confirm(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+
+    tpl_stem = callback.data.split(":")[2]
+    filename = f"{tpl_stem}.tgs" if not tpl_stem.endswith(".tgs") else tpl_stem
+    file_path = Path(TEMPLATES_DIR) / filename
+
+    if not file_path.exists():
+        await callback.answer("⚠️ Ushbu shablon fayli topilmadi.", show_alert=True)
+        return
+
+    size_kb = file_path.stat().st_size / 1024
+    text = (
+        f"⚠️ <b>Haqiqatdan ham ushbu shablonni o'chirmoqchimisiz?</b>\n\n"
+        f"📁 <b>Fayl:</b> <code>{filename}</code> ({size_kb:.1f} KB)\n\n"
+        "<i>Eslatma: O'chirilgan faylni qayta tiklab bo'lmaydi!</i>"
+    )
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Ha, o'chirilsin", callback_data=f"admin:del_do:{tpl_stem}"),
+                InlineKeyboardButton(text="❌ Bekor qilish", callback_data="admin:delete_menu")
+            ]
+        ]
+    )
+    await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+@admin_router.callback_query(F.data.startswith("admin:del_do:"))
+async def cb_admin_del_do(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        return
+
+    tpl_stem = callback.data.split(":")[2]
+    filename = f"{tpl_stem}.tgs" if not tpl_stem.endswith(".tgs") else tpl_stem
+    file_path = Path(TEMPLATES_DIR) / filename
+
+    if file_path.exists():
+        try:
+            file_path.unlink()
+            await state.clear()
+            text = f"✅ <b>Shablon <code>{filename}</code> muvaffaqiyatli o'chirildi!</b>"
+            markup = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text="🗑 Yana o'chirish", callback_data="admin:delete_menu")],
+                    [InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="admin:main")]
+                ]
+            )
+            await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        except Exception as e:
+            await callback.answer(f"Xatolik: {e}", show_alert=True)
+    else:
+        await callback.answer("⚠️ Fayl allaqachon o'chirilgan yoki topilmadi.", show_alert=True)
+
+
+@admin_router.message(AdminStates.waiting_for_template_delete)
+async def handle_template_delete_text(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    raw = message.text.strip()
+    if raw.lower() in ("/cancel", "cancel", "bekor"):
+        await state.clear()
+        await message.answer("❌ Bekor qilindi.", reply_markup=get_admin_menu_keyboard())
+        return
+
+    stem = raw.replace(".tgs", "").strip()
+    filename = f"{stem}.tgs"
+    file_path = Path(TEMPLATES_DIR) / filename
+
+    if not file_path.exists():
+        await message.answer(
+            f"⚠️ <b>{filename}</b> nomli shablon topilmadi!\n\nIltimos, mavjud shablon raqamini yozing yoki /cancel bosing:",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    try:
+        file_path.unlink()
+        await state.clear()
+        await message.answer(
+            f"✅ <b>Shablon <code>{filename}</code> muvaffaqiyatli o'chirildi!</b>",
+            reply_markup=get_admin_menu_keyboard(),
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        await message.answer(f"❌ O'chirishda xatolik: {e}", reply_markup=get_admin_menu_keyboard())
 
 
 @admin_router.callback_query(F.data == "admin:add")
