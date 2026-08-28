@@ -1342,8 +1342,20 @@ def process_tgs_template(
     # Search in all layer collections: root layers and precomposition assets
     all_layer_lists = [data.get('layers', [])]
     for asset in data.get('assets', []):
+        asset_id = str(asset.get('id', '')).lower()
+        is_logo_asset = any(k in asset_id for k in ['mylogo', 'logo', 'text_logo', 'emojilogo', 'logocomp', 'logo_comp'])
         if 'layers' in asset:
-            all_layer_lists.append(asset['layers'])
+            for layer in asset['layers']:
+                if is_logo_asset and 'shapes' in layer and isinstance(layer['shapes'], list) and len(layer['shapes']) > 0:
+                    target_group = {'shapes': layer['shapes']}
+                    if effective_svg:
+                        new_shapes = generate_svg_shapes(effective_svg, target_group, scale_factor=effective_scale)
+                    else:
+                        clean_txt = text if (text and text.strip()) else "ISMINGIZ"
+                        new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=effective_scale, text_color=text_color)
+                    layer['shapes'] = new_shapes
+                else:
+                    all_layer_lists.append([layer])
 
     for layers in all_layer_lists:
         for layer in layers:
