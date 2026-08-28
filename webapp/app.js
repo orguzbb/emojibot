@@ -33,6 +33,17 @@ for (let i = 14; i <= 117; i++) {
     });
 }
 
+// The 35 Premium Emojis (118.tgs to 152.tgs)
+const PREMIUM_TEMPLATES = [];
+for (let i = 118; i <= 152; i++) {
+    PREMIUM_TEMPLATES.push({
+        id: `${i}`,
+        file: `${i}.tgs`,
+        name: `Premium #${i}`,
+        tag: "VIP Premium"
+    });
+}
+
 // App State (Nothing selected by default on load, empty text/svg for user input)
 const state = {
     user: null,
@@ -56,6 +67,7 @@ const state = {
     selectedTemplate: "1.tgs", // for top live preview only
     selectedTickets: new Set(), // 0 selected on start
     selectedLogos: new Set(),   // 0 selected on start
+    selectedPremium: new Set(), // 0 selected on start
     userPacks: [],
     
     // Lottie player instances
@@ -63,6 +75,7 @@ const state = {
     modalPlayer: null,
     ticketPlayers: {},
     logoPlayers: {},
+    premiumPlayers: {},
     
     // In-memory preview cache
     previewCache: new Map()
@@ -142,8 +155,10 @@ const dom = {
     // Tabs
     tabBtnName: document.getElementById('tab-btn-name'),
     tabBtnLogo: document.getElementById('tab-btn-logo'),
+    tabBtnPremium: document.getElementById('tab-btn-premium'),
     tabContentName: document.getElementById('tab-content-name'),
     tabContentLogo: document.getElementById('tab-content-logo'),
+    tabContentPremium: document.getElementById('tab-content-premium'),
     
     // Name Tab (13 Ticket Emojis)
     templatesGrid: document.getElementById('templates-grid'),
@@ -152,7 +167,7 @@ const dom = {
     txtSelectAllTickets: document.getElementById('txt-select-all-tickets'),
     ticketSelectionCount: document.getElementById('ticket-selection-count'),
     
-    // Logo Tab (104 Logo Emojis)
+    // Logo Tab (103 Logo Emojis)
     logosGrid: document.getElementById('logos-grid'),
     logoSearch: document.getElementById('logo-search'),
     btnSelectAllLogos: document.getElementById('btn-select-all-logos'),
@@ -161,6 +176,14 @@ const dom = {
     btnCreateFullpack: document.getElementById('btn-create-fullpack'),
     userPacksList: document.getElementById('user-packs-list'),
     btnRefreshPacks: document.getElementById('btn-refresh-packs'),
+
+    // Premium Tab (35 Premium Emojis)
+    premiumGrid: document.getElementById('premium-grid'),
+    premiumSearch: document.getElementById('premium-search'),
+    btnSelectAllPremium: document.getElementById('btn-select-all-premium'),
+    txtSelectAllPremium: document.getElementById('txt-select-all-premium'),
+    premiumSelectionCount: document.getElementById('premium-selection-count'),
+    btnCreatePremiumpack: document.getElementById('btn-create-premiumpack'),
     
     // Bottom Action
     btnMainAction: document.getElementById('btn-main-action'),
@@ -613,13 +636,16 @@ async function initApp() {
         // 2. Render the 13 Ticket Templates in Name Tab (none selected by default)
         renderTicketsGrid();
         
-        // 3. Render the 104 Logo Templates in Logo Tab (none selected by default)
+        // 3. Render the 103 Logo Templates in Logo Tab (none selected by default)
         renderLogosGrid();
+
+        // 4. Render the 35 Premium Templates in Premium Tab (none selected by default)
+        renderPremiumGrid();
         
-        // 4. Update Selection Status
+        // 5. Update Selection Status
         updateSelectionStatus();
         
-        // 5. Load user info, balance & existing packs
+        // 6. Load user info, balance & existing packs
         const uid = state.user?.id || 1323217434;
         await loadUserInfo(uid);
         
@@ -984,21 +1010,25 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
 
 function switchTab(tabKey) {
     state.activeTab = tabKey;
+    
+    dom.tabBtnName?.classList.toggle('active', tabKey === 'name');
+    dom.tabBtnLogo?.classList.toggle('active', tabKey === 'logo');
+    dom.tabBtnPremium?.classList.toggle('active', tabKey === 'premium');
+
+    dom.tabContentName?.classList.toggle('active', tabKey === 'name');
+    dom.tabContentLogo?.classList.toggle('active', tabKey === 'logo');
+    dom.tabContentPremium?.classList.toggle('active', tabKey === 'premium');
+
     if (tabKey === 'name') {
-        dom.tabBtnName?.classList.add('active');
-        dom.tabBtnLogo?.classList.remove('active');
-        dom.tabContentName?.classList.add('active');
-        dom.tabContentLogo?.classList.remove('active');
         if (state.inputType !== 'svg') {
             state.selectedTemplate = Array.from(state.selectedTickets)[0] || "1.tgs";
         }
-    } else {
-        dom.tabBtnLogo?.classList.add('active');
-        dom.tabBtnName?.classList.remove('active');
-        dom.tabContentLogo?.classList.add('active');
-        dom.tabContentName?.classList.remove('active');
+    } else if (tabKey === 'logo') {
         state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+    } else if (tabKey === 'premium') {
+        state.selectedTemplate = Array.from(state.selectedPremium)[0] || "118.tgs";
     }
+
     syncColorControlsUI();
     updateLivePreview();
     updateSelectionStatus();
@@ -1007,8 +1037,10 @@ function switchTab(tabKey) {
 const debouncedFullUpdate = debounce(() => {
     if (state.activeTab === 'name') {
         renderTicketsGrid(dom.templateSearch?.value || '');
-    } else {
+    } else if (state.activeTab === 'logo') {
         renderLogosGrid(dom.logoSearch?.value || '');
+    } else if (state.activeTab === 'premium') {
+        renderPremiumGrid(dom.premiumSearch?.value || '');
     }
 }, 300);
 
@@ -1134,9 +1166,10 @@ function removeSvg() {
 
 async function updateLivePreview() {
     const num = getTemplateNumber(state.selectedTemplate);
-    const isTicket = parseInt(num) <= 13;
+    const n = parseInt(num);
+    const tag = n <= 13 ? 'Ticket' : (n >= 118 ? 'Premium' : 'Logo');
     if (dom.currentTemplateTag) {
-        dom.currentTemplateTag.textContent = `${isTicket ? 'Ticket' : 'Logo'} #${num}`;
+        dom.currentTemplateTag.textContent = `${tag} #${num}`;
     }
     
     if (state.inputType === 'svg') {
@@ -1192,7 +1225,9 @@ async function updateLivePreview() {
 
 // Update selection counters and bottom action button text
 function updateSelectionStatus() {
-    const activeSet = state.activeTab === 'name' ? state.selectedTickets : state.selectedLogos;
+    const activeSet = state.activeTab === 'name' 
+        ? state.selectedTickets 
+        : (state.activeTab === 'logo' ? state.selectedLogos : state.selectedPremium);
     const selectedCount = activeSet.size;
     
     // Ticket tab toolbar
@@ -1220,6 +1255,20 @@ function updateSelectionStatus() {
         } else {
             dom.txtSelectAllLogos.textContent = "Hammasini belgilash";
             dom.btnSelectAllLogos?.classList.remove('active-all');
+        }
+    }
+
+    // Premium tab toolbar
+    if (dom.premiumSelectionCount) {
+        dom.premiumSelectionCount.textContent = `${state.selectedPremium.size} ta tanlandi`;
+    }
+    if (dom.txtSelectAllPremium) {
+        if (state.selectedPremium.size === PREMIUM_TEMPLATES.length && PREMIUM_TEMPLATES.length > 0) {
+            dom.txtSelectAllPremium.textContent = "Tanlovni bekor qilish";
+            dom.btnSelectAllPremium?.classList.add('active-all');
+        } else {
+            dom.txtSelectAllPremium.textContent = "Hammasini belgilash";
+            dom.btnSelectAllPremium?.classList.remove('active-all');
         }
     }
     
@@ -1430,10 +1479,127 @@ async function renderLogosGrid(filterText = '') {
     }
 }
 
+// Render the 35 Premium Emojis in Premium Tab (118.tgs to 152.tgs)
+async function renderPremiumGrid(filterText = '') {
+    Object.values(state.premiumPlayers).forEach(p => {
+        try { p.destroy(); } catch (e) {}
+    });
+    state.premiumPlayers = {};
+    if (!dom.premiumGrid) return;
+    dom.premiumGrid.innerHTML = '';
+    
+    let filtered = PREMIUM_TEMPLATES;
+    if (filterText && filterText.trim()) {
+        const query = filterText.trim().toLowerCase();
+        filtered = PREMIUM_TEMPLATES.filter(t => 
+            t.name.toLowerCase().includes(query) || 
+            t.file.toLowerCase().includes(query) ||
+            t.id.includes(query)
+        );
+    }
+    
+    if (filtered.length === 0) {
+        dom.premiumGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-dim);">
+                Premium shablon topilmadi 🔍
+            </div>
+        `;
+        return;
+    }
+    
+    filtered.forEach((tpl) => {
+        const num = tpl.id;
+        const isSelected = state.selectedPremium.has(tpl.file);
+        const card = document.createElement('div');
+        card.className = `tpl-card ${isSelected ? 'selected' : ''}`;
+        card.dataset.file = tpl.file;
+        
+        card.innerHTML = `
+            <span class="tpl-badge" style="background: rgba(238, 180, 25, 0.2); color: #EEB419;">#${num}</span>
+            <div class="tpl-check-badge">✓</div>
+            <div class="tpl-lottie-thumb" id="thumb-premium-${num}"></div>
+            <div class="tpl-meta">
+                <div class="tpl-title">${tpl.name}</div>
+                <div class="tpl-tag-label" style="color: #EEB419;">${tpl.tag}</div>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => {
+            haptic('selection');
+            toggleCardSelection(tpl.file, 'premium');
+        });
+        
+        dom.premiumGrid.appendChild(card);
+    });
+    
+    // Load first 18 premium items immediately
+    const initialBatch = filtered.slice(0, 18).map(t => t.file);
+    const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
+    
+    Object.entries(batchData).forEach(([file, data]) => {
+        const num = getTemplateNumber(file);
+        const container = document.getElementById(`thumb-premium-${num}`);
+        if (container && data) {
+            container.innerHTML = '';
+            const player = lottie.loadAnimation({
+                container: container,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: data
+            });
+            state.premiumPlayers[file] = player;
+        }
+    });
+    
+    // Lazy load remaining premium items on scroll
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(async entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    const file = card.dataset.file;
+                    const num = getTemplateNumber(file);
+                    const container = document.getElementById(`thumb-premium-${num}`);
+                    
+                    if (container && !state.premiumPlayers[file]) {
+                        const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
+                        if (data && container) {
+                            container.innerHTML = '';
+                            const player = lottie.loadAnimation({
+                                container: container,
+                                renderer: 'svg',
+                                loop: true,
+                                autoplay: true,
+                                animationData: data
+                            });
+                            state.premiumPlayers[file] = player;
+                        }
+                    }
+                    observer.unobserve(card);
+                }
+            });
+        }, { rootMargin: '150px' });
+        
+        dom.premiumGrid.querySelectorAll('.tpl-card').forEach((card, idx) => {
+            if (idx >= 18) observer.observe(card);
+        });
+    }
+}
+
 // Toggle selection on a card (multi-select supported)
 function toggleCardSelection(filename, tabKey) {
-    const targetSet = tabKey === 'name' ? state.selectedTickets : state.selectedLogos;
-    const container = tabKey === 'name' ? dom.templatesGrid : dom.logosGrid;
+    let targetSet, container;
+    if (tabKey === 'name') {
+        targetSet = state.selectedTickets;
+        container = dom.templatesGrid;
+    } else if (tabKey === 'logo') {
+        targetSet = state.selectedLogos;
+        container = dom.logosGrid;
+    } else {
+        targetSet = state.selectedPremium;
+        container = dom.premiumGrid;
+    }
     
     if (targetSet.has(filename)) {
         targetSet.delete(filename);
@@ -1460,9 +1626,20 @@ function toggleCardSelection(filename, tabKey) {
 // Select All / Deselect All
 function toggleSelectAll(tabKey) {
     haptic('medium');
-    const targetSet = tabKey === 'name' ? state.selectedTickets : state.selectedLogos;
-    const allList = tabKey === 'name' ? TICKET_TEMPLATES : LOGO_TEMPLATES;
-    const container = tabKey === 'name' ? dom.templatesGrid : dom.logosGrid;
+    let targetSet, allList, container;
+    if (tabKey === 'name') {
+        targetSet = state.selectedTickets;
+        allList = TICKET_TEMPLATES;
+        container = dom.templatesGrid;
+    } else if (tabKey === 'logo') {
+        targetSet = state.selectedLogos;
+        allList = LOGO_TEMPLATES;
+        container = dom.logosGrid;
+    } else {
+        targetSet = state.selectedPremium;
+        allList = PREMIUM_TEMPLATES;
+        container = dom.premiumGrid;
+    }
     
     if (targetSet.size === allList.length) {
         // Deselect all
@@ -1645,13 +1822,17 @@ async function startGeneration(mode = 'selected') {
     
     const userId = state.user?.id || 1323217434;
     
-    const activeSet = state.activeTab === 'name' ? state.selectedTickets : state.selectedLogos;
+    const activeSet = state.activeTab === 'name' 
+        ? state.selectedTickets 
+        : (state.activeTab === 'logo' ? state.selectedLogos : state.selectedPremium);
     const selectedArray = Array.from(activeSet);
     
     let targetMode = mode;
     let selectedFiles = [];
     
-    if (mode === 'all') {
+    if (mode === 'all_premium') {
+        selectedFiles = PREMIUM_TEMPLATES.map(t => t.file);
+    } else if (mode === 'all') {
         selectedFiles = LOGO_TEMPLATES.map(t => t.file);
     } else if (selectedArray.length === 0) {
         targetMode = "single";
@@ -2132,15 +2313,20 @@ function setupEventListeners() {
         });
     });
     
-    // Tab switching (Name vs Logo)
-    dom.tabBtnName.addEventListener('click', () => {
+    // Tab switching (Name vs Logo vs Premium)
+    dom.tabBtnName?.addEventListener('click', () => {
         haptic('selection');
         switchTab('name');
     });
     
-    dom.tabBtnLogo.addEventListener('click', () => {
+    dom.tabBtnLogo?.addEventListener('click', () => {
         haptic('selection');
         switchTab('logo');
+    });
+
+    dom.tabBtnPremium?.addEventListener('click', () => {
+        haptic('selection');
+        switchTab('premium');
     });
     
     // Destination selector (New Pack vs Existing Pack)
@@ -2249,6 +2435,7 @@ function setupEventListeners() {
     // Select All Buttons
     dom.btnSelectAllTickets?.addEventListener('click', () => toggleSelectAll('name'));
     dom.btnSelectAllLogos?.addEventListener('click', () => toggleSelectAll('logo'));
+    dom.btnSelectAllPremium?.addEventListener('click', () => toggleSelectAll('premium'));
     
     // Search ticket templates (1-13)
     dom.templateSearch?.addEventListener('input', (e) => {
@@ -2259,15 +2446,25 @@ function setupEventListeners() {
     dom.logoSearch?.addEventListener('input', (e) => {
         renderLogosGrid(e.target.value);
     });
+
+    // Search premium templates (118-152)
+    dom.premiumSearch?.addEventListener('input', (e) => {
+        renderPremiumGrid(e.target.value);
+    });
     
     // Bottom Action Button
     dom.btnMainAction.addEventListener('click', () => {
         startGeneration('selected');
     });
     
-    // Logo Tab Full Pack Button (all 104)
+    // Logo Tab Full Pack Button (all 103)
     dom.btnCreateFullpack?.addEventListener('click', () => {
         startGeneration('all');
+    });
+
+    // Premium Tab Full Pack Button (all 35)
+    dom.btnCreatePremiumpack?.addEventListener('click', () => {
+        startGeneration('all_premium');
     });
     
     // Refresh user packs
