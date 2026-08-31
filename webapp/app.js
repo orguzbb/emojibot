@@ -1,6 +1,133 @@
 /**
- * GnEmoji Studio — Telegram Mini App Application Logic
+ * ==========================================================================
+ * COPYRIGHT NOTICE & LICENSE AGREEMENT (C) 2026 GN STUDIO
+ * Project: GnEmoji Studio — Telegram Animated Emoji Mini App
+ * All Rights Reserved.
+ *
+ * LEGAL WARNING:
+ * This software, source code, visual styles, stylesheets, animations and all associated
+ * intellectual properties are the exclusive property of GN Studio (c) 2026.
+ * Unauthorized copying, distribution, decompilation, reverse engineering,
+ * scraping, re-hosting, modification or commercial exploitation in any form is STRICTLY
+ * PROHIBITED under international copyright laws and treaties.
+ * ==========================================================================
  */
+
+// ==================== SECURITY SHIELD & ANTI-DEVTOOLS SYSTEM ====================
+(function initSecurityShield() {
+    'use strict';
+
+    // 1. Console Warning Banner
+    try {
+        const titleStyle = "color: #ef4444; font-size: 24px; font-weight: 900; -webkit-text-stroke: 1px black; padding: 4px;";
+        const textStyle = "color: #f59e0b; font-size: 13px; font-weight: 600; line-height: 1.6;";
+        const copyStyle = "color: #38bdf8; font-size: 12px; font-weight: 700; margin-top: 4px;";
+        console.log("%c⛔ DIQQAT: XAVFSIZLIK TIZIMI FAOL!", titleStyle);
+        console.log("%c© 2026 GN Studio. Ushbu ilova va uning barcha kodlari mualliflik huquqi bilan qat'iy himoyalangan.\nKodni ruxsatsiz nusxalash, o'g'irlash yoki o'zgartirish qat'iyan taqiqlanadi va jinoiy javobgarlikka sabab bo'ladi.", textStyle);
+        console.log("%cAll Rights Reserved (c) 2026 GN Studio", copyStyle);
+    } catch (e) {}
+
+    // 2. Block Inspect, F12, View Source, Save, Print shortcuts
+    window.addEventListener('keydown', function(e) {
+        // F12 key
+        if (e.key === 'F12' || e.keyCode === 123) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+        // Ctrl+Shift+I / J / C / K (DevTools & Console)
+        if (isCtrlOrMeta && e.shiftKey) {
+            const k = (e.key || '').toUpperCase();
+            if (k === 'I' || k === 'J' || k === 'C' || k === 'K') {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }
+
+        // Ctrl+U (View Source), Ctrl+S (Save Page), Ctrl+P (Print)
+        if (isCtrlOrMeta) {
+            const k = (e.key || '').toUpperCase();
+            if (k === 'U' || k === 'S' || k === 'P') {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }
+    }, true);
+
+    // 3. Block Context Menu (Right-Click)
+    document.addEventListener('contextmenu', function(e) {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+            return true;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }, true);
+
+    // 4. Block Dragging
+    document.addEventListener('dragstart', function(e) {
+        if (e.target && (e.target.tagName === 'IMG' || e.target.tagName === 'A' || e.target.tagName === 'SVG')) {
+            e.preventDefault();
+            return false;
+        }
+    }, true);
+
+    // 5. Anti-Debugging / DevTools Detection
+    try {
+        setInterval(function() {
+            const startTime = performance.now();
+            (function() { return false; })["constructor"]("debugger")();
+            const endTime = performance.now();
+            if (endTime - startTime > 100) {
+                try {
+                    console.clear();
+                    console.log("%c⛔ DIQQAT: XAVFSIZLIK TIZIMI FAOL! (© 2026 GN Studio)", "color: #ef4444; font-size: 20px; font-weight: 800;");
+                } catch (_) {}
+            }
+        }, 1200);
+    } catch (e) {}
+})();
+
+// Telegram Environment Verification
+function isTelegramEnvironment() {
+    // 1. Localhost or 127.0.0.1 bypass for local testing
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
+        return true;
+    }
+    
+    // 2. Query param bypass for admin/dev testing
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dev') === '1' || params.get('allow_web') === '1') {
+        return true;
+    }
+
+    // 3. Telegram WebApp object check
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+        if (tg.initData && tg.initData.length > 5) return true;
+        if (tg.initDataUnsafe?.user?.id) return true;
+        if (tg.platform && tg.platform !== 'unknown') return true;
+    }
+
+    // 4. URL Hash check (Telegram WebApp passes tgWebAppData in hash)
+    if (window.location.hash.includes('tgWebAppData=') || window.location.search.includes('tgWebAppData=')) {
+        return true;
+    }
+
+    // 5. UserAgent check
+    const ua = navigator.userAgent || '';
+    if (/Telegram|TDesktop/i.test(ua)) {
+        return true;
+    }
+
+    return false;
+}
 
 // Random name suggestions
 const RANDOM_NAMES = [
@@ -559,6 +686,17 @@ function setBadgeColor(rawHex, triggerUpdate = true) {
 // ==================== INITIALIZATION ====================
 
 async function initApp() {
+    // 0. Strict Telegram Environment Verification
+    if (!isTelegramEnvironment()) {
+        dom.loadingScreen?.classList.add('fade-out');
+        dom.appContainer?.classList.add('hidden');
+        const guard = document.getElementById('telegram-only-guard');
+        if (guard) {
+            guard.classList.remove('hidden');
+        }
+        return;
+    }
+
     let currentP = 35;
     updateLoadingProgress(35, "Telegram muhiti tayyorlanmoqda...");
 

@@ -1,3 +1,17 @@
+/**
+ * ==========================================================================
+ * COPYRIGHT NOTICE & LICENSE AGREEMENT (C) 2026 GN STUDIO
+ * Project: GnEmoji Studio — Telegram Animated Emoji Mini App
+ * All Rights Reserved.
+ *
+ * LEGAL WARNING:
+ * This software, source code, visual styles, stylesheets, animations and all associated
+ * intellectual properties are the exclusive property of GN Studio (c) 2026.
+ * Unauthorized copying, distribution, decompilation, scraping, or modification
+ * is strictly prohibited under international copyright laws.
+ * ==========================================================================
+ */
+
 :root {
     --bg-main: #080a0f;
     --bg-card: rgba(18, 22, 31, 0.85);
@@ -42,12 +56,32 @@ body.telegram-theme {
     --text-main: var(--tg-theme-text-color, #f8fafc);
 }
 
-* {
+/* Global Anti-Copy and Anti-Selection Protection */
+*, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Allow text selection only inside editable text inputs */
+input, textarea {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+}
+
+/* Prevent image dragging and saving */
+img, svg, canvas, .lottie-player, a {
+    -webkit-user-drag: none;
+    user-drag: none;
 }
 
 body {
@@ -2651,3 +2685,243 @@ body {
     box-shadow: 0 0 12px var(--c), 0 0 0 2px rgba(255, 255, 255, 0.8);
 }
 
+/* ==================== 0. TELEGRAM-ONLY GUARD SCREEN STYLES ==================== */
+.telegram-only-guard {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: #080a0f;
+    background-image: 
+        radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.15) 0%, transparent 60%),
+        radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.08) 0%, transparent 60%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.telegram-only-guard.hidden {
+    display: none !important;
+}
+
+.guard-card {
+    background: rgba(18, 22, 31, 0.92);
+    border: 1.5px solid rgba(56, 189, 248, 0.25);
+    border-radius: var(--radius-lg);
+    padding: 32px 24px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 35px rgba(56, 189, 248, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: guardPopIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes guardPopIn {
+    0% { transform: scale(0.92) translateY(12px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.guard-icon-wrap {
+    position: relative;
+    width: 84px;
+    height: 84px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.guard-shield-glow {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56, 189, 248, 0.4) 0%, transparent 70%);
+    animation: shieldPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes shieldPulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.18); opacity: 1; }
+}
+
+.guard-icon-inner {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(37, 99, 235, 0.3) 100%);
+    border: 2px solid rgba(56, 189, 248, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #38bdf8;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+}
+
+.guard-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    margin-bottom: 14px;
+}
+
+.guard-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-bottom: 12px;
+    letter-spacing: -0.3px;
+    line-height: 1.3;
+}
+
+.guard-desc {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.guard-desc b {
+    color: #f8fafc;
+}
+
+.guard-subdesc {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin-bottom: 22px;
+}
+
+.guard-actions {
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.btn-open-telegram-bot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, #229ED9 0%, #0088cc 100%);
+    color: #ffffff;
+    font-size: 14.5px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 6px 20px rgba(0, 136, 204, 0.45);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-open-telegram-bot:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 136, 204, 0.6);
+    filter: brightness(1.08);
+}
+
+.btn-open-telegram-bot:active {
+    transform: translateY(0);
+}
+
+.guard-footer {
+    font-size: 11px;
+    color: var(--text-dim);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    padding-top: 14px;
+    width: 100%;
+}
+
+/* ==================== 2. APP FOOTER & 2026 COPYRIGHT ==================== */
+.app-footer {
+    margin-top: 36px;
+    margin-bottom: 24px;
+    padding: 24px 20px;
+    background: rgba(18, 22, 31, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.app-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.35), transparent);
+}
+
+.footer-badge-shield {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: var(--accent-amber);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+}
+
+.footer-brand-copy {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+    letter-spacing: 0.2px;
+}
+
+.footer-brand-copy b {
+    color: #f59e0b;
+}
+
+.footer-license-note {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-dim);
+    max-width: 440px;
+}
+
+.footer-tags-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.footer-tag {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 2px 8px;
+    border-radius: var(--radius-xs);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.footer-tag-dot {
+    color: var(--text-dim);
+    font-size: 10px;
+}

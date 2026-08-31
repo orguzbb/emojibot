@@ -1,3 +1,9 @@
+# ==============================================================================
+# COPYRIGHT NOTICE & LICENSE AGREEMENT (C) 2026 GN STUDIO
+# Project: GnEmoji Studio — Animated Lottie Vector Engine
+# All Rights Reserved.
+# ==============================================================================
+
 from __future__ import annotations
 import os
 import re

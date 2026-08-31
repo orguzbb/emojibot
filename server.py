@@ -1,3 +1,15 @@
+# ==============================================================================
+# COPYRIGHT NOTICE & LICENSE AGREEMENT (C) 2026 GN STUDIO
+# Project: GnEmoji Studio — Telegram Animated Emoji Mini App Backend
+# All Rights Reserved.
+#
+# LEGAL WARNING:
+# This software, source code, algorithms, and associated database schemas are the
+# proprietary intellectual property of GN Studio (c) 2026.
+# Unauthorized copying, reverse engineering, redistribution, scraping or modification
+# is strictly prohibited under international copyright laws and treaties.
+# ==============================================================================
+
 from __future__ import annotations
 import os
 import re

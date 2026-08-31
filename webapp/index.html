@@ -1,12 +1,26 @@
+<!-- 
+  ==========================================================================
+  COPYRIGHT & LICENSE NOTICE (C) 2026 GN STUDIO. ALL RIGHTS RESERVED.
+  Project: GnEmoji Studio — Telegram Animated Emoji Mini App
+  
+  LEGAL WARNING:
+  Ushbu dasturiy ta'minot kodi, dizayni va animatsiyalari mualliflik huquqi
+  (Copyright © 2026) bilan himoyalangan. Kodni ruxsatsiz ko'chirish, nusxalash,
+  tarqatish yoki o'zgartirish qat'iyan man etiladi.
+  ==========================================================================
+-->
 <!DOCTYPE html>
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="author" content="GN Studio">
+    <meta name="copyright" content="© 2026 GN Studio. All rights reserved.">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>GnEmoji Studio — Telegram Mini App</title>
+    <title>GnEmoji Studio — Telegram Mini App (© 2026 GN Studio)</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,9 +31,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=5.4.1">
+    <link rel="stylesheet" href="style.css?v=5.5.0">
 </head>
-<body>
+<body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
+
+    <!-- ==================== 0. TELEGRAM-ONLY GUARD SCREEN ==================== -->
+    <div id="telegram-only-guard" class="telegram-only-guard hidden">
+        <div class="guard-card">
+            <div class="guard-icon-wrap">
+                <div class="guard-shield-glow"></div>
+                <div class="guard-icon-inner">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M12 8v4"/>
+                        <path d="M12 16h.01"/>
+                    </svg>
+                </div>
+            </div>
+            <span class="guard-badge">🔒 XAVFSIZLIK CHEKLOVI</span>
+            <h2 class="guard-title">Faqat Telegram orqali ochiladi</h2>
+            <p class="guard-desc">
+                <b>GnEmoji Studio</b> mini ilovasi faqat rasmiy <b>Telegram</b> ilovasi orqali xavfsiz foydalanish uchun himoyalangan.
+            </p>
+            <p class="guard-subdesc">
+                Mini ilovani ishga tushirish uchun Telegram botimizga kiring:
+            </p>
+            <div class="guard-actions">
+                <a href="https://t.me/GnEmojiBot" class="btn-open-telegram-bot">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z"/>
+                    </svg>
+                    <span>Telegram Botda Ochish</span>
+                </a>
+            </div>
+            <div class="guard-footer">
+                <span>© 2026 GN Studio • Barcha huquqlar himoyalangan</span>
+            </div>
+        </div>
+    </div>
 
     <!-- ==================== 1. LOADING SCREEN ==================== -->
     <div id="loading-screen" class="loading-screen">
@@ -499,7 +548,28 @@
                     </div>
                 </div>
             </div>
-        </main>
+
+        <!-- ==================== APP FOOTER: 2026 COPYRIGHT & LICENSE ==================== -->
+        <footer class="app-footer">
+            <div class="footer-badge-shield">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <polyline points="9 12 11 14 15 10"/>
+                </svg>
+                <span>Mualliflik Huquqi Himoyalangan</span>
+            </div>
+            <p class="footer-brand-copy">
+                © 2026 <b>GN Studio</b>. Barcha huquqlar himoyalangan.
+            </p>
+            <p class="footer-license-note">
+                Maxsus Telegram Mini App litsenziyasi ostida taqdim etiladi. Sayt va kodlardan ruxsatsiz nusxa ko'chirish qat'iyan man etiladi.
+            </p>
+            <div class="footer-tags-row">
+                <span class="footer-tag">Ver: 5.5.0</span>
+                <span class="footer-tag-dot">•</span>
+                <span class="footer-tag">Official Telegram Mini App</span>
+            </div>
+        </footer>
 
         <!-- Bottom Action Floating Bar -->
         <div class="bottom-action-bar">
@@ -784,7 +854,7 @@
     </div>
 
     <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=5.4.1"></script>
-    <script src="app.js?v=5.4.1"></script>
+    <script src="ticket_templates.js?v=5.5.0"></script>
+    <script src="app.js?v=5.5.0"></script>
 </body>
 </html>

@@ -1,3 +1,9 @@
+# ==============================================================================
+# COPYRIGHT NOTICE & LICENSE AGREEMENT (C) 2026 GN STUDIO
+# Project: GnEmoji Studio — Telegram Animated Emoji Bot
+# All Rights Reserved.
+# ==============================================================================
+
 import asyncio
 import logging
 import sys
