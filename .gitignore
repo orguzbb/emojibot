@@ -37,6 +37,9 @@ local_test.db
 .idea/
 *.swp
 *.swo
-# User references
+# User references & local tools
 emojinoappwithsvg/
 emojinoappwithsvg
+zipemoji/
+zipemoji
+
