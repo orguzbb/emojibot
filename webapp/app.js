@@ -851,12 +851,16 @@ async function apiFetch(endpoint, options = {}) {
     if (endpoint.includes('?')) {
         const parts = endpoint.split('?');
         cleanEndpoint = parts[0];
-        queryPart = '&' + parts[1];
+        queryPart = '?' + parts[1];
     }
     
+    // Always use trailing slash on API endpoints so Nginx doesn't redirect POST requests
+    const slashEndpoint = cleanEndpoint.endsWith('/') ? cleanEndpoint : `${cleanEndpoint}/`;
+    
     const urls = [
-        `/api/index.php?endpoint=${cleanEndpoint}${queryPart}`,
-        `/api/${endpoint}`
+        `/api/${slashEndpoint}${queryPart}`,
+        `/api/${cleanEndpoint}${queryPart}`,
+        `/api/index.php?endpoint=${cleanEndpoint}${queryPart ? '&' + queryPart.slice(1) : ''}`
     ];
     
     let lastError = null;
@@ -1195,8 +1199,12 @@ function switchTab(tabKey) {
         }
     } else if (tabKey === 'logo') {
         state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+        if (Object.keys(state.logoPlayers).length === 0) {
+            renderLogosGrid(dom.logoSearch?.value || '');
+        }
     } else if (tabKey === 'grey') {
         state.selectedTemplate = Array.from(state.selectedGrey)[0] || "118.tgs";
+        renderGreyGrid(dom.greySearch?.value || '');
     }
     syncColorControlsUI();
     updateLivePreview();
