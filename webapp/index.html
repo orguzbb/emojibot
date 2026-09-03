@@ -22,6 +22,9 @@
     <meta http-equiv="Expires" content="0">
     <title>GnEmoji Studio — Telegram Mini App (© 2026 GN Studio)</title>
 
+    <!-- 1. Telegram WebApp SDK (MUST be loaded first so Telegram WebApp API is available) -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
     <!-- ==================== CRITICAL INSTANT SECURITY & TELEGRAM FULLSCREEN SHIELD ==================== -->
     <script>
     (function() {
@@ -77,15 +80,20 @@
             if (p.get('dev') === '1' || p.get('allow_web') === '1') {
                 return true;
             }
-            // Telegram WebApp object
+            // Telegram WebApp SDK object check
             const tg = window.Telegram?.WebApp;
             if (tg) {
-                if (tg.initData && tg.initData.length > 5) return true;
-                if (tg.initDataUnsafe?.user?.id) return true;
+                if (tg.initData && tg.initData.length > 0) return true;
+                if (tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length > 0) return true;
                 if (tg.platform && tg.platform !== 'unknown') return true;
             }
-            // URL Hash / Query check for tgWebAppData
-            if (window.location.hash.includes('tgWebAppData=') || window.location.search.includes('tgWebAppData=')) {
+            // Native Telegram webview proxy on Android / iOS
+            if (window.TelegramWebviewProxy || window.TelegramGameProxy) {
+                return true;
+            }
+            // URL hash / query check
+            const href = window.location.href;
+            if (href.includes('tgWebAppData') || href.includes('tgWebAppVersion') || href.includes('tgWebAppPlatform')) {
                 return true;
             }
             // User-Agent check
@@ -138,8 +146,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Lottie Web Player -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
@@ -966,36 +972,8 @@
         <span class="toast-msg" id="toast-msg">Xabar</span>
     </div>
 
-    <!-- Conditional Script Loader: If web scraper/browser outside Telegram, download 0 bytes! -->
-    <script>
-    (function() {
-        if (window.IS_TG_BLOCKED) {
-            // Outside Telegram: suppress loading screen immediately and show guard screen
-            var loader = document.getElementById('loading-screen');
-            if (loader) loader.style.display = 'none';
-            var guard = document.getElementById('telegram-only-guard');
-            if (guard) {
-                guard.classList.remove('hidden');
-                guard.style.display = 'flex';
-            }
-            return;
-        }
-
-        // Inside Telegram or Dev mode: Load templates and app scripts sequentially
-        var s1 = document.createElement('script');
-        s1.src = 'ticket_templates.js?v=5.6.0';
-        s1.onload = function() {
-            var s2 = document.createElement('script');
-            s2.src = 'app.js?v=5.6.0';
-            document.body.appendChild(s2);
-        };
-        s1.onerror = function() {
-            var s2 = document.createElement('script');
-            s2.src = 'app.js?v=5.6.0';
-            document.body.appendChild(s2);
-        };
-        document.body.appendChild(s1);
-    })();
-    </script>
+    <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) & Main App Logic -->
+    <script src="ticket_templates.js?v=5.6.0"></script>
+    <script src="app.js?v=5.6.0"></script>
 </body>
 </html>

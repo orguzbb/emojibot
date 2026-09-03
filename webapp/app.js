@@ -110,17 +110,23 @@ function isTelegramEnvironment() {
     // 3. Telegram WebApp object check
     const tg = window.Telegram?.WebApp;
     if (tg) {
-        if (tg.initData && tg.initData.length > 5) return true;
-        if (tg.initDataUnsafe?.user?.id) return true;
+        if (tg.initData && tg.initData.length > 0) return true;
+        if (tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length > 0) return true;
         if (tg.platform && tg.platform !== 'unknown') return true;
     }
 
-    // 4. URL Hash check (Telegram WebApp passes tgWebAppData in hash)
-    if (window.location.hash.includes('tgWebAppData=') || window.location.search.includes('tgWebAppData=')) {
+    // 4. Native Telegram Webview Proxy on Android & iOS
+    if (window.TelegramWebviewProxy || window.TelegramGameProxy) {
         return true;
     }
 
-    // 5. UserAgent check
+    // 5. URL Hash / Query check (Telegram WebApp passes tgWebAppData)
+    const href = window.location.href;
+    if (href.includes('tgWebAppData') || href.includes('tgWebAppVersion') || href.includes('tgWebAppPlatform')) {
+        return true;
+    }
+
+    // 6. UserAgent check
     const ua = navigator.userAgent || '';
     if (/Telegram|TDesktop/i.test(ua)) {
         return true;
@@ -2451,11 +2457,20 @@ function setupEventListeners() {
 }
 
 // Run when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+function runInit() {
+    if (window.IS_TG_BLOCKED) {
+        return;
+    }
     try {
         setupEventListeners();
     } catch (e) {
         console.warn("setupEventListeners warning:", e);
     }
     initApp();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runInit);
+} else {
+    runInit();
+}
