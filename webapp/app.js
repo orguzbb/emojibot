@@ -1703,7 +1703,9 @@ async function renderGreyGrid(filterText = '') {
         card.innerHTML = `
             <span class="tpl-badge" style="background: rgba(100, 116, 139, 0.35); border-color: rgba(148, 163, 184, 0.4);">#${displayIdx}</span>
             <div class="tpl-check-badge">✓</div>
-            <div class="tpl-lottie-thumb" id="thumb-grey-${num}"></div>
+            <div class="tpl-lottie-thumb" id="thumb-grey-${num}">
+                <div class="thumb-loader"></div>
+            </div>
             <div class="tpl-meta">
                 <div class="tpl-title">Grey #${displayIdx}</div>
                 <div class="tpl-tag-label">${tpl.tag}</div>
@@ -1718,27 +1720,30 @@ async function renderGreyGrid(filterText = '') {
         dom.greyGrid.appendChild(card);
     });
     
-    // Load first 18 grey emojis immediately via batch preview
-    const initialBatch = filtered.slice(0, 18).map(t => t.file);
-    const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
+    // Load first 6 grey emojis immediately via batch preview (fast & light payload)
+    const initialBatch = filtered.slice(0, 6).map(t => t.file);
+    try {
+        const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
+        Object.entries(batchData).forEach(([file, data]) => {
+            const num = getTemplateNumber(file);
+            const container = document.getElementById(`thumb-grey-${num}`);
+            if (container && data && !state.greyPlayers[file]) {
+                container.innerHTML = '';
+                const player = lottie.loadAnimation({
+                    container: container,
+                    renderer: 'svg',
+                    loop: true,
+                    autoplay: true,
+                    animationData: data
+                });
+                state.greyPlayers[file] = player;
+            }
+        });
+    } catch (e) {
+        console.warn("Initial grey batch error:", e);
+    }
     
-    Object.entries(batchData).forEach(([file, data]) => {
-        const num = getTemplateNumber(file);
-        const container = document.getElementById(`thumb-grey-${num}`);
-        if (container && data) {
-            container.innerHTML = '';
-            const player = lottie.loadAnimation({
-                container: container,
-                renderer: 'svg',
-                loop: true,
-                autoplay: true,
-                animationData: data
-            });
-            state.greyPlayers[file] = player;
-        }
-    });
-    
-    // Lazy load remaining grey emojis on scroll
+    // Lazy load remaining grey emojis on scroll (and fallback for initial cards)
     if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(async entry => {
@@ -1749,26 +1754,30 @@ async function renderGreyGrid(filterText = '') {
                     const container = document.getElementById(`thumb-grey-${num}`);
                     
                     if (container && !state.greyPlayers[file]) {
-                        const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
-                        if (data && container) {
-                            container.innerHTML = '';
-                            const player = lottie.loadAnimation({
-                                container: container,
-                                renderer: 'svg',
-                                loop: true,
-                                autoplay: true,
-                                animationData: data
-                            });
-                            state.greyPlayers[file] = player;
+                        try {
+                            const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
+                            if (data && container && !state.greyPlayers[file]) {
+                                container.innerHTML = '';
+                                const player = lottie.loadAnimation({
+                                    container: container,
+                                    renderer: 'svg',
+                                    loop: true,
+                                    autoplay: true,
+                                    animationData: data
+                                });
+                                state.greyPlayers[file] = player;
+                            }
+                        } catch (err) {
+                            console.warn("Lazy load thumb error:", file, err);
                         }
                     }
                     observer.unobserve(card);
                 }
             });
-        }, { rootMargin: '150px' });
+        }, { rootMargin: '200px' });
         
-        dom.greyGrid.querySelectorAll('.tpl-card').forEach((card, idx) => {
-            if (idx >= 18) observer.observe(card);
+        dom.greyGrid.querySelectorAll('.tpl-card').forEach((card) => {
+            observer.observe(card);
         });
     }
 }

@@ -520,26 +520,44 @@ def extract_layer_template_info(target_layer: dict):
     sample_stroke = {"a": 0, "k": [0, 0, 0, 0]}
     sample_stroke_w = {"a": 0, "k": 0}
 
-    def collect_info(item):
+    def collect_info(item, cur_ox=0.0, cur_oy=0.0, cur_sx=1.0, cur_sy=1.0):
         nonlocal sample_fill, sample_stroke, sample_stroke_w
         if not isinstance(item, dict):
             return
         
+        sub_items = item.get('it', [])
+        this_ox, this_oy = 0.0, 0.0
+        this_sx, this_sy = 1.0, 1.0
+        if sub_items:
+            for sub in sub_items:
+                if isinstance(sub, dict) and sub.get('ty') == 'tr':
+                    pos = sub.get('p', {}).get('k', [0, 0])
+                    if isinstance(pos, list) and len(pos) >= 2 and isinstance(pos[0], (int, float)):
+                        this_ox, this_oy = float(pos[0]), float(pos[1])
+                    scl = sub.get('s', {}).get('k', [100, 100])
+                    if isinstance(scl, list) and len(scl) >= 2 and isinstance(scl[0], (int, float)):
+                        this_sx, this_sy = float(scl[0]) / 100.0, float(scl[1]) / 100.0
+
+        eff_ox = cur_ox + this_ox * cur_sx
+        eff_oy = cur_oy + this_oy * cur_sy
+        eff_sx = cur_sx * this_sx
+        eff_sy = cur_sy * this_sy
+
         ty = item.get('ty')
         if ty == 'sh':
             ks = item.get('ks', {}).get('k', {})
             if isinstance(ks, dict):
                 for pt in ks.get('v', []):
-                    all_xs.append(pt[0])
-                    all_ys.append(pt[1])
+                    all_xs.append(pt[0] * eff_sx + eff_ox)
+                    all_ys.append(pt[1] * eff_sy + eff_oy)
             elif isinstance(ks, list):
                 for kf in ks:
                     if isinstance(kf, dict):
                         s_val = kf.get('s', [{}])
                         if isinstance(s_val, list) and s_val and isinstance(s_val[0], dict):
                             for pt in s_val[0].get('v', []):
-                                all_xs.append(pt[0])
-                                all_ys.append(pt[1])
+                                all_xs.append(pt[0] * eff_sx + eff_ox)
+                                all_ys.append(pt[1] * eff_sy + eff_oy)
         elif ty == 'fl' and 'c' in item:
             sample_fill = copy.deepcopy(item.get('c'))
         elif ty == 'st' and 'c' in item:
@@ -548,9 +566,9 @@ def extract_layer_template_info(target_layer: dict):
                 sample_stroke_w = copy.deepcopy(item.get('w'))
         
         for sub in item.get('shapes', []):
-            collect_info(sub)
-        for sub in item.get('it', []):
-            collect_info(sub)
+            collect_info(sub, eff_ox, eff_oy, eff_sx, eff_sy)
+        for sub in sub_items:
+            collect_info(sub, eff_ox, eff_oy, eff_sx, eff_sy)
 
     collect_info(target_layer)
 

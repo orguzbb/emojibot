@@ -1331,6 +1331,19 @@ body {
     font-weight: 600;
 }
 
+.thumb-loader {
+    width: 28px;
+    height: 28px;
+    border: 2.5px solid rgba(148, 163, 184, 0.15);
+    border-top-color: var(--accent-cyan);
+    border-radius: 50%;
+    animation: thumb-spin 0.75s linear infinite;
+}
+
+@keyframes thumb-spin {
+    to { transform: rotate(360deg); }
+}
+
 .tpl-meta {
     margin-top: 8px;
     text-align: center;
