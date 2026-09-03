@@ -166,6 +166,17 @@ for (let i = 14; i <= 117; i++) {
     });
 }
 
+// The 65 Grey Metallic 3D Emojis (118.tgs to 182.tgs)
+const GREY_TEMPLATES = [];
+for (let i = 118; i <= 182; i++) {
+    GREY_TEMPLATES.push({
+        id: `${i}`,
+        file: `${i}.tgs`,
+        name: `Grey #${i - 117}`,
+        tag: "Grey 3D Emoji"
+    });
+}
+
 // App State (Nothing selected by default on load, empty text/svg for user input)
 const state = {
     user: null,
@@ -189,6 +200,7 @@ const state = {
     selectedTemplate: "1.tgs", // for top live preview only
     selectedTickets: new Set(), // 0 selected on start
     selectedLogos: new Set(),   // 0 selected on start
+    selectedGrey: new Set(),    // 0 selected on start
     userPacks: [],
     
     // Lottie player instances
@@ -196,6 +208,7 @@ const state = {
     modalPlayer: null,
     ticketPlayers: {},
     logoPlayers: {},
+    greyPlayers: {},
     
     // In-memory preview cache
     previewCache: new Map()
@@ -275,8 +288,11 @@ const dom = {
     // Tabs
     tabBtnName: document.getElementById('tab-btn-name'),
     tabBtnLogo: document.getElementById('tab-btn-logo'),
+    tabBtnGrey: document.getElementById('tab-btn-grey'),
     tabContentName: document.getElementById('tab-content-name'),
     tabContentLogo: document.getElementById('tab-content-logo'),
+    tabContentGrey: document.getElementById('tab-content-grey'),
+    tabCounterGrey: document.getElementById('tab-counter-grey'),
     
     // Name Tab (13 Ticket Emojis)
     templatesGrid: document.getElementById('templates-grid'),
@@ -292,6 +308,15 @@ const dom = {
     txtSelectAllLogos: document.getElementById('txt-select-all-logos'),
     logoSelectionCount: document.getElementById('logo-selection-count'),
     btnCreateFullpack: document.getElementById('btn-create-fullpack'),
+    
+    // Grey Tab (65 Metallic 3D Emojis)
+    greyGrid: document.getElementById('grey-grid'),
+    greySearch: document.getElementById('grey-search'),
+    btnSelectAllGrey: document.getElementById('btn-select-all-grey'),
+    txtSelectAllGrey: document.getElementById('txt-select-all-grey'),
+    greySelectionCount: document.getElementById('grey-selection-count'),
+    btnCreateGreyFullpack: document.getElementById('btn-create-grey-fullpack'),
+    
     userPacksList: document.getElementById('user-packs-list'),
     btnRefreshPacks: document.getElementById('btn-refresh-packs'),
     
@@ -785,6 +810,9 @@ async function initApp() {
         // 3. Render the 103 Logo Templates in Logo Tab (none selected by default)
         renderLogosGrid();
         
+        // 3.5. Render the 65 Grey Metallic 3D Templates in Grey Tab (none selected by default)
+        renderGreyGrid();
+        
         // 4. Update Selection Status
         updateSelectionStatus();
         
@@ -1153,20 +1181,22 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
 
 function switchTab(tabKey) {
     state.activeTab = tabKey;
+    dom.tabBtnName?.classList.toggle('active', tabKey === 'name');
+    dom.tabBtnLogo?.classList.toggle('active', tabKey === 'logo');
+    dom.tabBtnGrey?.classList.toggle('active', tabKey === 'grey');
+    
+    dom.tabContentName?.classList.toggle('active', tabKey === 'name');
+    dom.tabContentLogo?.classList.toggle('active', tabKey === 'logo');
+    dom.tabContentGrey?.classList.toggle('active', tabKey === 'grey');
+    
     if (tabKey === 'name') {
-        dom.tabBtnName?.classList.add('active');
-        dom.tabBtnLogo?.classList.remove('active');
-        dom.tabContentName?.classList.add('active');
-        dom.tabContentLogo?.classList.remove('active');
         if (state.inputType !== 'svg') {
             state.selectedTemplate = Array.from(state.selectedTickets)[0] || "1.tgs";
         }
-    } else {
-        dom.tabBtnLogo?.classList.add('active');
-        dom.tabBtnName?.classList.remove('active');
-        dom.tabContentLogo?.classList.add('active');
-        dom.tabContentName?.classList.remove('active');
+    } else if (tabKey === 'logo') {
         state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+    } else if (tabKey === 'grey') {
+        state.selectedTemplate = Array.from(state.selectedGrey)[0] || "118.tgs";
     }
     syncColorControlsUI();
     updateLivePreview();
@@ -1176,8 +1206,10 @@ function switchTab(tabKey) {
 const debouncedFullUpdate = debounce(() => {
     if (state.activeTab === 'name') {
         renderTicketsGrid(dom.templateSearch?.value || '');
-    } else {
+    } else if (state.activeTab === 'logo') {
         renderLogosGrid(dom.logoSearch?.value || '');
+    } else {
+        renderGreyGrid(dom.greySearch?.value || '');
     }
 }, 300);
 
@@ -1302,10 +1334,15 @@ function removeSvg() {
 // ==================== UI RENDERING ====================
 
 async function updateLivePreview() {
-    const num = getTemplateNumber(state.selectedTemplate);
-    const isTicket = parseInt(num) <= 13;
+    const num = parseInt(getTemplateNumber(state.selectedTemplate));
+    let tag = `Logo #${num}`;
+    if (num <= 13) {
+        tag = `Ticket #${num}`;
+    } else if (num >= 118) {
+        tag = `Grey #${num - 117}`;
+    }
     if (dom.currentTemplateTag) {
-        dom.currentTemplateTag.textContent = `${isTicket ? 'Ticket' : 'Logo'} #${num}`;
+        dom.currentTemplateTag.textContent = tag;
     }
     
     if (state.inputType === 'svg') {
@@ -1361,8 +1398,11 @@ async function updateLivePreview() {
 
 // Update selection counters and bottom action button text
 function updateSelectionStatus() {
-    const activeSet = state.activeTab === 'name' ? state.selectedTickets : state.selectedLogos;
-    const selectedCount = activeSet.size;
+    let activeSet = state.selectedTickets;
+    if (state.activeTab === 'logo') activeSet = state.selectedLogos;
+    else if (state.activeTab === 'grey') activeSet = state.selectedGrey;
+    
+    const totalSelected = state.selectedTickets.size + state.selectedLogos.size + state.selectedGrey.size;
     
     // Ticket tab toolbar
     if (dom.ticketSelectionCount) {
@@ -1391,9 +1431,23 @@ function updateSelectionStatus() {
             dom.btnSelectAllLogos?.classList.remove('active-all');
         }
     }
+
+    // Grey tab toolbar
+    if (dom.greySelectionCount) {
+        dom.greySelectionCount.textContent = `${state.selectedGrey.size} ta tanlandi`;
+    }
+    if (dom.txtSelectAllGrey) {
+        if (state.selectedGrey.size === GREY_TEMPLATES.length && GREY_TEMPLATES.length > 0) {
+            dom.txtSelectAllGrey.textContent = "Tanlovni bekor qilish";
+            dom.btnSelectAllGrey?.classList.add('active-all');
+        } else {
+            dom.txtSelectAllGrey.textContent = "Hammasini belgilash";
+            dom.btnSelectAllGrey?.classList.remove('active-all');
+        }
+    }
     
     // Price & Label Calculation — HAR DOIM STARS TO'LOV HISOB-KITOBLARI
-    const count = selectedCount > 0 ? selectedCount : 1;
+    const count = totalSelected > 0 ? totalSelected : 1;
     const unitPrice = state.emojiPrice || 6;
     const totalCost = count * unitPrice;
     state.lastNeededBal = totalCost;
@@ -1403,10 +1457,11 @@ function updateSelectionStatus() {
     const actionVerb = isExisting ? "Qo'shish" : "Yaratish";
     
     // Bottom Action Button Text
-    if (selectedCount > 1) {
-        dom.mainBtnText.innerHTML = `Tanlangan Emojilarni ${actionVerb} (${selectedCount} ta • ${priceBadge})`;
-    } else if (selectedCount === 1) {
-        const singleFile = Array.from(activeSet)[0];
+    if (totalSelected > 1) {
+        dom.mainBtnText.innerHTML = `Tanlangan Emojilarni ${actionVerb} (${totalSelected} ta • ${priceBadge})`;
+    } else if (totalSelected === 1) {
+        const allSel = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey];
+        const singleFile = allSel[0];
         const num = getTemplateNumber(singleFile);
         dom.mainBtnText.innerHTML = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
     } else {
@@ -1599,10 +1654,128 @@ async function renderLogosGrid(filterText = '') {
     }
 }
 
+// Render the 65 Grey Metallic 3D Emojis in Grey Tab (118.tgs to 182.tgs)
+async function renderGreyGrid(filterText = '') {
+    Object.values(state.greyPlayers).forEach(p => {
+        try { p.destroy(); } catch (e) {}
+    });
+    state.greyPlayers = {};
+    if (!dom.greyGrid) return;
+    dom.greyGrid.innerHTML = '';
+    
+    let filtered = GREY_TEMPLATES;
+    if (filterText && filterText.trim()) {
+        const query = filterText.trim().toLowerCase();
+        filtered = GREY_TEMPLATES.filter(t => 
+            t.name.toLowerCase().includes(query) || 
+            t.file.toLowerCase().includes(query) ||
+            t.id.includes(query) ||
+            `grey #${parseInt(t.id) - 117}`.toLowerCase().includes(query) ||
+            `${parseInt(t.id) - 117}` === query
+        );
+    }
+    
+    if (filtered.length === 0) {
+        dom.greyGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-dim);">
+                Grey emoji shabloni topilmadi 🔍
+            </div>
+        `;
+        return;
+    }
+    
+    filtered.forEach((tpl) => {
+        const num = tpl.id;
+        const displayIdx = parseInt(num) - 117;
+        const isSelected = state.selectedGrey.has(tpl.file);
+        const card = document.createElement('div');
+        card.className = `tpl-card ${isSelected ? 'selected' : ''}`;
+        card.dataset.file = tpl.file;
+        
+        card.innerHTML = `
+            <span class="tpl-badge" style="background: rgba(100, 116, 139, 0.35); border-color: rgba(148, 163, 184, 0.4);">#${displayIdx}</span>
+            <div class="tpl-check-badge">✓</div>
+            <div class="tpl-lottie-thumb" id="thumb-grey-${num}"></div>
+            <div class="tpl-meta">
+                <div class="tpl-title">Grey #${displayIdx}</div>
+                <div class="tpl-tag-label">${tpl.tag}</div>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => {
+            haptic('selection');
+            toggleCardSelection(tpl.file, 'grey');
+        });
+        
+        dom.greyGrid.appendChild(card);
+    });
+    
+    // Load first 18 grey emojis immediately via batch preview
+    const initialBatch = filtered.slice(0, 18).map(t => t.file);
+    const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
+    
+    Object.entries(batchData).forEach(([file, data]) => {
+        const num = getTemplateNumber(file);
+        const container = document.getElementById(`thumb-grey-${num}`);
+        if (container && data) {
+            container.innerHTML = '';
+            const player = lottie.loadAnimation({
+                container: container,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: data
+            });
+            state.greyPlayers[file] = player;
+        }
+    });
+    
+    // Lazy load remaining grey emojis on scroll
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(async entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    const file = card.dataset.file;
+                    const num = getTemplateNumber(file);
+                    const container = document.getElementById(`thumb-grey-${num}`);
+                    
+                    if (container && !state.greyPlayers[file]) {
+                        const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
+                        if (data && container) {
+                            container.innerHTML = '';
+                            const player = lottie.loadAnimation({
+                                container: container,
+                                renderer: 'svg',
+                                loop: true,
+                                autoplay: true,
+                                animationData: data
+                            });
+                            state.greyPlayers[file] = player;
+                        }
+                    }
+                    observer.unobserve(card);
+                }
+            });
+        }, { rootMargin: '150px' });
+        
+        dom.greyGrid.querySelectorAll('.tpl-card').forEach((card, idx) => {
+            if (idx >= 18) observer.observe(card);
+        });
+    }
+}
+
 // Toggle selection on a card (multi-select supported)
 function toggleCardSelection(filename, tabKey) {
-    const targetSet = tabKey === 'name' ? state.selectedTickets : state.selectedLogos;
-    const container = tabKey === 'name' ? dom.templatesGrid : dom.logosGrid;
+    let targetSet = state.selectedTickets;
+    let container = dom.templatesGrid;
+    if (tabKey === 'logo') {
+        targetSet = state.selectedLogos;
+        container = dom.logosGrid;
+    } else if (tabKey === 'grey') {
+        targetSet = state.selectedGrey;
+        container = dom.greyGrid;
+    }
     
     if (targetSet.has(filename)) {
         targetSet.delete(filename);
@@ -1629,9 +1802,18 @@ function toggleCardSelection(filename, tabKey) {
 // Select All / Deselect All
 function toggleSelectAll(tabKey) {
     haptic('medium');
-    const targetSet = tabKey === 'name' ? state.selectedTickets : state.selectedLogos;
-    const allList = tabKey === 'name' ? TICKET_TEMPLATES : LOGO_TEMPLATES;
-    const container = tabKey === 'name' ? dom.templatesGrid : dom.logosGrid;
+    let targetSet = state.selectedTickets;
+    let allList = TICKET_TEMPLATES;
+    let container = dom.templatesGrid;
+    if (tabKey === 'logo') {
+        targetSet = state.selectedLogos;
+        allList = LOGO_TEMPLATES;
+        container = dom.logosGrid;
+    } else if (tabKey === 'grey') {
+        targetSet = state.selectedGrey;
+        allList = GREY_TEMPLATES;
+        container = dom.greyGrid;
+    }
     
     if (targetSet.size === allList.length) {
         // Deselect all
@@ -1814,23 +1996,25 @@ async function startGeneration(mode = 'selected') {
     
     const userId = state.user?.id || 1323217434;
     
-    const activeSet = state.activeTab === 'name' ? state.selectedTickets : state.selectedLogos;
-    const selectedArray = Array.from(activeSet);
-    
     let targetMode = mode;
     let selectedFiles = [];
     
     if (mode === 'all') {
         selectedFiles = LOGO_TEMPLATES.map(t => t.file);
-    } else if (selectedArray.length === 0) {
-        targetMode = "single";
-        selectedFiles = [state.selectedTemplate];
-    } else if (selectedArray.length === 1) {
-        targetMode = "single";
-        selectedFiles = selectedArray;
+    } else if (mode === 'all_grey') {
+        selectedFiles = GREY_TEMPLATES.map(t => t.file);
     } else {
-        targetMode = "selected";
-        selectedFiles = selectedArray;
+        const allSelected = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey];
+        if (allSelected.length === 0) {
+            targetMode = "single";
+            selectedFiles = [state.selectedTemplate];
+        } else if (allSelected.length === 1) {
+            targetMode = "single";
+            selectedFiles = allSelected;
+        } else {
+            targetMode = "selected";
+            selectedFiles = allSelected;
+        }
     }
     
     let packName = undefined;
@@ -1947,10 +2131,13 @@ async function executeGeneration(pendingAction) {
     if (mode === 'add_to_pack') {
         showProgressModal("Mavjud to'plamga qo'shilmoqda...", `\"${packName}\" to'plamiga ${totalCount} ta emoji qo'shilmoqda...`, 15);
     } else if (rawMode === 'all') {
-        showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 104 ta logo shablon qayta ishlanmoqda...", 10);
+        showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 103 ta logo shablon qayta ishlanmoqda...", 10);
+    } else if (rawMode === 'all_grey') {
+        showProgressModal("Grey 3D Pack Tayyorlanmoqda...", "Barcha 65 ta grey shablon qayta ishlanmoqda...", 10);
     } else if (mode === "single") {
-        const num = getTemplateNumber(selectedFiles[0]);
-        showProgressModal(`${parseInt(num) <= 13 ? 'Ticket' : 'Logo'} #${num} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 20);
+        const num = parseInt(getTemplateNumber(selectedFiles[0]));
+        const tag = num <= 13 ? `Ticket #${num}` : (num >= 118 ? `Grey #${num - 117}` : `Logo #${num}`);
+        showProgressModal(`${tag} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 20);
     } else {
         showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan emojilar paketga jamlanmoqda...", 15);
     }
@@ -2298,10 +2485,11 @@ function setupEventListeners() {
             updateLivePreview();
             renderTicketsGrid(dom.templateSearch?.value || '');
             renderLogosGrid(dom.logoSearch?.value || '');
+            renderGreyGrid(dom.greySearch?.value || '');
         });
     });
     
-    // Tab switching (Name vs Logo)
+    // Tab switching (Name vs Logo vs Grey)
     dom.tabBtnName?.addEventListener('click', () => {
         haptic('selection');
         switchTab('name');
@@ -2310,6 +2498,11 @@ function setupEventListeners() {
     dom.tabBtnLogo?.addEventListener('click', () => {
         haptic('selection');
         switchTab('logo');
+    });
+
+    dom.tabBtnGrey?.addEventListener('click', () => {
+        haptic('selection');
+        switchTab('grey');
     });
     
     // Destination selector (New Pack vs Existing Pack)
@@ -2418,6 +2611,7 @@ function setupEventListeners() {
     // Select All Buttons
     dom.btnSelectAllTickets?.addEventListener('click', () => toggleSelectAll('name'));
     dom.btnSelectAllLogos?.addEventListener('click', () => toggleSelectAll('logo'));
+    dom.btnSelectAllGrey?.addEventListener('click', () => toggleSelectAll('grey'));
     
     // Search ticket templates (1-13)
     dom.templateSearch?.addEventListener('input', (e) => {
@@ -2428,6 +2622,11 @@ function setupEventListeners() {
     dom.logoSearch?.addEventListener('input', (e) => {
         renderLogosGrid(e.target.value);
     });
+
+    // Search grey templates (118-182)
+    dom.greySearch?.addEventListener('input', (e) => {
+        renderGreyGrid(e.target.value);
+    });
     
     // Bottom Action Button
     dom.btnMainAction.addEventListener('click', () => {
@@ -2437,6 +2636,11 @@ function setupEventListeners() {
     // Logo Tab Full Pack Button (all 103)
     dom.btnCreateFullpack?.addEventListener('click', () => {
         startGeneration('all');
+    });
+
+    // Grey Tab Full Pack Button (all 65)
+    dom.btnCreateGreyFullpack?.addEventListener('click', () => {
+        startGeneration('all_grey');
     });
     
     // Refresh user packs

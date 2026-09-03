@@ -426,7 +426,7 @@ async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body
 @app.api_route("/api/templates", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/templates/", methods=["GET", "POST", "OPTIONS"])
 async def get_templates_list():
-    """Returns full list of available 117 animated emoji templates"""
+    """Returns full list of available animated emoji templates (Tickets, Logos, Grey)"""
     p = Path(TEMPLATES_DIR)
     if not p.exists():
         return {"templates": []}
@@ -435,11 +435,20 @@ async def get_templates_list():
     items = []
     for f in files:
         num = int(f.stem) if f.stem.isdigit() else 999
+        if num <= 13:
+            cat = "ticket"
+            nm = f"Ticket #{num}"
+        elif num <= 117:
+            cat = "logo"
+            nm = f"Logo #{num - 13}"
+        else:
+            cat = "grey"
+            nm = f"Grey #{num - 117}"
         items.append({
             "id": f.stem,
             "filename": f.name,
-            "category": "ticket" if num <= 13 else "logo",
-            "name": f"Ticket #{num}" if num <= 13 else f"Logo #{num - 13}"
+            "category": cat,
+            "name": nm
         })
     return {"templates": items}
 
