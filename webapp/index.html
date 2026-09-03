@@ -13,7 +13,7 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="author" content="GN Studio">
     <meta name="copyright" content="© 2026 GN Studio. All rights reserved.">
@@ -21,6 +21,119 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>GnEmoji Studio — Telegram Mini App (© 2026 GN Studio)</title>
+
+    <!-- ==================== CRITICAL INSTANT SECURITY & TELEGRAM FULLSCREEN SHIELD ==================== -->
+    <script>
+    (function() {
+        'use strict';
+        // 1. Immediate Anti-DevTools & Anti-Inspect keyboard blocking (active from millisecond 0)
+        function blockDevKeys(e) {
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            const isCtrl = e.ctrlKey || e.metaKey;
+            if (isCtrl && e.shiftKey) {
+                const k = (e.key || '').toUpperCase();
+                if (k === 'I' || k === 'J' || k === 'C' || k === 'K') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+            if (isCtrl) {
+                const k = (e.key || '').toUpperCase();
+                if (k === 'U' || k === 'S' || k === 'P') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+        }
+        window.addEventListener('keydown', blockDevKeys, true);
+        document.addEventListener('keydown', blockDevKeys, true);
+        document.addEventListener('contextmenu', function(e) {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return true;
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
+        document.addEventListener('dragstart', function(e) {
+            if (e.target && (e.target.tagName === 'IMG' || e.target.tagName === 'A' || e.target.tagName === 'SVG')) {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
+
+        // 2. Instant Environment Check
+        function checkTg() {
+            // Localhost or 127.0.0.1 bypass for local testing
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
+                return true;
+            }
+            // Dev query param bypass
+            const p = new URLSearchParams(window.location.search);
+            if (p.get('dev') === '1' || p.get('allow_web') === '1') {
+                return true;
+            }
+            // Telegram WebApp object
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                if (tg.initData && tg.initData.length > 5) return true;
+                if (tg.initDataUnsafe?.user?.id) return true;
+                if (tg.platform && tg.platform !== 'unknown') return true;
+            }
+            // URL Hash / Query check for tgWebAppData
+            if (window.location.hash.includes('tgWebAppData=') || window.location.search.includes('tgWebAppData=')) {
+                return true;
+            }
+            // User-Agent check
+            if (/Telegram|TDesktop/i.test(navigator.userAgent || '')) {
+                return true;
+            }
+            return false;
+        }
+
+        const isTg = checkTg();
+        if (!isTg) {
+            // NOT Telegram: Immediately tag document root so CSS suppresses loading screen and shows security screen INSTANTLY
+            document.documentElement.classList.add('not-telegram');
+            window.IS_TG_BLOCKED = true;
+        } else {
+            // IN Telegram: Immediately trigger full expansion and full screen!
+            try {
+                const tg = window.Telegram?.WebApp;
+                if (tg) {
+                    tg.ready?.();
+                    tg.expand?.();
+                    tg.requestFullscreen?.();
+                    tg.disableVerticalSwipes?.();
+                    tg.setHeaderColor?.('#060911');
+                    tg.setBackgroundColor?.('#060911');
+                }
+            } catch (_) {}
+        }
+    })();
+    </script>
+    <style>
+        /* Immediate Critical Blocking CSS: Never show loading screen on web outside Telegram */
+        html.not-telegram #loading-screen,
+        html.not-telegram #app-container,
+        html.not-telegram .bottom-bar {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        html.not-telegram #telegram-only-guard {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+    </style>
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,7 +144,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=5.5.0">
+    <link rel="stylesheet" href="style.css?v=5.6.0">
 </head>
 <body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
 
@@ -565,7 +678,7 @@
                 Maxsus Telegram Mini App litsenziyasi ostida taqdim etiladi. Sayt va kodlardan ruxsatsiz nusxa ko'chirish qat'iyan man etiladi.
             </p>
             <div class="footer-tags-row">
-                <span class="footer-tag">Ver: 5.5.0</span>
+                <span class="footer-tag">Ver: 5.6.0</span>
                 <span class="footer-tag-dot">•</span>
                 <span class="footer-tag">Official Telegram Mini App</span>
             </div>
@@ -853,8 +966,36 @@
         <span class="toast-msg" id="toast-msg">Xabar</span>
     </div>
 
-    <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) for instantaneous zero-latency preview -->
-    <script src="ticket_templates.js?v=5.5.0"></script>
-    <script src="app.js?v=5.5.0"></script>
+    <!-- Conditional Script Loader: If web scraper/browser outside Telegram, download 0 bytes! -->
+    <script>
+    (function() {
+        if (window.IS_TG_BLOCKED) {
+            // Outside Telegram: suppress loading screen immediately and show guard screen
+            var loader = document.getElementById('loading-screen');
+            if (loader) loader.style.display = 'none';
+            var guard = document.getElementById('telegram-only-guard');
+            if (guard) {
+                guard.classList.remove('hidden');
+                guard.style.display = 'flex';
+            }
+            return;
+        }
+
+        // Inside Telegram or Dev mode: Load templates and app scripts sequentially
+        var s1 = document.createElement('script');
+        s1.src = 'ticket_templates.js?v=5.6.0';
+        s1.onload = function() {
+            var s2 = document.createElement('script');
+            s2.src = 'app.js?v=5.6.0';
+            document.body.appendChild(s2);
+        };
+        s1.onerror = function() {
+            var s2 = document.createElement('script');
+            s2.src = 'app.js?v=5.6.0';
+            document.body.appendChild(s2);
+        };
+        document.body.appendChild(s1);
+    })();
+    </script>
 </body>
 </html>

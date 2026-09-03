@@ -1,0 +1,141 @@
+
+=================== TEMPLATE 14.tgs ===================
+--- Layer 0: nm='Text Layer' (ty=4) ---
+  L0.S0.it.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L0.S0.it.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L0.S0.it.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L0.S0.it.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L0.S0.it.it ('Обводка') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L0.S0.it.it ('Заливка') -> FILL: [0.0, 0.0, 0.0]
+  L0.S0.it ('Fill') -> FILL: [0.0, 0.0, 0.0]
+--- Layer 1: nm='Circle Badge' (ty=4) ---
+  L1.S0.it.it ('Обводка') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L1.S0.it.it ('Заливка') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it ('Fill') -> FILL: [0.0, 0.0, 0.0]
+--- Layer 2: nm='' (ty=4) ---
+  L2.S0.it.it ('Обводка 15') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S0.it.it ('Заливка 16') -> FILL: [0.0, 0.0, 0.0]
+  L2.S1.it.it.it ('Обводка 14') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S1.it.it.it ('Заливка 15') -> FILL: [0.0, 0.0, 0.0]
+  L2.S2.it ('Обводка 13') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S2.it ('Заливка 14') -> FILL: [0.0, 0.0, 0.0]
+  L2.S3.it ('Обводка 12') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S3.it ('Заливка 13') -> FILL: [0.0, 0.0, 0.0]
+  L2.S4.it ('Обводка 11') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S4.it ('Заливка 12') -> FILL: [0.0, 0.0, 0.0]
+  L2.S5.it ('Обводка 10') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S5.it ('Заливка 11') -> FILL: [0.0, 0.0, 0.0]
+  L2.S6.it ('Обводка 9') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S6.it ('Заливка 10') -> FILL: [0.0, 0.0, 0.0]
+  L2.S7.it ('Обводка 8') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S7.it ('Заливка 9') -> FILL: [0.0, 0.0, 0.0]
+  L2.S8.it ('Обводка 7') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S8.it ('Заливка 8') -> FILL: [0.0, 0.0, 0.0]
+  L2.S9.it ('Обводка 6') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S9.it ('Заливка 7') -> FILL: [0.0, 0.0, 0.0]
+  L2.S10.it ('Обводка 5') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S10.it ('Заливка 6') -> FILL: [0.0, 0.0, 0.0]
+  L2.S11.it ('Обводка 4') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S11.it ('Заливка 5') -> FILL: [0.0, 0.0, 0.0]
+  L2.S12.it ('Обводка 3') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S12.it ('Заливка 4') -> FILL: [0.0, 0.0, 0.0]
+  L2.S13.it ('Обводка 2') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S13.it ('Заливка 3') -> FILL: [0.0, 0.0, 0.0]
+  L2.S14.it.it ('Обводка 1') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S14.it.it ('Заливка 2') -> FILL: [0.0, 0.0, 0.0]
+  L2.S15.it.it ('Обводка') -> STROKE: [1.0, 1.0, 1.0], width=12
+  L2.S15.it.it ('Заливка 1') -> FILL: [0.0, 0.0, 0.0]
+
+=================== TEMPLATE 15.tgs ===================
+--- Layer 0: nm='Layer' (ty=3) ---
+--- Layer 1: nm='Composition' (ty=0) ---
+
+=================== TEMPLATE 16.tgs ===================
+--- Layer 0: nm='Layer' (ty=3) ---
+--- Layer 1: nm='Layer 6' (ty=3) ---
+--- Layer 2: nm='Layer 5' (ty=3) ---
+--- Layer 3: nm='Layer 3' (ty=3) ---
+--- Layer 4: nm='' (ty=4) ---
+  L4.S0.it ('Stroke 1') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L4.S1.it.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L4.S1.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L4.S1.it.it.it ('Fill') -> FILL: [0.0, 0.0, 0.0]
+  L4.S2.it ('Fill 2') -> FILL: [0.0, 0.0, 0.0]
+  L4.S3.it ('Fill 1') -> FILL: [0.0, 0.0, 0.0]
+  L4.S4.it ('Stroke') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L4.S4.it ('Fill') -> FILL: [0.0, 0.0, 0.0]
+--- Layer 5: nm='Layer 2' (ty=4) ---
+  L5.S0.it ('Stroke 16') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S1.it ('Stroke 15') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S2.it ('Stroke 14') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S3.it ('Stroke 13') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S4.it ('Stroke 12') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S5.it ('Stroke 11') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S6.it ('Fill 11') -> FILL: [0.0, 0.0, 0.0]
+  L5.S7.it ('Stroke 10') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S7.it ('Fill 10') -> FILL: [0.0, 0.0, 0.0]
+  L5.S8.it ('Stroke 9') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S9.it ('Stroke 8') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S10.it ('Stroke 7') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S11.it ('Stroke 6') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S12.it ('Stroke 5') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S12.it ('Fill 9') -> FILL: [0.0, 0.0, 0.0]
+  L5.S13.it ('Stroke 4') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S14.it ('Stroke 3') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L5.S15.it ('Stroke 2') -> STROKE: [1.0, 1.0, 1.0], width=6
+--- Layer 6: nm='Layer 4' (ty=3) ---
+
+=================== TEMPLATE 20.tgs ===================
+--- Layer 0: nm='Composition' (ty=0) ---
+--- Layer 1: nm='Layer' (ty=3) ---
+
+=================== TEMPLATE 25.tgs ===================
+--- Layer 0: nm='Layer' (ty=3) ---
+--- Layer 1: nm='Composition' (ty=0) ---
+
+=================== TEMPLATE 50.tgs ===================
+--- Layer 0: nm='Layer 3' (ty=4) ---
+  L0.S0.it.it ('Stroke 5') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L0.S0.it.it ('Stroke 4') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L0.S0.it.it ('Stroke 3') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L0.S0.it.it ('Fill 3') -> FILL: [0.0, 0.0, 0.0]
+  L0.S0.it.it ('Fill 2') -> FILL: [0.0, 0.0, 0.0]
+  L0.S1.it.it ('Stroke 2') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L0.S1.it.it ('Fill 1') -> FILL: [0.0, 0.0, 0.0]
+  L0.S1.it.it ('Stroke 1') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L0.S1.it.it ('Stroke') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L0.S1.it.it ('Fill') -> FILL: [0.0, 0.0, 0.0]
+--- Layer 1: nm='Layer 2' (ty=4) ---
+  L1.S0.it.it ('Fill 17') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 16') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 15') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 14') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 13') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 12') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 11') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 10') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 9') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 8') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 7') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 6') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 5') -> FILL: [0.0, 0.0, 0.0]
+  L1.S0.it.it ('Fill 4') -> FILL: [0.0, 0.0, 0.0]
+--- Layer 2: nm='Layer 1' (ty=4) ---
+  L2.S0.it.it.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L2.S0.it.it.it.it.it ('Fill') -> FILL: [1.0, 1.0, 1.0, 1]
+  L2.S0.it.it.it.it ('Fill') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Stroke 7') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L2.S0.it.it ('Fill 25') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Fill 24') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Fill 23') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Fill 22') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Fill 21') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Stroke 6') -> STROKE: [1.0, 1.0, 1.0], width=6
+  L2.S0.it.it ('Fill 20') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Fill 19') -> FILL: [0.0, 0.0, 0.0]
+  L2.S0.it.it ('Fill 18') -> FILL: [0.0, 0.0, 0.0]
+--- Layer 3: nm='Layer' (ty=3) ---
+
+=================== TEMPLATE 100.tgs ===================
+--- Layer 0: nm='Layer' (ty=3) ---
+--- Layer 1: nm='Composition' (ty=0) ---

@@ -687,12 +687,16 @@ function setBadgeColor(rawHex, triggerUpdate = true) {
 
 async function initApp() {
     // 0. Strict Telegram Environment Verification
-    if (!isTelegramEnvironment()) {
-        dom.loadingScreen?.classList.add('fade-out');
+    if (window.IS_TG_BLOCKED || !isTelegramEnvironment()) {
+        if (dom.loadingScreen) {
+            dom.loadingScreen.style.display = 'none';
+            dom.loadingScreen.classList.add('hidden');
+        }
         dom.appContainer?.classList.add('hidden');
         const guard = document.getElementById('telegram-only-guard');
         if (guard) {
             guard.classList.remove('hidden');
+            guard.style.display = 'flex';
         }
         return;
     }
@@ -718,6 +722,27 @@ async function initApp() {
         if (tg) {
             tg.ready();
             tg.expand();
+            // True fullscreen in modern Telegram (API 8.0+)
+            if (typeof tg.requestFullscreen === 'function') {
+                try { tg.requestFullscreen(); } catch (_) {}
+            }
+            // Disable vertical swipes to prevent accidental closing on scroll
+            if (typeof tg.disableVerticalSwipes === 'function') {
+                try { tg.disableVerticalSwipes(); } catch (_) {}
+            }
+            // Seamless deep dark header & background
+            if (typeof tg.setHeaderColor === 'function') {
+                try { tg.setHeaderColor('#060911'); } catch (_) {}
+            }
+            if (typeof tg.setBackgroundColor === 'function') {
+                try { tg.setBackgroundColor('#060911'); } catch (_) {}
+            }
+            // Always keep full expanded state
+            if (typeof tg.onEvent === 'function') {
+                tg.onEvent('viewportChanged', () => {
+                    if (!tg.isExpanded) tg.expand();
+                });
+            }
             document.body.classList.add('telegram-theme');
             
             const user = tg.initDataUnsafe?.user;
