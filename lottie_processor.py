@@ -1222,6 +1222,9 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
                 
         if is_svg:
             new_shapes = generate_svg_shapes(svg_content, target_group, scale_factor=scale)
+        elif text and text.strip().upper() == "SVG":
+            # Guard: never render literal letters "SVG" on templates
+            new_shapes = []
         else:
             clean_txt = text if (text and text.strip()) else "ISMINGIZ"
             new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=scale, text_color=text_color)
@@ -1240,6 +1243,9 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
                 target_group = {'shapes': [item]}
                 if is_svg:
                     new_shapes = generate_svg_shapes(svg_content, target_group, scale_factor=scale)
+                elif text and text.strip().upper() == "SVG":
+                    # Guard: never render literal letters "SVG" on templates
+                    new_shapes = []
                 else:
                     clean_txt = text if (text and text.strip()) else "ISMINGIZ"
                     new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=scale, text_color=text_color)
@@ -1406,6 +1412,13 @@ def process_tgs_template(
 
     data = json.loads(gzip.decompress(template_bytes))
 
+    if input_type == 'svg' and not effective_svg:
+        # SVG mode selected, but no SVG vector data provided yet!
+        # Do NOT replace shapes with font text "SVG"; keep original template artwork intact with badge colors applied.
+        apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
+        sanitize_lottie_spec(data)
+        return gzip.compress(json.dumps(data, separators=(',', ':')).encode('utf-8'))
+
     # Search in all layer collections: root layers and precomposition assets
     all_layer_lists = [data.get('layers', [])]
     for asset in data.get('assets', []):
@@ -1417,6 +1430,8 @@ def process_tgs_template(
                     target_group = {'shapes': layer['shapes'], '_accumulate_transforms': True}
                     if effective_svg:
                         new_shapes = generate_svg_shapes(effective_svg, target_group, scale_factor=effective_scale)
+                    elif text and text.strip().upper() == "SVG":
+                        new_shapes = []
                     else:
                         clean_txt = text if (text and text.strip()) else "ISMINGIZ"
                         new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=effective_scale, text_color=text_color)

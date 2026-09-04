@@ -1140,7 +1140,7 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
     const tplNum = parseInt(getTemplateNumber(templateFile));
     const isGrey = tplNum >= 118;
     const isLogo = (tplNum >= 14 && !isGrey) || isSvg;
-    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : (isSvg ? "SVG" : "ISMINGIZ");
+    const cleanTxt = isSvg ? "" : ((text && text.trim() && text.trim().toUpperCase() !== "SVG") ? text.trim().toUpperCase() : "ISMINGIZ");
     const cacheKey = getPreviewCacheKey(templateFile, scale);
     
     if (state.previewCache.has(cacheKey)) {
@@ -1189,7 +1189,7 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
 
 async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
     const isSvg = state.inputType === 'svg';
-    const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : (isSvg ? "SVG" : "ISMINGIZ");
+    const cleanTxt = isSvg ? "" : ((text && text.trim() && text.trim().toUpperCase() !== "SVG") ? text.trim().toUpperCase() : "ISMINGIZ");
     const needed = [];
     const results = {};
     const isDefaultColors = (!state.badgeColor || state.badgeColor === '#FFFFFF') && 
@@ -1201,6 +1201,17 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
         const cacheKey = getPreviewCacheKey(file, scale);
         if (state.previewCache.has(cacheKey)) {
             results[file] = state.previewCache.get(cacheKey);
+        } else if (isSvg && !state.svgData) {
+            let preData = getPreRenderedTemplateData(file, font, scale);
+            if (preData) {
+                if (!isDefaultColors && isLogo) {
+                    preData = applyBadgeColorToLottieJSON(preData, state.badgeColor, state.badgeBgColor, state.textColor, false);
+                }
+                state.previewCache.set(cacheKey, preData);
+                results[file] = preData;
+            } else {
+                needed.push(file);
+            }
         } else if (!isSvg && cleanTxt === "ISMINGIZ" && (isDefaultColors || !isLogo)) {
             const preData = getPreRenderedTemplateData(file, font, scale);
             if (preData) {
@@ -1283,9 +1294,7 @@ function switchTab(tabKey) {
         }
     } else if (tabKey === 'logo') {
         state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
-        if (Object.keys(state.logoPlayers).length === 0) {
-            renderLogosGrid(dom.logoSearch?.value || '');
-        }
+        renderLogosGrid(dom.logoSearch?.value || '');
     } else if (tabKey === 'grey') {
         state.selectedTemplate = Array.from(state.selectedGrey)[0] || "118.tgs";
         state.activeColorTarget = 'text';
@@ -1390,6 +1399,10 @@ function loadSvgFile(file) {
             dom.modeSectionText?.classList.add('hidden');
             dom.modeSectionSvg?.classList.remove('hidden');
             state.previewCache.clear();
+            Object.values(state.logoPlayers).forEach(p => {
+                try { p.destroy(); } catch (e) {}
+            });
+            state.logoPlayers = {};
             switchTab('logo');
             if (!state.selectedTemplate || parseInt(getTemplateNumber(state.selectedTemplate)) <= 13) {
                 state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
@@ -1398,7 +1411,7 @@ function loadSvgFile(file) {
             showToast(`✅ Vektor SVG yuklandi: ${name}`, "🎨", 2500);
             haptic('success');
             updateLivePreview();
-            debouncedFullUpdate();
+            renderLogosGrid(dom.logoSearch?.value || '');
         } catch (err) {
             console.error("SVG parsing error:", err);
             showToast(`❌ Xatolik: ${err.message || err}`, "❌");
@@ -1465,7 +1478,7 @@ async function updateLivePreview() {
         if (dom.previewFontDisplay) dom.previewFontDisplay.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
     }
     
-    const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
+    const cleanTxt = (state.inputType === 'svg') ? "" : ((state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ");
     try {
         const lottieData = await fetchLottiePreview(state.selectedTemplate, cleanTxt, state.font, state.scale);
         
@@ -1676,7 +1689,9 @@ async function renderLogosGrid(filterText = '') {
         card.innerHTML = `
             <span class="tpl-badge">#${num}</span>
             <div class="tpl-check-badge">✓</div>
-            <div class="tpl-lottie-thumb" id="thumb-logo-${num}"></div>
+            <div class="tpl-lottie-thumb" id="thumb-logo-${num}">
+                <div class="thumb-loader"></div>
+            </div>
             <div class="tpl-meta">
                 <div class="tpl-title">${tpl.name}</div>
                 <div class="tpl-tag-label">${tpl.tag}</div>
@@ -1698,7 +1713,7 @@ async function renderLogosGrid(filterText = '') {
     Object.entries(batchData).forEach(([file, data]) => {
         const num = getTemplateNumber(file);
         const container = document.getElementById(`thumb-logo-${num}`);
-        const lottieData = data || (state.inputType === 'svg' ? null : getPreRenderedTemplateData(file, state.font, state.scale));
+        const lottieData = data || getPreRenderedTemplateData(file, state.font, state.scale);
         if (container && lottieData) {
             container.innerHTML = '';
             const player = safeLoadLottieAnimation({
@@ -1723,7 +1738,7 @@ async function renderLogosGrid(filterText = '') {
                     const container = document.getElementById(`thumb-logo-${num}`);
                     
                     if (container && !state.logoPlayers[file]) {
-                        const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
+                        const data = await fetchLottiePreview(file, (state.inputType === 'svg' ? "" : state.text), state.font, state.scale);
                         if (data && container) {
                             container.innerHTML = '';
                             const player = safeLoadLottieAnimation({

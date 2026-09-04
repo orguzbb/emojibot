@@ -461,9 +461,10 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
         req = PreviewRequest()
         
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
-    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
-    if not clean_text:
-        clean_text = "SVG" if is_svg_mode else "ISMINGIZ"
+    if is_svg_mode or req.input_type == "svg":
+        clean_text = req.text.strip().upper()[:16] if (req.text and req.text.strip().upper() != "SVG") else ""
+    else:
+        clean_text = req.text.strip().upper()[:16] if req.text else "ISMINGIZ"
 
     font_key = req.font or "stapel"
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
@@ -520,9 +521,10 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
         return JSONResponse(content={"previews": {}})
         
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
-    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
-    if not clean_text:
-        clean_text = "SVG" if is_svg_mode else "ISMINGIZ"
+    if is_svg_mode or req.input_type == "svg":
+        clean_text = req.text.strip().upper()[:16] if (req.text and req.text.strip().upper() != "SVG") else ""
+    else:
+        clean_text = req.text.strip().upper()[:16] if req.text else "ISMINGIZ"
 
     font_key = req.font or "stapel"
     font_info = FONTS_MAP.get(font_key, FONTS_MAP["stapel"])
@@ -636,9 +638,12 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
     if not req.user_id:
         req.user_id = 1323217434
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
-    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "ISMINGIZ")
-    if not clean_text:
-        clean_text = "SVG" if is_svg_mode else "EMOJI"
+    if is_svg_mode or req.input_type == "svg":
+        clean_text = req.text.strip().upper()[:16] if (req.text and req.text.strip().upper() != "SVG") else ""
+    else:
+        clean_text = req.text.strip().upper()[:16] if req.text else "ISMINGIZ"
+    if not clean_text and not is_svg_mode:
+        clean_text = "EMOJI"
 
     bot = get_bot()
 
@@ -908,7 +913,10 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
         tgs_path = next(Path(TEMPLATES_DIR).glob("*.tgs"))
 
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
-    clean_text = req.text.strip().upper()[:16] if req.text else ("SVG" if is_svg_mode else "EMOJI")
+    if is_svg_mode or req.input_type == "svg":
+        clean_text = req.text.strip().upper()[:16] if (req.text and req.text.strip().upper() != "SVG") else ""
+    else:
+        clean_text = req.text.strip().upper()[:16] if req.text else "EMOJI"
 
     try:
         with open(tgs_path, "rb") as f:
