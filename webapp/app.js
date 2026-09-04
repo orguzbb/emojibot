@@ -256,6 +256,7 @@ const dom = {
     sizeSlider: document.getElementById('size-slider'),
     // Color Customizer
     logoColorSection: document.getElementById('logo-color-section'),
+    colorPickerLabelText: document.getElementById('color-picker-label-text'),
     logoHexInput: document.getElementById('logo-hex-input'),
     logoColorPicker: document.getElementById('logo-color-picker'),
     pickerSwatchCircle: document.getElementById('picker-swatch-circle'),
@@ -268,10 +269,12 @@ const dom = {
     targetDotOuter: document.getElementById('target-dot-outer'),
     targetDotInner: document.getElementById('target-dot-inner'),
     targetDotText: document.getElementById('target-dot-text'),
+    badgeSummaryOuter: document.getElementById('badge-summary-outer'),
+    badgeSummaryInner: document.getElementById('badge-summary-inner'),
+    badgeSummaryText: document.getElementById('badge-summary-text'),
     dotSummaryOuter: document.getElementById('dot-summary-outer'),
     dotSummaryInner: document.getElementById('dot-summary-inner'),
     dotSummaryText: document.getElementById('dot-summary-text'),
-    badgeSummaryText: document.getElementById('badge-summary-text'),
     
     // Destination Selector (New vs Existing)
     destPillNew: document.getElementById('dest-pill-new'),
@@ -574,7 +577,7 @@ function getPreRenderedTemplateData(filename, font, scale = 1.0) {
 }
 
 // Client-side Lottie 3-way recolorer for 0ms latency real-time preview (Outer, Inner, Text)
-function applyBadgeColorToLottieJSON(jsonObj, badgeColor, badgeBgColor, textColor) {
+function applyBadgeColorToLottieJSON(jsonObj, badgeColor, badgeBgColor, textColor, isGrey = false) {
     if (!jsonObj) return jsonObj;
     try {
         function parseHex(hexStr) {
@@ -593,8 +596,8 @@ function applyBadgeColorToLottieJSON(jsonObj, badgeColor, badgeBgColor, textColo
             ];
         }
 
-        const cPrimary = parseHex(badgeColor);
-        const cSecondary = parseHex(badgeBgColor);
+        const cPrimary = isGrey ? null : parseHex(badgeColor);
+        const cSecondary = isGrey ? null : parseHex(badgeBgColor);
         const cText = parseHex(textColor);
 
         const cloned = JSON.parse(JSON.stringify(jsonObj));
@@ -673,13 +676,39 @@ function setActiveColorTarget(target) {
 }
 
 function syncColorControlsUI() {
+    const isGreyTab = state.activeTab === 'grey';
     const isLogoTab = state.activeTab === 'logo' || state.inputType === 'svg';
+    const showColorSection = isLogoTab || isGreyTab;
+
     if (dom.logoColorSection) {
-        if (isLogoTab) {
+        if (showColorSection) {
             dom.logoColorSection.classList.remove('hidden');
         } else {
             dom.logoColorSection.classList.add('hidden');
         }
+    }
+
+    if (isGreyTab) {
+        state.activeColorTarget = 'text';
+    }
+
+    if (dom.colorPickerLabelText) {
+        dom.colorPickerLabelText.textContent = isGreyTab ? "Grey Emoji Matn Rangi" : "Ranglarni sozlash";
+    }
+
+    if (dom.targetPillOuter) dom.targetPillOuter.style.display = isGreyTab ? 'none' : '';
+    if (dom.targetPillInner) dom.targetPillInner.style.display = isGreyTab ? 'none' : '';
+    if (dom.badgeSummaryOuter) dom.badgeSummaryOuter.style.display = isGreyTab ? 'none' : '';
+    if (dom.badgeSummaryInner) dom.badgeSummaryInner.style.display = isGreyTab ? 'none' : '';
+
+    const isSvg = state.inputType === 'svg';
+    if (dom.targetPillText) dom.targetPillText.style.display = isSvg ? 'none' : '';
+    if (dom.badgeSummaryText) dom.badgeSummaryText.style.display = isSvg ? 'none' : '';
+
+    if (isGreyTab) {
+        dom.targetPillText?.classList.add('active');
+        dom.targetPillOuter?.classList.remove('active');
+        dom.targetPillInner?.classList.remove('active');
     }
 
     const curColor = getActiveTargetColor();
@@ -710,10 +739,6 @@ function syncColorControlsUI() {
     if (dom.dotSummaryOuter) dom.dotSummaryOuter.style.backgroundColor = state.badgeColor || '#FFFFFF';
     if (dom.dotSummaryInner) dom.dotSummaryInner.style.backgroundColor = state.badgeBgColor || '#000000';
     if (dom.dotSummaryText) dom.dotSummaryText.style.backgroundColor = state.textColor || '#FFFFFF';
-
-    const isSvg = state.inputType === 'svg';
-    if (dom.targetPillText) dom.targetPillText.style.display = isSvg ? 'none' : '';
-    if (dom.badgeSummaryText) dom.badgeSummaryText.style.display = isSvg ? 'none' : '';
 }
 
 function setTargetColor(rawHex, triggerUpdate = true) {
@@ -1086,7 +1111,9 @@ function renderUserPacks() {
 }
 
 function getPreviewCacheKey(file, scale) {
-    const isLogo = parseInt(getTemplateNumber(file)) >= 14 || state.inputType === 'svg';
+    const tplNum = parseInt(getTemplateNumber(file));
+    const isGrey = tplNum >= 118;
+    const isLogo = (tplNum >= 14 && !isGrey) || state.inputType === 'svg';
     if (state.inputType === 'svg') {
         const svgHash = (state.svgData || "").length + "_" + (state.svgData || "").slice(0, 30);
         const bColor = state.badgeColor || '#FFFFFF';
@@ -1095,6 +1122,10 @@ function getPreviewCacheKey(file, scale) {
         return `${file}_svg_${scale}_${svgHash}_${bColor}_${bgCol}_${tCol}`;
     }
     const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
+    if (isGrey) {
+        const tCol = state.textColor || '#FFFFFF';
+        return `${file}_${state.font}_${scale}_${cleanTxt}_${tCol}`;
+    }
     if (!isLogo) {
         return `${file}_${state.font}_${scale}_${cleanTxt}`;
     }
@@ -1106,7 +1137,9 @@ function getPreviewCacheKey(file, scale) {
 
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
     const isSvg = state.inputType === 'svg';
-    const isLogo = parseInt(getTemplateNumber(templateFile)) >= 14 || isSvg;
+    const tplNum = parseInt(getTemplateNumber(templateFile));
+    const isGrey = tplNum >= 118;
+    const isLogo = (tplNum >= 14 && !isGrey) || isSvg;
     const cleanTxt = (text && text.trim()) ? text.trim().toUpperCase() : (isSvg ? "SVG" : "ISMINGIZ");
     const cacheKey = getPreviewCacheKey(templateFile, scale);
     
@@ -1125,9 +1158,9 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
                 font: font,
                 scale: scale,
                 svg_data: isSvg ? state.svgData : null,
-                badge_color: isLogo ? (state.badgeColor || null) : null,
-                badge_bg_color: isLogo ? (state.badgeBgColor || null) : null,
-                text_color: isLogo ? (state.textColor || null) : null
+                badge_color: isGrey ? null : (isLogo ? (state.badgeColor || null) : null),
+                badge_bg_color: isGrey ? null : (isLogo ? (state.badgeBgColor || null) : null),
+                text_color: (isLogo || isGrey) ? (state.textColor || null) : null
             })
         });
         
@@ -1142,8 +1175,10 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
         if (!isSvg) {
             let fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
             if (fallbackData) {
-                if (isLogo) {
-                    fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor);
+                if (isGrey) {
+                    fallbackData = applyBadgeColorToLottieJSON(fallbackData, null, null, state.textColor, true);
+                } else if (isLogo) {
+                    fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor, false);
                 }
                 return fallbackData;
             }
@@ -1213,9 +1248,13 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
             needed.forEach(file => {
                 let fallbackData = getPreRenderedTemplateData(file, font, scale);
                 if (fallbackData) {
-                    const isLogo = parseInt(getTemplateNumber(file)) >= 14;
-                    if (isLogo) {
-                        fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor);
+                    const tplNum = parseInt(getTemplateNumber(file));
+                    const isGrey = tplNum >= 118;
+                    const isLogo = (tplNum >= 14 && !isGrey) || isSvg;
+                    if (isGrey) {
+                        fallbackData = applyBadgeColorToLottieJSON(fallbackData, null, null, state.textColor, true);
+                    } else if (isLogo) {
+                        fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor, false);
                     }
                     results[file] = fallbackData;
                 }
@@ -1249,6 +1288,7 @@ function switchTab(tabKey) {
         }
     } else if (tabKey === 'grey') {
         state.selectedTemplate = Array.from(state.selectedGrey)[0] || "118.tgs";
+        state.activeColorTarget = 'text';
         renderGreyGrid(dom.greySearch?.value || '');
     }
     syncColorControlsUI();
@@ -2308,6 +2348,9 @@ async function addToExistingPack() {
             text: cleanText,
             font: state.font,
             scale: state.scale,
+            badge_color: state.badgeColor || null,
+            badge_bg_color: state.badgeBgColor || null,
+            text_color: state.textColor || null,
             template_id: state.selectedTemplate
         };
         
@@ -2442,11 +2485,13 @@ function setupEventListeners() {
         e.target.value = val;
         if (val.length === 3 || val.length === 6) {
             setTargetColor('#' + val, false);
-            const isLogo = parseInt(getTemplateNumber(state.selectedTemplate)) >= 14 || state.inputType === 'svg';
-            if (isLogo && state.livePlayer && dom.liveLottiePlayer) {
+            const tplNum = parseInt(getTemplateNumber(state.selectedTemplate));
+            const isGrey = tplNum >= 118;
+            const isLogo = tplNum >= 14 || state.inputType === 'svg';
+            if ((isLogo || isGrey) && state.livePlayer && dom.liveLottiePlayer) {
                 const currentData = state.currentHeroTemplateData || getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
                 if (currentData) {
-                    const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
+                    const recolored = applyBadgeColorToLottieJSON(currentData, isGrey ? null : state.badgeColor, isGrey ? null : state.badgeBgColor, state.textColor, isGrey);
                     try {
                         state.livePlayer.destroy();
                         state.livePlayer = safeLoadLottieAnimation({
@@ -2476,11 +2521,13 @@ function setupEventListeners() {
     dom.logoColorPicker?.addEventListener('input', (e) => {
         const val = e.target.value;
         setTargetColor(val, false);
-        const isLogo = parseInt(getTemplateNumber(state.selectedTemplate)) >= 14 || state.inputType === 'svg';
-        if (isLogo && state.livePlayer && dom.liveLottiePlayer) {
+        const tplNum = parseInt(getTemplateNumber(state.selectedTemplate));
+        const isGrey = tplNum >= 118;
+        const isLogo = tplNum >= 14 || state.inputType === 'svg';
+        if ((isLogo || isGrey) && state.livePlayer && dom.liveLottiePlayer) {
             const currentData = state.currentHeroTemplateData || getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
             if (currentData) {
-                const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
+                const recolored = applyBadgeColorToLottieJSON(currentData, isGrey ? null : state.badgeColor, isGrey ? null : state.badgeBgColor, state.textColor, isGrey);
                 try {
                     state.livePlayer.destroy();
                     state.livePlayer = safeLoadLottieAnimation({

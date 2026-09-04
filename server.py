@@ -487,7 +487,8 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             tpl_num = int(''.join(filter(str.isdigit, tpl_name)))
         except Exception:
             pass
-        is_logo = tpl_num >= 14 or is_svg_mode
+        is_grey = tpl_num >= 118
+        is_logo = (tpl_num >= 14 and not is_grey) or is_svg_mode
 
         effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
         proc_bytes = process_tgs_template(
@@ -497,9 +498,9 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
-            badge_color=req.badge_color if is_logo else None,
-            badge_bg_color=req.badge_bg_color if is_logo else None,
-            text_color=req.text_color if is_logo else None
+            badge_color=None if is_grey else (req.badge_color if is_logo else None),
+            badge_bg_color=None if is_grey else (req.badge_bg_color if is_logo else None),
+            text_color=req.text_color if (is_logo or is_grey) else None
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
@@ -540,7 +541,8 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 tpl_num = int(''.join(filter(str.isdigit, str(tpl_id))))
             except Exception:
                 pass
-            is_logo = tpl_num >= 14 or is_svg_mode
+            is_grey = tpl_num >= 118
+            is_logo = (tpl_num >= 14 and not is_grey) or is_svg_mode
 
             proc_bytes = process_tgs_template(
                 template_bytes=raw_bytes,
@@ -549,9 +551,9 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 text_scale=req.scale or 1.0,
                 svg_data=req.svg_data,
                 input_type=req.input_type or ("svg" if is_svg_mode else "text"),
-                badge_color=req.badge_color if is_logo else None,
-                badge_bg_color=req.badge_bg_color if is_logo else None,
-                text_color=req.text_color if is_logo else None
+                badge_color=None if is_grey else (req.badge_color if is_logo else None),
+                badge_bg_color=None if is_grey else (req.badge_bg_color if is_logo else None),
+                text_color=req.text_color if (is_logo or is_grey) else None
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
             filename = tpl_id if tpl_id.endswith(".tgs") else f"{tpl_id}.tgs"
@@ -696,7 +698,8 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
             tpl_num = int(''.join(filter(str.isdigit, tgs_file.name)))
         except Exception:
             pass
-        is_logo = tpl_num >= 14 or is_svg_mode
+        is_grey = tpl_num >= 118
+        is_logo = (tpl_num >= 14 and not is_grey) or is_svg_mode
 
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
@@ -705,9 +708,9 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
-            badge_color=req.badge_color if is_logo else None,
-            badge_bg_color=req.badge_bg_color if is_logo else None,
-            text_color=req.text_color if is_logo else None
+            badge_color=None if is_grey else (req.badge_color if is_logo else None),
+            badge_bg_color=None if is_grey else (req.badge_bg_color if is_logo else None),
+            text_color=req.text_color if (is_logo or is_grey) else None
         )
 
         emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
@@ -917,7 +920,8 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
             tpl_num = int(''.join(filter(str.isdigit, tgs_path.name)))
         except Exception:
             pass
-        is_logo = tpl_num >= 14 or is_svg_mode
+        is_grey = tpl_num >= 118
+        is_logo = (tpl_num >= 14 and not is_grey) or is_svg_mode
 
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
@@ -926,9 +930,9 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
-            badge_color=req.badge_color if is_logo else None,
-            badge_bg_color=req.badge_bg_color if is_logo else None,
-            text_color=req.text_color if is_logo else None
+            badge_color=None if is_grey else (req.badge_color if is_logo else None),
+            badge_bg_color=None if is_grey else (req.badge_bg_color if is_logo else None),
+            text_color=req.text_color if (is_logo or is_grey) else None
         )
 
         sticker_item = InputSticker(
