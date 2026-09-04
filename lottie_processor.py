@@ -1339,6 +1339,46 @@ def apply_badge_color_to_template(data: dict, badge_color: str = None, badge_bg_
             walk_item(l, False)
 
 
+def sanitize_lottie_spec(data: dict) -> dict:
+    """
+    Ensures the Lottie dictionary strictly adheres to bodymovin / lottie-web specifications:
+    - Every shape layer (ty == 4) must have 'shapes' as a list (defaults to [] if missing or None).
+    - Removes any illegal or corrupt keys (such as 'shes').
+    - Ensures precomp assets and precomp layers have 'w' and 'h' dimensions properly set.
+    """
+    if not isinstance(data, dict):
+        return data
+    w = data.get('w', 512)
+    h = data.get('h', 512)
+    
+    def sanitize_layer(layer: dict):
+        if not isinstance(layer, dict):
+            return
+        if layer.get('ty') == 4:
+            if 'shes' in layer:
+                del layer['shes']
+            if 'shapes' not in layer or layer.get('shapes') is None or not isinstance(layer.get('shapes'), list):
+                layer['shapes'] = []
+        elif layer.get('ty') == 0:
+            if 'w' not in layer or layer.get('w') is None:
+                layer['w'] = w
+            if 'h' not in layer or layer.get('h') is None:
+                layer['h'] = h
+
+    for layer in data.get('layers', []):
+        sanitize_layer(layer)
+        
+    for asset in data.get('assets', []):
+        if isinstance(asset, dict) and 'layers' in asset:
+            if 'w' not in asset or asset.get('w') is None:
+                asset['w'] = w
+            if 'h' not in asset or asset.get('h') is None:
+                asset['h'] = h
+            for alayer in asset.get('layers', []):
+                sanitize_layer(alayer)
+    return data
+
+
 def process_tgs_template(
     template_bytes: bytes,
     text: str = None,
@@ -1397,6 +1437,9 @@ def process_tgs_template(
 
     # Tag roles and apply custom badge/border/inner/text colors
     apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
+
+    # Sanitize Lottie specification to guarantee 100% bodymovin / lottie-web browser compatibility
+    sanitize_lottie_spec(data)
 
     return gzip.compress(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 

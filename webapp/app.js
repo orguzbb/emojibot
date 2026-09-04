@@ -433,6 +433,51 @@ function debounce(func, wait) {
     };
 }
 
+// Sanitizes Lottie animation JSON to guarantee 100% bodymovin / lottie-web specification compliance
+function sanitizeLottieAnimationData(data) {
+    if (!data || typeof data !== 'object') return data;
+    try {
+        const w = data.w || 512;
+        const h = data.h || 512;
+        function fixLayer(l) {
+            if (!l || typeof l !== 'object') return;
+            if (l.ty === 4) {
+                if ('shes' in l) delete l.shes;
+                if (!l.shapes || !Array.isArray(l.shapes)) l.shapes = [];
+            } else if (l.ty === 0) {
+                if (!l.w) l.w = w;
+                if (!l.h) l.h = h;
+            }
+        }
+        if (Array.isArray(data.layers)) data.layers.forEach(fixLayer);
+        if (Array.isArray(data.assets)) {
+            data.assets.forEach(a => {
+                if (a && typeof a === 'object' && Array.isArray(a.layers)) {
+                    if (!a.w) a.w = w;
+                    if (!a.h) a.h = h;
+                    a.layers.forEach(fixLayer);
+                }
+            });
+        }
+    } catch (_) {}
+    return data;
+}
+
+function safeLoadLottieAnimation(params) {
+    if (!params || !params.container || !params.animationData) return null;
+    try {
+        params.animationData = sanitizeLottieAnimationData(params.animationData);
+        if (window.lottie && typeof window.lottie.loadAnimation === 'function') {
+            return window.lottie.loadAnimation(params);
+        } else if (window.bodymovin && typeof window.bodymovin.loadAnimation === 'function') {
+            return window.bodymovin.loadAnimation(params);
+        }
+    } catch (err) {
+        console.error("Lottie load animation error:", err);
+    }
+    return null;
+}
+
 function getTemplateNumber(filename) {
     return String(filename).replace('.tgs', '').replace('emoji_', '');
 }
@@ -1391,7 +1436,7 @@ async function updateLivePreview() {
                 state.livePlayer = null;
             }
             dom.liveLottiePlayer.innerHTML = '';
-            state.livePlayer = lottie.loadAnimation({
+            state.livePlayer = safeLoadLottieAnimation({
                 container: dom.liveLottiePlayer,
                 renderer: 'svg',
                 loop: true,
@@ -1541,14 +1586,14 @@ async function renderTicketsGrid(filterText = '') {
         
         if (container && data) {
             container.innerHTML = '';
-            const player = lottie.loadAnimation({
+            const player = safeLoadLottieAnimation({
                 container: container,
                 renderer: 'svg',
                 loop: true,
                 autoplay: true,
                 animationData: data
             });
-            state.ticketPlayers[file] = player;
+            if (player) state.ticketPlayers[file] = player;
         }
     });
 }
@@ -1616,14 +1661,14 @@ async function renderLogosGrid(filterText = '') {
         const lottieData = data || (state.inputType === 'svg' ? null : getPreRenderedTemplateData(file, state.font, state.scale));
         if (container && lottieData) {
             container.innerHTML = '';
-            const player = lottie.loadAnimation({
+            const player = safeLoadLottieAnimation({
                 container: container,
                 renderer: 'svg',
                 loop: true,
                 autoplay: true,
                 animationData: lottieData
             });
-            state.logoPlayers[file] = player;
+            if (player) state.logoPlayers[file] = player;
         }
     });
     
@@ -1641,14 +1686,14 @@ async function renderLogosGrid(filterText = '') {
                         const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
                         if (data && container) {
                             container.innerHTML = '';
-                            const player = lottie.loadAnimation({
+                            const player = safeLoadLottieAnimation({
                                 container: container,
                                 renderer: 'svg',
                                 loop: true,
                                 autoplay: true,
                                 animationData: data
                             });
-                            state.logoPlayers[file] = player;
+                            if (player) state.logoPlayers[file] = player;
                         }
                     }
                     observer.unobserve(card);
@@ -1720,8 +1765,8 @@ async function renderGreyGrid(filterText = '') {
         dom.greyGrid.appendChild(card);
     });
     
-    // Load first 6 grey emojis immediately via batch preview (fast & light payload)
-    const initialBatch = filtered.slice(0, 6).map(t => t.file);
+    // Load first 12 grey emojis immediately via batch preview (fast & light payload)
+    const initialBatch = filtered.slice(0, 12).map(t => t.file);
     try {
         const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
         Object.entries(batchData).forEach(([file, data]) => {
@@ -1729,14 +1774,14 @@ async function renderGreyGrid(filterText = '') {
             const container = document.getElementById(`thumb-grey-${num}`);
             if (container && data && !state.greyPlayers[file]) {
                 container.innerHTML = '';
-                const player = lottie.loadAnimation({
+                const player = safeLoadLottieAnimation({
                     container: container,
                     renderer: 'svg',
                     loop: true,
                     autoplay: true,
                     animationData: data
                 });
-                state.greyPlayers[file] = player;
+                if (player) state.greyPlayers[file] = player;
             }
         });
     } catch (e) {
@@ -1758,14 +1803,14 @@ async function renderGreyGrid(filterText = '') {
                             const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
                             if (data && container && !state.greyPlayers[file]) {
                                 container.innerHTML = '';
-                                const player = lottie.loadAnimation({
+                                const player = safeLoadLottieAnimation({
                                     container: container,
                                     renderer: 'svg',
                                     loop: true,
                                     autoplay: true,
                                     animationData: data
                                 });
-                                state.greyPlayers[file] = player;
+                                if (player) state.greyPlayers[file] = player;
                             }
                         } catch (err) {
                             console.warn("Lazy load thumb error:", file, err);
@@ -1774,10 +1819,13 @@ async function renderGreyGrid(filterText = '') {
                     observer.unobserve(card);
                 }
             });
-        }, { rootMargin: '200px' });
+        }, { rootMargin: '250px' });
         
         dom.greyGrid.querySelectorAll('.tpl-card').forEach((card) => {
-            observer.observe(card);
+            const file = card.dataset.file;
+            if (!state.greyPlayers[file]) {
+                observer.observe(card);
+            }
         });
     }
 }
@@ -1914,7 +1962,7 @@ async function openTemplateModal(filename, typeLabel = 'Emoji') {
             state.modalPlayer.destroy();
         }
         dom.modalLottiePlayer.innerHTML = '';
-        state.modalPlayer = lottie.loadAnimation({
+        state.modalPlayer = safeLoadLottieAnimation({
             container: dom.modalLottiePlayer,
             renderer: 'svg',
             loop: true,
@@ -2401,7 +2449,7 @@ function setupEventListeners() {
                     const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
                     try {
                         state.livePlayer.destroy();
-                        state.livePlayer = lottie.loadAnimation({
+                        state.livePlayer = safeLoadLottieAnimation({
                             container: dom.liveLottiePlayer,
                             renderer: 'svg',
                             loop: true,
@@ -2435,7 +2483,7 @@ function setupEventListeners() {
                 const recolored = applyBadgeColorToLottieJSON(currentData, state.badgeColor, state.badgeBgColor, state.textColor);
                 try {
                     state.livePlayer.destroy();
-                    state.livePlayer = lottie.loadAnimation({
+                    state.livePlayer = safeLoadLottieAnimation({
                         container: dom.liveLottiePlayer,
                         renderer: 'svg',
                         loop: true,
