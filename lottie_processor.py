@@ -513,7 +513,10 @@ def validate_and_clean_svg(raw_svg: Union[str, bytes]) -> str:
     return raw_svg
 
 
-def extract_layer_template_info(target_layer: dict):
+def extract_layer_template_info(target_layer: dict, accumulate_transforms: bool = False):
+    if isinstance(target_layer, dict) and target_layer.get('_accumulate_transforms', False):
+        accumulate_transforms = True
+
     all_xs = []
     all_ys = []
     sample_fill = {"a": 0, "k": [0.8902, 0.1216, 0.1216, 1]}
@@ -528,7 +531,7 @@ def extract_layer_template_info(target_layer: dict):
         sub_items = item.get('it', [])
         this_ox, this_oy = 0.0, 0.0
         this_sx, this_sy = 1.0, 1.0
-        if sub_items:
+        if accumulate_transforms and sub_items:
             for sub in sub_items:
                 if isinstance(sub, dict) and sub.get('ty') == 'tr':
                     pos = sub.get('p', {}).get('k', [0, 0])
@@ -1411,7 +1414,7 @@ def process_tgs_template(
         if 'layers' in asset:
             for layer in asset['layers']:
                 if is_logo_asset and 'shapes' in layer and isinstance(layer['shapes'], list) and len(layer['shapes']) > 0:
-                    target_group = {'shapes': layer['shapes']}
+                    target_group = {'shapes': layer['shapes'], '_accumulate_transforms': True}
                     if effective_svg:
                         new_shapes = generate_svg_shapes(effective_svg, target_group, scale_factor=effective_scale)
                     else:
