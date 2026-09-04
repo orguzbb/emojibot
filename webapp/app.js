@@ -2480,6 +2480,19 @@ function setupEventListeners() {
         debouncedFullUpdate();
     });
 
+    // Quick tap on size percentage badge to reset back to 100%
+    dom.sizeValDisplay?.addEventListener('click', () => {
+        if (dom.sizeSlider) {
+            dom.sizeSlider.value = "1.0";
+            state.scale = 1.0;
+            dom.sizeValDisplay.textContent = "100%";
+            state.previewCache.clear();
+            haptic('light');
+            updateLivePreview();
+            debouncedFullUpdate();
+        }
+    });
+
     // Color Customizer Target Selector Pills
     dom.targetPillOuter?.addEventListener('click', () => {
         haptic('selection');
