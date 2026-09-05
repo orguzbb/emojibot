@@ -1417,37 +1417,31 @@ def process_hq_logo(
                     try:
                         clean_svg = validate_and_clean_svg(effective_svg)
                         root = ET.fromstring(clean_svg)
-                        d_attrs = []
-                        for el in root.iter():
-                            if el.tag.endswith('path') and 'd' in el.attrib:
-                                d_attrs.append(el.attrib['d'])
+                        bounds_pen = BoundsPen(None)
+                        draw_svg_to_pen(root, bounds_pen)
+                        bounds = bounds_pen.bounds
+                        if not bounds:
+                            bounds = (0.0, 0.0, 100.0, 100.0)
 
-                        vb = root.get('viewBox', '0 0 100 100').split()
-                        if len(vb) == 4:
-                            svg_w = float(vb[2])
-                            svg_h = float(vb[3])
-                        else:
-                            svg_w = float(root.get('width', 100))
-                            svg_h = float(root.get('height', 100))
-
-                        svg_cx = svg_w / 2.0
-                        svg_cy = svg_h / 2.0
+                        svg_w = max(bounds[2] - bounds[0], 1.0)
+                        svg_h = max(bounds[3] - bounds[1], 1.0)
+                        svg_cx = (bounds[0] + bounds[2]) / 2.0
+                        svg_cy = (bounds[1] + bounds[3]) / 2.0
 
                         max_dim = max(svg_w, svg_h)
                         target_dim = min(w, h) * 0.75 * effective_scale
                         scl = target_dim / max_dim if max_dim > 0 else 1.0
 
-                        for d_attr in d_attrs:
-                            pen = LottieSVGPen(target_cx=cx, target_cy=cy, svg_cx=svg_cx, svg_cy=svg_cy, scale=scl)
-                            parse_path(d_attr, pen)
-                            pen._closePath()
-                            for p in pen.paths:
-                                new_paths.append({
-                                    "ty": "sh",
-                                    "nm": "SVG Logo",
-                                    "hd": False,
-                                    "ks": {"a": 0, "k": p}
-                                })
+                        pen = LottieSVGPen(target_cx=cx, target_cy=cy, svg_cx=svg_cx, svg_cy=svg_cy, scale=scl)
+                        draw_svg_to_pen(root, pen)
+                        pen._closePath()
+                        for p in pen.paths:
+                            new_paths.append({
+                                "ty": "sh",
+                                "nm": "SVG Logo",
+                                "hd": False,
+                                "ks": {"a": 0, "k": p}
+                            })
                     except Exception as e:
                         pass
 

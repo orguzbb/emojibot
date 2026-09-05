@@ -1448,16 +1448,23 @@ function loadSvgFile(file) {
             Object.values(state.logoPlayers).forEach(p => {
                 try { p.destroy(); } catch (e) {}
             });
-            state.logoPlayers = {};
-            switchTab('logo');
-            if (!state.selectedTemplate || parseInt(getTemplateNumber(state.selectedTemplate)) <= 13) {
-                state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+            if (state.activeTab === 'name') {
+                switchTab('logo');
+                if (!state.selectedTemplate || parseInt(getTemplateNumber(state.selectedTemplate)) <= 13) {
+                    state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+                }
+            } else if (state.activeTab === 'hq') {
+                if (!state.selectedTemplate || parseInt(getTemplateNumber(state.selectedTemplate)) < 183) {
+                    state.selectedTemplate = Array.from(state.selectedHQ)[0] || "183.tgs";
+                }
             }
             updateSvgThumbnail();
             showToast(`✅ Vektor SVG yuklandi: ${name}`, "🎨", 2500);
             haptic('success');
             updateLivePreview();
             renderLogosGrid(dom.logoSearch?.value || '');
+            renderGreyGrid(dom.greySearch?.value || '');
+            renderHQGrid(dom.hqSearch?.value || '');
         } catch (err) {
             console.error("SVG parsing error:", err);
             showToast(`❌ Xatolik: ${err.message || err}`, "❌");
@@ -1988,7 +1995,7 @@ async function renderHQGrid(filterText = '') {
         card.dataset.file = tpl.file;
         
         card.innerHTML = `
-            <span class="tpl-badge" style="background: rgba(16, 185, 129, 0.35); border-color: rgba(52, 211, 153, 0.4); color: #34d399;">#${displayIdx}</span>
+            <span class="tpl-badge" style="background: rgba(238, 180, 25, 0.25); border-color: rgba(238, 180, 25, 0.45); color: #EEB419;">#${displayIdx}</span>
             <div class="tpl-check-badge">✓</div>
             <div class="tpl-lottie-thumb" id="thumb-hq-${num}">
                 <div class="thumb-loader"></div>
@@ -2712,12 +2719,13 @@ function setupEventListeners() {
         if (val.length === 3 || val.length === 6) {
             setTargetColor('#' + val, false);
             const tplNum = parseInt(getTemplateNumber(state.selectedTemplate));
-            const isGrey = tplNum >= 118;
-            const isLogo = tplNum >= 14 || state.inputType === 'svg';
-            if ((isLogo || isGrey) && state.livePlayer && dom.liveLottiePlayer) {
+            const isGrey = tplNum >= 118 && tplNum < 183;
+            const isHQ = tplNum >= 183;
+            const isLogo = (tplNum >= 14 && tplNum < 118) || state.inputType === 'svg';
+            if ((isLogo || isGrey || isHQ) && state.livePlayer && dom.liveLottiePlayer) {
                 const currentData = state.currentHeroTemplateData || getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
                 if (currentData) {
-                    const recolored = applyBadgeColorToLottieJSON(currentData, isGrey ? null : state.badgeColor, isGrey ? null : state.badgeBgColor, state.textColor, isGrey);
+                    const recolored = applyBadgeColorToLottieJSON(currentData, (isGrey || isHQ) ? null : state.badgeColor, (isGrey || isHQ) ? null : state.badgeBgColor, state.textColor, isGrey);
                     try {
                         state.livePlayer.destroy();
                         state.livePlayer = safeLoadLottieAnimation({
@@ -2748,12 +2756,13 @@ function setupEventListeners() {
         const val = e.target.value;
         setTargetColor(val, false);
         const tplNum = parseInt(getTemplateNumber(state.selectedTemplate));
-        const isGrey = tplNum >= 118;
-        const isLogo = tplNum >= 14 || state.inputType === 'svg';
-        if ((isLogo || isGrey) && state.livePlayer && dom.liveLottiePlayer) {
+        const isGrey = tplNum >= 118 && tplNum < 183;
+        const isHQ = tplNum >= 183;
+        const isLogo = (tplNum >= 14 && tplNum < 118) || state.inputType === 'svg';
+        if ((isLogo || isGrey || isHQ) && state.livePlayer && dom.liveLottiePlayer) {
             const currentData = state.currentHeroTemplateData || getPreRenderedTemplateData(state.selectedTemplate, state.font, state.scale);
             if (currentData) {
-                const recolored = applyBadgeColorToLottieJSON(currentData, isGrey ? null : state.badgeColor, isGrey ? null : state.badgeBgColor, state.textColor, isGrey);
+                const recolored = applyBadgeColorToLottieJSON(currentData, (isGrey || isHQ) ? null : state.badgeColor, (isGrey || isHQ) ? null : state.badgeBgColor, state.textColor, isGrey);
                 try {
                     state.livePlayer.destroy();
                     state.livePlayer = safeLoadLottieAnimation({
@@ -2824,6 +2833,7 @@ function setupEventListeners() {
             renderTicketsGrid(dom.templateSearch?.value || '');
             renderLogosGrid(dom.logoSearch?.value || '');
             renderGreyGrid(dom.greySearch?.value || '');
+            renderHQGrid(dom.hqSearch?.value || '');
         });
     });
     

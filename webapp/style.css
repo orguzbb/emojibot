@@ -1029,12 +1029,12 @@ body {
 }
 
 .hq-hero-card {
-    border-color: rgba(16, 185, 129, 0.35) !important;
-    box-shadow: 0 16px 40px -10px rgba(16, 185, 129, 0.28) !important;
+    border-color: rgba(238, 180, 25, 0.35) !important;
+    box-shadow: 0 16px 40px -10px rgba(238, 180, 25, 0.28) !important;
 }
 
 .hq-hero-card::before {
-    background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.22), transparent 70%) !important;
+    background: radial-gradient(circle at top right, rgba(238, 180, 25, 0.22), transparent 70%) !important;
 }
 
 .nav-tab:hover {
@@ -1075,12 +1075,12 @@ body {
 }
 
 #tab-btn-hq.active {
-    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    background: linear-gradient(135deg, #EEB419 0%, #D99B0B 100%);
     color: #ffffff;
-    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.45);
+    box-shadow: 0 4px 20px rgba(238, 180, 25, 0.45);
 }
 #tab-btn-hq.active .tab-counter {
-    background: rgba(255, 255, 255, 0.28);
+    background: rgba(0, 0, 0, 0.28);
     color: #ffffff;
 }
 
