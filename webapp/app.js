@@ -185,6 +185,17 @@ for (let i = 118; i <= 182; i++) {
     });
 }
 
+// The 80 High Quality 3D Emojis (183.tgs to 262.tgs)
+const HQ_TEMPLATES = [];
+for (let i = 183; i <= 262; i++) {
+    HQ_TEMPLATES.push({
+        id: `${i}`,
+        file: `${i}.tgs`,
+        name: `High Quality #${i - 182}`,
+        tag: "High Quality"
+    });
+}
+
 // App State (Nothing selected by default on load, empty text/svg for user input)
 const state = {
     user: null,
@@ -209,6 +220,7 @@ const state = {
     selectedTickets: new Set(), // 0 selected on start
     selectedLogos: new Set(),   // 0 selected on start
     selectedGrey: new Set(),    // 0 selected on start
+    selectedHQ: new Set(),      // 0 selected on start
     userPacks: [],
     
     // Lottie player instances
@@ -217,6 +229,7 @@ const state = {
     ticketPlayers: {},
     logoPlayers: {},
     greyPlayers: {},
+    hqPlayers: {},
     
     // In-memory preview cache
     previewCache: new Map()
@@ -300,10 +313,13 @@ const dom = {
     tabBtnName: document.getElementById('tab-btn-name'),
     tabBtnLogo: document.getElementById('tab-btn-logo'),
     tabBtnGrey: document.getElementById('tab-btn-grey'),
+    tabBtnHQ: document.getElementById('tab-btn-hq'),
     tabContentName: document.getElementById('tab-content-name'),
     tabContentLogo: document.getElementById('tab-content-logo'),
     tabContentGrey: document.getElementById('tab-content-grey'),
+    tabContentHQ: document.getElementById('tab-content-hq'),
     tabCounterGrey: document.getElementById('tab-counter-grey'),
+    tabCounterHQ: document.getElementById('tab-counter-hq'),
     
     // Name Tab (13 Ticket Emojis)
     templatesGrid: document.getElementById('templates-grid'),
@@ -327,6 +343,14 @@ const dom = {
     txtSelectAllGrey: document.getElementById('txt-select-all-grey'),
     greySelectionCount: document.getElementById('grey-selection-count'),
     btnCreateGreyFullpack: document.getElementById('btn-create-grey-fullpack'),
+    
+    // High Quality Tab (80 3D Emojis)
+    hqGrid: document.getElementById('hq-grid'),
+    hqSearch: document.getElementById('hq-search'),
+    btnSelectAllHQ: document.getElementById('btn-select-all-hq'),
+    txtSelectAllHQ: document.getElementById('txt-select-all-hq'),
+    hqSelectionCount: document.getElementById('hq-selection-count'),
+    btnCreateHQFullpack: document.getElementById('btn-create-hq-fullpack'),
     
     userPacksList: document.getElementById('user-packs-list'),
     btnRefreshPacks: document.getElementById('btn-refresh-packs'),
@@ -684,9 +708,10 @@ function setActiveColorTarget(target) {
 }
 
 function syncColorControlsUI() {
+    const isHQTab = state.activeTab === 'hq';
     const isGreyTab = state.activeTab === 'grey';
     const isLogoTab = state.activeTab === 'logo' || state.inputType === 'svg';
-    const showColorSection = isLogoTab || isGreyTab;
+    const showColorSection = isLogoTab || isGreyTab || isHQTab;
 
     if (dom.logoColorSection) {
         if (showColorSection) {
@@ -696,24 +721,24 @@ function syncColorControlsUI() {
         }
     }
 
-    if (isGreyTab) {
+    if (isGreyTab || isHQTab) {
         state.activeColorTarget = 'text';
     }
 
     if (dom.colorPickerLabelText) {
-        dom.colorPickerLabelText.textContent = isGreyTab ? "Grey Emoji Matn Rangi" : "Ranglarni sozlash";
+        dom.colorPickerLabelText.textContent = isHQTab ? "High Quality Matn Rangi" : (isGreyTab ? "Grey Emoji Matn Rangi" : "Ranglarni sozlash");
     }
 
-    if (dom.targetPillOuter) dom.targetPillOuter.style.display = isGreyTab ? 'none' : '';
-    if (dom.targetPillInner) dom.targetPillInner.style.display = isGreyTab ? 'none' : '';
-    if (dom.badgeSummaryOuter) dom.badgeSummaryOuter.style.display = isGreyTab ? 'none' : '';
-    if (dom.badgeSummaryInner) dom.badgeSummaryInner.style.display = isGreyTab ? 'none' : '';
+    if (dom.targetPillOuter) dom.targetPillOuter.style.display = (isGreyTab || isHQTab) ? 'none' : '';
+    if (dom.targetPillInner) dom.targetPillInner.style.display = (isGreyTab || isHQTab) ? 'none' : '';
+    if (dom.badgeSummaryOuter) dom.badgeSummaryOuter.style.display = (isGreyTab || isHQTab) ? 'none' : '';
+    if (dom.badgeSummaryInner) dom.badgeSummaryInner.style.display = (isGreyTab || isHQTab) ? 'none' : '';
 
     const isSvg = state.inputType === 'svg';
     if (dom.targetPillText) dom.targetPillText.style.display = isSvg ? 'none' : '';
     if (dom.badgeSummaryText) dom.badgeSummaryText.style.display = isSvg ? 'none' : '';
 
-    if (isGreyTab) {
+    if (isGreyTab || isHQTab) {
         dom.targetPillText?.classList.add('active');
         dom.targetPillOuter?.classList.remove('active');
         dom.targetPillInner?.classList.remove('active');
@@ -890,6 +915,9 @@ async function initApp() {
         
         // 3.5. Render the 65 Grey Metallic 3D Templates in Grey Tab (none selected by default)
         renderGreyGrid();
+        
+        // 3.6. Render the 80 High Quality Templates in HQ Tab (none selected by default)
+        renderHQGrid();
         
         // 4. Update Selection Status
         updateSelectionStatus();
@@ -1120,8 +1148,9 @@ function renderUserPacks() {
 
 function getPreviewCacheKey(file, scale) {
     const tplNum = parseInt(getTemplateNumber(file));
-    const isGrey = tplNum >= 118;
-    const isLogo = (tplNum >= 14 && !isGrey) || state.inputType === 'svg';
+    const isHQ = tplNum >= 183;
+    const isGrey = tplNum >= 118 && !isHQ;
+    const isLogo = (tplNum >= 14 && !isGrey && !isHQ) || state.inputType === 'svg';
     if (state.inputType === 'svg') {
         const svgHash = (state.svgData || "").length + "_" + (state.svgData || "").slice(0, 30);
         const bColor = state.badgeColor || '#FFFFFF';
@@ -1130,7 +1159,7 @@ function getPreviewCacheKey(file, scale) {
         return `${file}_svg_${scale}_${svgHash}_${bColor}_${bgCol}_${tCol}`;
     }
     const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
-    if (isGrey) {
+    if (isGrey || isHQ) {
         const tCol = state.textColor || '#FFFFFF';
         return `${file}_${state.font}_${scale}_${cleanTxt}_${tCol}`;
     }
@@ -1146,8 +1175,9 @@ function getPreviewCacheKey(file, scale) {
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
     const isSvg = state.inputType === 'svg';
     const tplNum = parseInt(getTemplateNumber(templateFile));
-    const isGrey = tplNum >= 118;
-    const isLogo = (tplNum >= 14 && !isGrey) || isSvg;
+    const isHQ = tplNum >= 183;
+    const isGrey = tplNum >= 118 && !isHQ;
+    const isLogo = (tplNum >= 14 && !isGrey && !isHQ) || isSvg;
     const cleanTxt = isSvg ? "" : ((text && text.trim() && text.trim().toUpperCase() !== "SVG") ? text.trim().toUpperCase() : "ISMINGIZ");
     const cacheKey = getPreviewCacheKey(templateFile, scale);
     
@@ -1166,9 +1196,9 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
                 font: font,
                 scale: scale,
                 svg_data: isSvg ? state.svgData : null,
-                badge_color: isGrey ? null : (isLogo ? (state.badgeColor || null) : null),
-                badge_bg_color: isGrey ? null : (isLogo ? (state.badgeBgColor || null) : null),
-                text_color: (isLogo || isGrey) ? (state.textColor || null) : null
+                badge_color: (isGrey || isHQ) ? null : (isLogo ? (state.badgeColor || null) : null),
+                badge_bg_color: (isGrey || isHQ) ? null : (isLogo ? (state.badgeBgColor || null) : null),
+                text_color: (isLogo || isGrey || isHQ) ? (state.textColor || null) : null
             })
         });
         
@@ -1291,10 +1321,12 @@ function switchTab(tabKey) {
     dom.tabBtnName?.classList.toggle('active', tabKey === 'name');
     dom.tabBtnLogo?.classList.toggle('active', tabKey === 'logo');
     dom.tabBtnGrey?.classList.toggle('active', tabKey === 'grey');
+    dom.tabBtnHQ?.classList.toggle('active', tabKey === 'hq');
     
     dom.tabContentName?.classList.toggle('active', tabKey === 'name');
     dom.tabContentLogo?.classList.toggle('active', tabKey === 'logo');
     dom.tabContentGrey?.classList.toggle('active', tabKey === 'grey');
+    dom.tabContentHQ?.classList.toggle('active', tabKey === 'hq');
     
     if (tabKey === 'name') {
         if (state.inputType !== 'svg') {
@@ -1307,6 +1339,10 @@ function switchTab(tabKey) {
         state.selectedTemplate = Array.from(state.selectedGrey)[0] || "118.tgs";
         state.activeColorTarget = 'text';
         renderGreyGrid(dom.greySearch?.value || '');
+    } else if (tabKey === 'hq') {
+        state.selectedTemplate = Array.from(state.selectedHQ)[0] || "183.tgs";
+        state.activeColorTarget = 'text';
+        renderHQGrid(dom.hqSearch?.value || '');
     }
     syncColorControlsUI();
     updateLivePreview();
@@ -1318,8 +1354,10 @@ const debouncedFullUpdate = debounce(() => {
         renderTicketsGrid(dom.templateSearch?.value || '');
     } else if (state.activeTab === 'logo') {
         renderLogosGrid(dom.logoSearch?.value || '');
-    } else {
+    } else if (state.activeTab === 'grey') {
         renderGreyGrid(dom.greySearch?.value || '');
+    } else if (state.activeTab === 'hq') {
+        renderHQGrid(dom.hqSearch?.value || '');
     }
 }, 300);
 
@@ -1452,6 +1490,8 @@ async function updateLivePreview() {
     let tag = `Logo #${num}`;
     if (num <= 13) {
         tag = `Ticket #${num}`;
+    } else if (num >= 183) {
+        tag = `High Quality #${num - 182}`;
     } else if (num >= 118) {
         tag = `Grey #${num - 117}`;
     }
@@ -1515,8 +1555,9 @@ function updateSelectionStatus() {
     let activeSet = state.selectedTickets;
     if (state.activeTab === 'logo') activeSet = state.selectedLogos;
     else if (state.activeTab === 'grey') activeSet = state.selectedGrey;
+    else if (state.activeTab === 'hq') activeSet = state.selectedHQ;
     
-    const totalSelected = state.selectedTickets.size + state.selectedLogos.size + state.selectedGrey.size;
+    const totalSelected = state.selectedTickets.size + state.selectedLogos.size + state.selectedGrey.size + state.selectedHQ.size;
     
     // Ticket tab toolbar
     if (dom.ticketSelectionCount) {
@@ -1559,6 +1600,20 @@ function updateSelectionStatus() {
             dom.btnSelectAllGrey?.classList.remove('active-all');
         }
     }
+
+    // High Quality tab toolbar
+    if (dom.hqSelectionCount) {
+        dom.hqSelectionCount.textContent = `${state.selectedHQ.size} ta tanlandi`;
+    }
+    if (dom.txtSelectAllHQ) {
+        if (state.selectedHQ.size === HQ_TEMPLATES.length && HQ_TEMPLATES.length > 0) {
+            dom.txtSelectAllHQ.textContent = "Tanlovni bekor qilish";
+            dom.btnSelectAllHQ?.classList.add('active-all');
+        } else {
+            dom.txtSelectAllHQ.textContent = "Hammasini belgilash";
+            dom.btnSelectAllHQ?.classList.remove('active-all');
+        }
+    }
     
     // Price & Label Calculation — HAR DOIM STARS TO'LOV HISOB-KITOBLARI
     const count = totalSelected > 0 ? totalSelected : 1;
@@ -1574,7 +1629,7 @@ function updateSelectionStatus() {
     if (totalSelected > 1) {
         dom.mainBtnText.innerHTML = `Tanlangan Emojilarni ${actionVerb} (${totalSelected} ta • ${priceBadge})`;
     } else if (totalSelected === 1) {
-        const allSel = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey];
+        const allSel = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ];
         const singleFile = allSel[0];
         const num = getTemplateNumber(singleFile);
         dom.mainBtnText.innerHTML = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
@@ -1893,6 +1948,130 @@ async function renderGreyGrid(filterText = '') {
     }
 }
 
+// Render the 80 High Quality 3D Emojis in HQ Tab (183.tgs to 262.tgs)
+async function renderHQGrid(filterText = '') {
+    Object.values(state.hqPlayers).forEach(p => {
+        try { p.destroy(); } catch (e) {}
+    });
+    state.hqPlayers = {};
+    if (!dom.hqGrid) return;
+    dom.hqGrid.innerHTML = '';
+    
+    let filtered = HQ_TEMPLATES;
+    if (filterText && filterText.trim()) {
+        const query = filterText.trim().toLowerCase();
+        filtered = HQ_TEMPLATES.filter(t => 
+            t.name.toLowerCase().includes(query) || 
+            t.file.toLowerCase().includes(query) ||
+            t.id.includes(query) ||
+            `hq #${parseInt(t.id) - 182}`.toLowerCase().includes(query) ||
+            `high quality #${parseInt(t.id) - 182}`.toLowerCase().includes(query) ||
+            `${parseInt(t.id) - 182}` === query
+        );
+    }
+    
+    if (filtered.length === 0) {
+        dom.hqGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-dim);">
+                High Quality emoji shabloni topilmadi 🔍
+            </div>
+        `;
+        return;
+    }
+    
+    filtered.forEach((tpl) => {
+        const num = tpl.id;
+        const displayIdx = parseInt(num) - 182;
+        const isSelected = state.selectedHQ.has(tpl.file);
+        const card = document.createElement('div');
+        card.className = `tpl-card ${isSelected ? 'selected' : ''}`;
+        card.dataset.file = tpl.file;
+        
+        card.innerHTML = `
+            <span class="tpl-badge" style="background: rgba(16, 185, 129, 0.35); border-color: rgba(52, 211, 153, 0.4); color: #34d399;">#${displayIdx}</span>
+            <div class="tpl-check-badge">✓</div>
+            <div class="tpl-lottie-thumb" id="thumb-hq-${num}">
+                <div class="thumb-loader"></div>
+            </div>
+            <div class="tpl-meta">
+                <div class="tpl-title">High Quality #${displayIdx}</div>
+                <div class="tpl-tag-label">${tpl.tag}</div>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => {
+            haptic('selection');
+            toggleCardSelection(tpl.file, 'hq');
+        });
+        
+        dom.hqGrid.appendChild(card);
+    });
+    
+    // Load first 12 HQ emojis immediately via batch preview
+    const initialBatch = filtered.slice(0, 12).map(t => t.file);
+    try {
+        const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
+        Object.entries(batchData).forEach(([file, data]) => {
+            const num = getTemplateNumber(file);
+            const container = document.getElementById(`thumb-hq-${num}`);
+            if (container && data && !state.hqPlayers[file]) {
+                container.innerHTML = '';
+                const player = safeLoadLottieAnimation({
+                    container: container,
+                    renderer: 'svg',
+                    loop: true,
+                    autoplay: true,
+                    animationData: data
+                });
+                if (player) state.hqPlayers[file] = player;
+            }
+        });
+    } catch (e) {
+        console.warn("Initial HQ batch error:", e);
+    }
+    
+    // Lazy load remaining HQ emojis on scroll
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(async entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    const file = card.dataset.file;
+                    const num = getTemplateNumber(file);
+                    const container = document.getElementById(`thumb-hq-${num}`);
+                    
+                    if (container && !state.hqPlayers[file]) {
+                        try {
+                            const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
+                            if (data && container && !state.hqPlayers[file]) {
+                                container.innerHTML = '';
+                                const player = safeLoadLottieAnimation({
+                                    container: container,
+                                    renderer: 'svg',
+                                    loop: true,
+                                    autoplay: true,
+                                    animationData: data
+                                });
+                                if (player) state.hqPlayers[file] = player;
+                            }
+                        } catch (err) {
+                            console.warn("Lazy load thumb error:", file, err);
+                        }
+                    }
+                    observer.unobserve(card);
+                }
+            });
+        }, { rootMargin: '250px' });
+        
+        dom.hqGrid.querySelectorAll('.tpl-card').forEach((card) => {
+            const file = card.dataset.file;
+            if (!state.hqPlayers[file]) {
+                observer.observe(card);
+            }
+        });
+    }
+}
+
 // Toggle selection on a card (multi-select supported)
 function toggleCardSelection(filename, tabKey) {
     let targetSet = state.selectedTickets;
@@ -1903,6 +2082,9 @@ function toggleCardSelection(filename, tabKey) {
     } else if (tabKey === 'grey') {
         targetSet = state.selectedGrey;
         container = dom.greyGrid;
+    } else if (tabKey === 'hq') {
+        targetSet = state.selectedHQ;
+        container = dom.hqGrid;
     }
     
     if (targetSet.has(filename)) {
@@ -1941,6 +2123,10 @@ function toggleSelectAll(tabKey) {
         targetSet = state.selectedGrey;
         allList = GREY_TEMPLATES;
         container = dom.greyGrid;
+    } else if (tabKey === 'hq') {
+        targetSet = state.selectedHQ;
+        allList = HQ_TEMPLATES;
+        container = dom.hqGrid;
     }
     
     if (targetSet.size === allList.length) {
@@ -2131,8 +2317,10 @@ async function startGeneration(mode = 'selected') {
         selectedFiles = LOGO_TEMPLATES.map(t => t.file);
     } else if (mode === 'all_grey') {
         selectedFiles = GREY_TEMPLATES.map(t => t.file);
+    } else if (mode === 'all_hq') {
+        selectedFiles = HQ_TEMPLATES.map(t => t.file);
     } else {
-        const allSelected = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey];
+        const allSelected = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ];
         if (allSelected.length === 0) {
             targetMode = "single";
             selectedFiles = [state.selectedTemplate];
@@ -2262,9 +2450,11 @@ async function executeGeneration(pendingAction) {
         showProgressModal("Mega Logo Pack Tayyorlanmoqda...", "Barcha 103 ta logo shablon qayta ishlanmoqda...", 10);
     } else if (rawMode === 'all_grey') {
         showProgressModal("Grey 3D Pack Tayyorlanmoqda...", "Barcha 65 ta grey shablon qayta ishlanmoqda...", 10);
+    } else if (rawMode === 'all_hq') {
+        showProgressModal("High Quality Pack Tayyorlanmoqda...", "Barcha 80 ta High Quality shablon qayta ishlanmoqda...", 10);
     } else if (mode === "single") {
         const num = parseInt(getTemplateNumber(selectedFiles[0]));
-        const tag = num <= 13 ? `Ticket #${num}` : (num >= 118 ? `Grey #${num - 117}` : `Logo #${num}`);
+        const tag = num <= 13 ? `Ticket #${num}` : (num >= 183 ? `High Quality #${num - 182}` : (num >= 118 ? `Grey #${num - 117}` : `Logo #${num}`));
         showProgressModal(`${tag} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 20);
     } else {
         showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan emojilar paketga jamlanmoqda...", 15);
@@ -2652,6 +2842,11 @@ function setupEventListeners() {
         haptic('selection');
         switchTab('grey');
     });
+
+    dom.tabBtnHQ?.addEventListener('click', () => {
+        haptic('selection');
+        switchTab('hq');
+    });
     
     // Destination selector (New Pack vs Existing Pack)
     dom.destPillNew?.addEventListener('click', () => {
@@ -2760,6 +2955,7 @@ function setupEventListeners() {
     dom.btnSelectAllTickets?.addEventListener('click', () => toggleSelectAll('name'));
     dom.btnSelectAllLogos?.addEventListener('click', () => toggleSelectAll('logo'));
     dom.btnSelectAllGrey?.addEventListener('click', () => toggleSelectAll('grey'));
+    dom.btnSelectAllHQ?.addEventListener('click', () => toggleSelectAll('hq'));
     
     // Search ticket templates (1-13)
     dom.templateSearch?.addEventListener('input', (e) => {
@@ -2775,6 +2971,11 @@ function setupEventListeners() {
     dom.greySearch?.addEventListener('input', (e) => {
         renderGreyGrid(e.target.value);
     });
+
+    // Search HQ templates (183-262)
+    dom.hqSearch?.addEventListener('input', (e) => {
+        renderHQGrid(e.target.value);
+    });
     
     // Bottom Action Button
     dom.btnMainAction.addEventListener('click', () => {
@@ -2789,6 +2990,11 @@ function setupEventListeners() {
     // Grey Tab Full Pack Button (all 65)
     dom.btnCreateGreyFullpack?.addEventListener('click', () => {
         startGeneration('all_grey');
+    });
+
+    // High Quality Tab Full Pack Button (all 80)
+    dom.btnCreateHQFullpack?.addEventListener('click', () => {
+        startGeneration('all_hq');
     });
     
     // Refresh user packs

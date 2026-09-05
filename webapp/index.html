@@ -571,7 +571,7 @@
             </div>
         </section>
 
-        <!-- Main Navigation Tabs (Name vs Logo vs Grey) -->
+        <!-- Main Navigation Tabs (Name vs Logo vs Grey vs High Quality) -->
         <div class="nav-tabs-wrapper">
             <div class="nav-tabs">
                 <button type="button" class="nav-tab active" id="tab-btn-name" data-tab="name">
@@ -595,6 +595,13 @@
                     </svg>
                     <span class="tab-text">Grey</span>
                     <span class="tab-counter" id="tab-counter-grey">65</span>
+                </button>
+                <button type="button" class="nav-tab" id="tab-btn-hq" data-tab="hq">
+                    <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    <span class="tab-text">HQ</span>
+                    <span class="tab-counter" id="tab-counter-hq">80</span>
                 </button>
             </div>
         </div>
@@ -738,6 +745,60 @@
             <!-- 65 Grey Grid (118.tgs to 182.tgs) -->
             <div class="templates-grid" id="grey-grid">
                 <!-- Javascript orqali 118-182 gacha bo'lgan barcha logolar render qilinadi -->
+            </div>
+        </main>
+
+        <!-- ==================== TAB 4: HIGH QUALITY (80 TA 3D EMOJILAR 183-262) ==================== -->
+        <main id="tab-content-hq" class="tab-content">
+            <!-- Full Pack Hero Card for High Quality Emojis -->
+            <div class="logo-hero-card hq-hero-card">
+                <div class="logo-hero-badge" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    HIGH QUALITY PACK
+                </div>
+                <h2 class="logo-hero-title">80 ta High Quality 3D Emoji Shablonlar</h2>
+                <p class="logo-hero-desc">
+                    Premium darajadagi eng so'nggi 3D harakatlanuvchi zamonaviy shablonlar to'plami. Barcha 80 ta emojini 1 bosishda to'liq yarating!
+                </p>
+                <button type="button" class="btn-create-fullpack" id="btn-create-hq-fullpack" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.45); border: 1px solid rgba(255, 255, 255, 0.15);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                    </svg>
+                    <span class="btn-text">To'liq 80 ta High Quality Emojini Yaratish</span>
+                </button>
+            </div>
+
+            <div class="section-intro" style="margin-top: 24px;">
+                <div class="intro-texts">
+                    <div class="title-with-badge">
+                        <h2 class="section-title">Barcha High Quality Shablonlar</h2>
+                        <span class="badge-pill-cyan" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">183.tgs — 262.tgs</span>
+                    </div>
+                    <p class="section-desc">Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
+                </div>
+                <div class="search-bar">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="hq-search" placeholder="High Quality emoji raqamini qidirish (1-80)...">
+                </div>
+                <div class="grid-toolbar">
+                    <button type="button" class="btn-select-all" id="btn-select-all-hq">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span id="txt-select-all-hq">Hammasini belgilash</span>
+                    </button>
+                    <span class="selection-counter" id="hq-selection-count">0 ta tanlandi</span>
+                </div>
+            </div>
+
+            <!-- 80 High Quality Grid (183.tgs to 262.tgs) -->
+            <div class="templates-grid" id="hq-grid">
+                <!-- Javascript orqali 183-262 gacha bo'lgan barcha shablonlar render qilinadi -->
             </div>
         </main>
 

@@ -1388,6 +1388,141 @@ def sanitize_lottie_spec(data: dict) -> dict:
     return data
 
 
+def process_hq_logo(
+    data: dict,
+    text: str = None,
+    font_path: str = "fonts/stapel.ttf",
+    effective_svg: str = None,
+    effective_scale: float = 1.0,
+    text_color: str = None
+) -> bool:
+    """
+    Processes High Quality templates (ecronx pack) by cleanly locating the HQLogo group
+    and replacing the central shape paths with mathematically centered font glyphs or SVG vector paths.
+    """
+    found = False
+
+    def walk_items(obj):
+        nonlocal found
+        if isinstance(obj, dict):
+            if obj.get('ty') == 'gr' and (obj.get('nm') == 'HQLogo' or '_hq_center' in obj):
+                cx, cy = obj.get('_hq_center', [165.0, 201.9])
+                w, h = obj.get('_hq_size', [250.0, 250.0])
+                obj.pop('_hq_center', None)
+                obj.pop('_hq_size', None)
+                found = True
+
+                new_paths = []
+                if effective_svg:
+                    try:
+                        clean_svg = validate_and_clean_svg(effective_svg)
+                        root = ET.fromstring(clean_svg)
+                        d_attrs = []
+                        for el in root.iter():
+                            if el.tag.endswith('path') and 'd' in el.attrib:
+                                d_attrs.append(el.attrib['d'])
+
+                        vb = root.get('viewBox', '0 0 100 100').split()
+                        if len(vb) == 4:
+                            svg_w = float(vb[2])
+                            svg_h = float(vb[3])
+                        else:
+                            svg_w = float(root.get('width', 100))
+                            svg_h = float(root.get('height', 100))
+
+                        svg_cx = svg_w / 2.0
+                        svg_cy = svg_h / 2.0
+
+                        max_dim = max(svg_w, svg_h)
+                        target_dim = min(w, h) * 0.75 * effective_scale
+                        scl = target_dim / max_dim if max_dim > 0 else 1.0
+
+                        for d_attr in d_attrs:
+                            pen = LottieSVGPen(target_cx=cx, target_cy=cy, svg_cx=svg_cx, svg_cy=svg_cy, scale=scl)
+                            parse_path(d_attr, pen)
+                            pen._closePath()
+                            for p in pen.paths:
+                                new_paths.append({
+                                    "ty": "sh",
+                                    "nm": "SVG Logo",
+                                    "hd": False,
+                                    "ks": {"a": 0, "k": p}
+                                })
+                    except Exception as e:
+                        pass
+
+                else:
+                    # Text mode
+                    clean_txt = text if (text and text.strip()) else "ISMINGIZ"
+                    if clean_txt.strip().upper() != "SVG":
+                        try:
+                            font = TTFont(str(font_path))
+                            glyph_set = font.getGlyphSet()
+                            cmap = font.getBestCmap()
+                            hmtx = font['hmtx']
+                            os2 = font.get('OS/2')
+                            cap_height = float(os2.sCapHeight) if os2 and getattr(os2, 'sCapHeight', 0) > 0 else 700.0
+
+                            chars = list(clean_txt.strip().upper())
+                            glyph_names = [cmap.get(ord(c), '.notdef') for c in chars]
+                            advances = [hmtx.metrics.get(gn, (int(cap_height * 0.8), 0))[0] for gn in glyph_names]
+                            raw_width = sum(advances) if sum(advances) > 0 else 1
+
+                            max_allowed_w = w * 0.90 * effective_scale
+                            scale_x = max_allowed_w / raw_width
+                            if scale_x * cap_height > h * 0.65 * effective_scale:
+                                scale_x = (h * 0.65 * effective_scale) / cap_height
+
+                            scale_y = scale_x * 1.15
+                            rendered_w = raw_width * scale_x
+                            rendered_h = cap_height * scale_y
+
+                            start_x = cx - (rendered_w / 2.0)
+                            baseline_y = cy + (rendered_h / 3.0)
+
+                            curr_x = start_x
+                            for char, gn in zip(chars, glyph_names):
+                                pen = LottieGlyphPen(glyph_set, scale_x=scale_x, scale_y=scale_y, offset_x=curr_x, offset_y=baseline_y)
+                                glyph_set[gn].draw(pen)
+                                pen._closePath()
+                                for p in pen.paths:
+                                    new_paths.append({
+                                        "ty": "sh",
+                                        "nm": char,
+                                        "hd": False,
+                                        "ks": {"a": 0, "k": p}
+                                    })
+                                adv = hmtx.metrics.get(gn, (0, 0))[0]
+                                curr_x += adv * scale_x
+                        except Exception as e:
+                            pass
+
+                if new_paths:
+                    non_sh_items = [it for it in obj['it'] if it.get('ty') != 'sh']
+
+                    if text_color:
+                        tc = parse_svg_color(text_color)
+                        if tc and tc != 'none' and isinstance(tc, list):
+                            fill_color = [tc[0], tc[1], tc[2]]
+                            for it in non_sh_items:
+                                if it.get('ty') == 'fl':
+                                    it['c'] = {'a': 0, 'k': fill_color}
+                                elif it.get('ty') == 'st':
+                                    it['c'] = {'a': 0, 'k': fill_color}
+
+                    obj['it'] = new_paths + non_sh_items
+                return
+
+            for k, v in obj.items():
+                walk_items(v)
+        elif isinstance(obj, list):
+            for it in obj:
+                walk_items(it)
+
+    walk_items(data)
+    return found
+
+
 def process_tgs_template(
     template_bytes: bytes,
     text: str = None,
@@ -1419,39 +1554,50 @@ def process_tgs_template(
         sanitize_lottie_spec(data)
         return gzip.compress(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 
-    # Search in all layer collections: root layers and precomposition assets
-    all_layer_lists = [data.get('layers', [])]
-    for asset in data.get('assets', []):
-        asset_id = str(asset.get('id', '')).lower()
-        is_logo_asset = any(k in asset_id for k in ['mylogo', 'logo', 'text_logo', 'emojilogo', 'logocomp', 'logo_comp'])
-        if 'layers' in asset:
-            for layer in asset['layers']:
-                if is_logo_asset and 'shapes' in layer and isinstance(layer['shapes'], list) and len(layer['shapes']) > 0:
-                    target_group = {'shapes': layer['shapes'], '_accumulate_transforms': True}
-                    if effective_svg:
-                        new_shapes = generate_svg_shapes(effective_svg, target_group, scale_factor=effective_scale)
-                    elif text and text.strip().upper() == "SVG":
-                        new_shapes = []
-                    else:
-                        clean_txt = text if (text and text.strip()) else "ISMINGIZ"
-                        new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=effective_scale, text_color=text_color)
-                    layer['shapes'] = new_shapes
-                else:
-                    all_layer_lists.append([layer])
+    # Check if this is a High Quality template
+    hq_processed = process_hq_logo(
+        data,
+        text=text,
+        font_path=font_path,
+        effective_svg=effective_svg,
+        effective_scale=effective_scale,
+        text_color=text_color
+    )
 
-    for layers in all_layer_lists:
-        for layer in layers:
-            if 'shapes' in layer and isinstance(layer['shapes'], list):
-                new_shapes, changed = process_shapes_list(
-                    layer['shapes'],
-                    font_path=font_path,
-                    text=text,
-                    svg_content=effective_svg,
-                    scale=effective_scale,
-                    text_color=text_color
-                )
-                if changed:
-                    layer['shapes'] = new_shapes
+    if not hq_processed:
+        # Search in all layer collections: root layers and precomposition assets
+        all_layer_lists = [data.get('layers', [])]
+        for asset in data.get('assets', []):
+            asset_id = str(asset.get('id', '')).lower()
+            is_logo_asset = any(k in asset_id for k in ['mylogo', 'logo', 'text_logo', 'emojilogo', 'logocomp', 'logo_comp'])
+            if 'layers' in asset:
+                for layer in asset['layers']:
+                    if is_logo_asset and 'shapes' in layer and isinstance(layer['shapes'], list) and len(layer['shapes']) > 0:
+                        target_group = {'shapes': layer['shapes'], '_accumulate_transforms': True}
+                        if effective_svg:
+                            new_shapes = generate_svg_shapes(effective_svg, target_group, scale_factor=effective_scale)
+                        elif text and text.strip().upper() == "SVG":
+                            new_shapes = []
+                        else:
+                            clean_txt = text if (text and text.strip()) else "ISMINGIZ"
+                            new_shapes = generate_text_shapes(clean_txt, font_path, target_group, scale_factor=effective_scale, text_color=text_color)
+                        layer['shapes'] = new_shapes
+                    else:
+                        all_layer_lists.append([layer])
+
+        for layers in all_layer_lists:
+            for layer in layers:
+                if 'shapes' in layer and isinstance(layer['shapes'], list):
+                    new_shapes, changed = process_shapes_list(
+                        layer['shapes'],
+                        font_path=font_path,
+                        text=text,
+                        svg_content=effective_svg,
+                        scale=effective_scale,
+                        text_color=text_color
+                    )
+                    if changed:
+                        layer['shapes'] = new_shapes
 
     # Tag roles and apply custom badge/border/inner/text colors
     apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
