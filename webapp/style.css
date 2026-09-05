@@ -1359,6 +1359,56 @@ body {
     z-index: 5;
 }
 
+/* ==================== HIGH QUALITY (#tab-content-hq) GOLD / OLOVRANG (#EEB419) THEME ==================== */
+#tab-content-hq .tpl-card:hover {
+    border-color: rgba(238, 180, 25, 0.6) !important;
+    box-shadow: 0 12px 28px -5px rgba(0, 0, 0, 0.75), 0 0 20px rgba(238, 180, 25, 0.3) !important;
+}
+
+#tab-content-hq .tpl-card.selected {
+    border-color: #EEB419 !important;
+    background: linear-gradient(135deg, rgba(238, 180, 25, 0.2) 0%, rgba(14, 22, 36, 0.95) 100%) !important;
+    box-shadow: 0 0 24px rgba(238, 180, 25, 0.55), 0 12px 28px -5px rgba(0, 0, 0, 0.7) !important;
+    transform: translateY(-3px) scale(1.02);
+}
+
+#tab-content-hq .tpl-card.selected .tpl-check-badge {
+    opacity: 1;
+    transform: scale(1);
+}
+
+#tab-content-hq .tpl-check-badge {
+    background: #EEB419 !important;
+    color: #000000 !important;
+    box-shadow: 0 0 12px rgba(238, 180, 25, 0.7) !important;
+}
+
+#tab-content-hq .tpl-tag-label {
+    color: #EEB419 !important;
+}
+
+#tab-content-hq .btn-select-all {
+    background: rgba(238, 180, 25, 0.12) !important;
+    border: 1px solid rgba(238, 180, 25, 0.35) !important;
+    color: #EEB419 !important;
+}
+
+#tab-content-hq .btn-select-all:hover {
+    background: rgba(238, 180, 25, 0.22) !important;
+    border-color: #EEB419 !important;
+}
+
+#tab-content-hq .btn-select-all.active-all {
+    background: #EEB419 !important;
+    color: #000000 !important;
+    border-color: #EEB419 !important;
+    box-shadow: 0 0 15px rgba(238, 180, 25, 0.5) !important;
+}
+
+#tab-content-hq .selection-counter {
+    color: #EEB419 !important;
+}
+
 .tpl-badge {
     position: absolute;
     top: 8px;
