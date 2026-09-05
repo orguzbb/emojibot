@@ -96,42 +96,50 @@
 
 // Telegram Environment Verification
 function isTelegramEnvironment() {
-    // 1. Localhost or 127.0.0.1 bypass for local testing
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
-        return true;
-    }
-    
-    // 2. Query param bypass for admin/dev testing
+    // 1. Explicit developer query parameter bypass (?dev=1 or ?allow_web=1)
     const params = new URLSearchParams(window.location.search);
     if (params.get('dev') === '1' || params.get('allow_web') === '1') {
         return true;
     }
 
-    // 3. Telegram WebApp object check
+    // 2. Telegram WebApp URL hash & query check (Telegram always passes tgWebAppData in hash)
+    const href = window.location.href || '';
+    const hash = window.location.hash || '';
+    if (hash.includes('tgWebAppData=') || href.includes('tgWebAppData=')) {
+        return true;
+    }
+    if (href.includes('tgWebAppVersion=') && href.includes('tgWebAppPlatform=')) {
+        return true;
+    }
+
+    // 3. Telegram WebApp SDK verification (real initData string from Telegram)
     const tg = window.Telegram?.WebApp;
     if (tg) {
-        if (tg.initData && tg.initData.length > 0) return true;
-        if (tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length > 0) return true;
-        if (tg.platform && tg.platform !== 'unknown') return true;
+        if (tg.initData && typeof tg.initData === 'string' && tg.initData.trim().length > 15) {
+            return true;
+        }
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+            return true;
+        }
+        if (tg.initDataUnsafe && tg.initDataUnsafe.query_id) {
+            return true;
+        }
     }
 
-    // 4. Native Telegram Webview Proxy on Android & iOS
-    if (window.TelegramWebviewProxy || window.TelegramGameProxy) {
-        return true;
+    // 4. Native Android Telegram JavascriptInterface with valid Telegram UA
+    if (window.TelegramWebviewProxy && typeof window.TelegramWebviewProxy.postEvent === 'function') {
+        if (/Telegram/i.test(navigator.userAgent || '')) {
+            return true;
+        }
     }
 
-    // 5. URL Hash / Query check (Telegram WebApp passes tgWebAppData)
-    const href = window.location.href;
-    if (href.includes('tgWebAppData') || href.includes('tgWebAppVersion') || href.includes('tgWebAppPlatform')) {
-        return true;
-    }
-
-    // 6. UserAgent check
+    // 5. Telegram in-app User-Agent
     const ua = navigator.userAgent || '';
     if (/Telegram|TDesktop/i.test(ua)) {
         return true;
     }
 
+    // Outside Telegram: BLOCK!
     return false;
 }
 

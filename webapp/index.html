@@ -69,37 +69,52 @@
             }
         }, true);
 
-        // 2. Instant Environment Check
+        // 2. Instant Environment Check (Strict Telegram-Only Guard)
         function checkTg() {
-            // Localhost or 127.0.0.1 bypass for local testing
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '') {
-                return true;
-            }
-            // Dev query param bypass
-            const p = new URLSearchParams(window.location.search);
+            // 1. Explicit developer query parameter bypass (?dev=1 or ?allow_web=1)
+            var p = new URLSearchParams(window.location.search);
             if (p.get('dev') === '1' || p.get('allow_web') === '1') {
                 return true;
             }
-            // Telegram WebApp SDK object check
-            const tg = window.Telegram?.WebApp;
+
+            // 2. Telegram WebApp URL parameters (Telegram ALWAYS passes tgWebAppData in hash or query)
+            var href = window.location.href || '';
+            var hash = window.location.hash || '';
+            if (hash.indexOf('tgWebAppData=') !== -1 || href.indexOf('tgWebAppData=') !== -1) {
+                return true;
+            }
+            if (href.indexOf('tgWebAppVersion=') !== -1 && href.indexOf('tgWebAppPlatform=') !== -1) {
+                return true;
+            }
+
+            // 3. Telegram WebApp SDK verification (real initData string signed by Telegram Bot API)
+            var tg = window.Telegram && window.Telegram.WebApp;
             if (tg) {
-                if (tg.initData && tg.initData.length > 0) return true;
-                if (tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length > 0) return true;
-                if (tg.platform && tg.platform !== 'unknown') return true;
+                if (tg.initData && typeof tg.initData === 'string' && tg.initData.trim().length > 15) {
+                    return true;
+                }
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+                    return true;
+                }
+                if (tg.initDataUnsafe && tg.initDataUnsafe.query_id) {
+                    return true;
+                }
             }
-            // Native Telegram webview proxy on Android / iOS
-            if (window.TelegramWebviewProxy || window.TelegramGameProxy) {
+
+            // 4. Native Telegram Android JavascriptInterface with valid Telegram UA
+            if (window.TelegramWebviewProxy && typeof window.TelegramWebviewProxy.postEvent === 'function') {
+                if (/Telegram/i.test(navigator.userAgent || '')) {
+                    return true;
+                }
+            }
+
+            // 5. Telegram in-app User-Agent
+            var ua = navigator.userAgent || '';
+            if (/Telegram|TDesktop/i.test(ua)) {
                 return true;
             }
-            // URL hash / query check
-            const href = window.location.href;
-            if (href.includes('tgWebAppData') || href.includes('tgWebAppVersion') || href.includes('tgWebAppPlatform')) {
-                return true;
-            }
-            // User-Agent check
-            if (/Telegram|TDesktop/i.test(navigator.userAgent || '')) {
-                return true;
-            }
+
+            // Outside Telegram: BLOCK!
             return false;
         }
 
@@ -128,7 +143,8 @@
         /* Immediate Critical Blocking CSS: Never show loading screen on web outside Telegram */
         html.not-telegram #loading-screen,
         html.not-telegram #app-container,
-        html.not-telegram .bottom-bar {
+        html.not-telegram .bottom-bar,
+        html.not-telegram .bottom-action-bar {
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
@@ -150,39 +166,62 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=5.7.4">
+    <link rel="stylesheet" href="style.css?v=5.8.1">
 </head>
 <body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
 
-    <!-- ==================== 0. TELEGRAM-ONLY GUARD SCREEN ==================== -->
+    <!-- ==================== 0. TELEGRAM-ONLY GUARD SCREEN (CYBER SHIELD) ==================== -->
     <div id="telegram-only-guard" class="telegram-only-guard hidden">
         <div class="guard-card">
             <div class="guard-icon-wrap">
                 <div class="guard-shield-glow"></div>
+                <div class="guard-shield-ring"></div>
                 <div class="guard-icon-inner">
-                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         <path d="M12 8v4"/>
-                        <path d="M12 16h.01"/>
+                        <circle cx="12" cy="16" r="1" fill="currentColor"/>
                     </svg>
                 </div>
             </div>
-            <span class="guard-badge">🔒 XAVFSIZLIK CHEKLOVI</span>
+            
+            <div class="guard-badge">
+                <span class="guard-badge-dot"></span>
+                <span>FAQAT TELEGRAM ILovasi UCHUN</span>
+            </div>
+
             <h2 class="guard-title">Faqat Telegram orqali ochiladi</h2>
             <p class="guard-desc">
-                <b>GnEmoji Studio</b> mini ilovasi faqat rasmiy <b>Telegram</b> ilovasi orqali xavfsiz foydalanish uchun himoyalangan.
+                <b>GnEmoji Studio</b> mini ilovasi faqat rasmiy <b>Telegram</b> orqali xavfsiz foydalanish va maxsus emoji to'plamlarini avtomatik chiqarish uchun himoyalangan.
             </p>
-            <p class="guard-subdesc">
-                Mini ilovani ishga tushirish uchun Telegram botimizga kiring:
-            </p>
+
+            <div class="guard-features-list">
+                <div class="guard-feat-item">
+                    <span class="guard-feat-icon">⚡</span>
+                    <span>180+ Telegram Animated Emojilar</span>
+                </div>
+                <div class="guard-feat-item">
+                    <span class="guard-feat-icon">🎨</span>
+                    <span>Matnli, Logo va 3D Metallik Uslublar</span>
+                </div>
+                <div class="guard-feat-item">
+                    <span class="guard-feat-icon">🔒</span>
+                    <span>Rasmiy Telegram Stars & API orqali himoyalangan</span>
+                </div>
+            </div>
+
             <div class="guard-actions">
                 <a href="https://t.me/GnEmojiBot" class="btn-open-telegram-bot">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z"/>
                     </svg>
                     <span>Telegram Botda Ochish</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
                 </a>
             </div>
+
             <div class="guard-footer">
                 <span>© 2026 GN Studio • Barcha huquqlar himoyalangan</span>
             </div>
@@ -1033,8 +1072,34 @@
         <span class="toast-msg" id="toast-msg">Xabar</span>
     </div>
 
-    <!-- Pre-rendered Ticket Animations (1.tgs to 13.tgs) & Main App Logic -->
-    <script src="ticket_templates.js?v=5.7.4"></script>
-    <script src="app.js?v=5.7.4"></script>
+    <!-- Conditional Script Loader: If outside Telegram, block downloading app logic! -->
+    <script>
+    (function() {
+        if (window.IS_TG_BLOCKED) {
+            var loader = document.getElementById('loading-screen');
+            if (loader) loader.style.display = 'none';
+            var guard = document.getElementById('telegram-only-guard');
+            if (guard) {
+                guard.classList.remove('hidden');
+                guard.style.display = 'flex';
+            }
+            return;
+        }
+
+        var s1 = document.createElement('script');
+        s1.src = 'ticket_templates.js?v=5.8.0';
+        s1.onload = function() {
+            var s2 = document.createElement('script');
+            s2.src = 'app.js?v=5.8.0';
+            document.body.appendChild(s2);
+        };
+        s1.onerror = function() {
+            var s2 = document.createElement('script');
+            s2.src = 'app.js?v=5.8.0';
+            document.body.appendChild(s2);
+        };
+        document.body.appendChild(s1);
+    })();
+    </script>
 </body>
 </html>
