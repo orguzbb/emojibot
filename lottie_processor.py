@@ -1593,8 +1593,9 @@ def process_tgs_template(
                     if changed:
                         layer['shapes'] = new_shapes
 
-    # Tag roles and apply custom badge/border/inner/text colors
-    apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
+    # Tag roles and apply custom badge/border/inner/text colors (only for Logo Megapack, not for High Quality)
+    if not hq_processed:
+        apply_badge_color_to_template(data, badge_color=badge_color, badge_bg_color=badge_bg_color, text_color=text_color)
 
     # Sanitize Lottie specification to guarantee 100% bodymovin / lottie-web browser compatibility
     sanitize_lottie_spec(data)

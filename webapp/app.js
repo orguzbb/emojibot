@@ -864,6 +864,10 @@ async function initApp() {
             if (typeof tg.disableVerticalSwipes === 'function') {
                 try { tg.disableVerticalSwipes(); } catch (_) {}
             }
+            // Enable Telegram closing confirmation dialog ("Changes that you made may not be saved")
+            if (typeof tg.enableClosingConfirmation === 'function') {
+                try { tg.enableClosingConfirmation(); } catch (_) {}
+            }
             // Seamless deep dark header & background
             if (typeof tg.setHeaderColor === 'function') {
                 try { tg.setHeaderColor('#060911'); } catch (_) {}
@@ -1995,7 +1999,7 @@ async function renderHQGrid(filterText = '') {
         card.dataset.file = tpl.file;
         
         card.innerHTML = `
-            <span class="tpl-badge" style="background: rgba(238, 180, 25, 0.25); border-color: rgba(238, 180, 25, 0.45); color: #EEB419;">#${displayIdx}</span>
+            <span class="tpl-badge" style="background: rgba(44, 219, 158, 0.18); border-color: rgba(44, 219, 158, 0.4); color: #2cdb9e;">#${displayIdx}</span>
             <div class="tpl-check-badge">✓</div>
             <div class="tpl-lottie-thumb" id="thumb-hq-${num}">
                 <div class="thumb-loader"></div>
