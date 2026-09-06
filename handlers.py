@@ -117,52 +117,69 @@ async def create_unique_custom_emoji_set(
     stickers: list
 ) -> str:
     """
-    Creates a new custom emoji set trying the cleanest name first:
-    1. {clean_slug}_by_{BOT_USERNAME}
-    2. {clean_slug}_1_by_{BOT_USERNAME}
-    3. {clean_slug}_2_by_{BOT_USERNAME}
-    ...
-    Automatically detecting occupied names and falling back to next available index.
+    Creates a new custom emoji set safely and efficiently:
+    1. Pre-checks candidate availability using lightweight get_sticker_set (fast GET, no uploads, no creation flood).
+    2. Uses randomized unique candidate suffixes to ensure collision-free name on the first try.
+    3. Handles temporary short floodwaits automatically with backoff.
     """
     clean_slug = to_name_slug(base_slug) if base_slug else "emoji"
     if not clean_slug or not clean_slug[0].isalpha():
         clean_slug = f"e{clean_slug}"
-    clean_slug = clean_slug[:24]
+    clean_slug = clean_slug[:18]
 
+    # Pre-generate candidate names with high uniqueness
     candidates = [
         f"{clean_slug}_by_{BOT_USERNAME}",
-        f"{clean_slug}_1_by_{BOT_USERNAME}",
-        f"{clean_slug}_2_by_{BOT_USERNAME}",
-        f"{clean_slug}_3_by_{BOT_USERNAME}",
-        f"{clean_slug}_4_by_{BOT_USERNAME}",
-        f"{clean_slug}_5_by_{BOT_USERNAME}"
+        f"{clean_slug}_{random.randint(10, 999)}_by_{BOT_USERNAME}",
+        f"{clean_slug}_{random.randint(1000, 99999)}_by_{BOT_USERNAME}",
+        f"{clean_slug}_{random.randint(10000, 999999)}_by_{BOT_USERNAME}"
     ]
-    for n in range(6, 25):
-        candidates.append(f"{clean_slug}_{n}_by_{BOT_USERNAME}")
-    candidates.append(f"{clean_slug}_{random.randint(100, 99999)}_by_{BOT_USERNAME}")
+
+    target_name = None
+    for cand in candidates:
+        try:
+            # If get_sticker_set succeeds, the name is already occupied on Telegram!
+            await bot_instance.get_sticker_set(name=cand)
+            logger.info(f"Pack name '{cand}' is occupied. Checking next candidate...")
+        except Exception:
+            # If Telegram returned 'sticker set not found' or 'stickerset_invalid', it is free!
+            target_name = cand
+            break
+
+    if not target_name:
+        target_name = f"{clean_slug}_{random.randint(10000, 999999)}_by_{BOT_USERNAME}"
 
     last_err = None
-    for cand_name in candidates:
+    for attempt in range(4):
         try:
             await bot_instance.create_new_sticker_set(
                 user_id=user_id,
-                name=cand_name,
+                name=target_name,
                 title=pack_title,
                 stickers=stickers,
                 sticker_type="custom_emoji"
             )
-            logger.info(f"Successfully created emoji set '{cand_name}' for user {user_id}")
-            return cand_name
+            logger.info(f"Successfully created emoji set '{target_name}' for user {user_id}")
+            return target_name
+        except TelegramRetryAfter as retry_err:
+            if retry_err.retry_after <= 6:
+                logger.info(f"Short floodwait {retry_err.retry_after}s, waiting and retrying...")
+                await asyncio.sleep(retry_err.retry_after + 1.0)
+                continue
+            raise retry_err
         except Exception as e:
             err_str = str(e).lower()
             if any(k in err_str for k in ["occupied", "already taken", "invalid_short_name", "short_name_occupied", "name_invalid", "already used", "bad request: shortname"]):
-                logger.info(f"Pack name '{cand_name}' is occupied on Telegram. Trying next candidate...")
+                logger.info(f"Pack name '{target_name}' occupied during creation, generating fresh random name...")
+                target_name = f"{clean_slug}_{random.randint(10000, 999999)}_by_{BOT_USERNAME}"
                 last_err = e
+                await asyncio.sleep(0.3)
                 continue
             else:
-                logger.error(f"Error creating sticker set '{cand_name}': {e}")
+                logger.error(f"Error creating sticker set '{target_name}': {e}")
                 raise e
-    raise last_err or Exception("Barcha nomlar band, iltimos boshqa nom tanlang.")
+
+    raise last_err or Exception("Stiker to'plami nomini yaratib bo'lmadi. Iltimos qaytadan urinib ko'ring.")
 
 
 def get_main_menu_markup(user_id: int) -> InlineKeyboardMarkup:
@@ -1649,6 +1666,8 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
                         )
                     except Exception as add_err:
                         logger.warning(f"Sticker {idx+1} qo'shishda xatolik: {add_err}")
+
+                    await asyncio.sleep(1.5)
 
                     if idx % 15 == 0 or idx == total_stickers - 1:
                         percent = int(((idx + 1) / total_stickers) * 100)

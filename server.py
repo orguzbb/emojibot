@@ -598,14 +598,14 @@ async def background_add_stickers(
                 )
                 break
             except TelegramRetryAfter as retry_err:
-                wait_sec = retry_err.retry_after + 1.5
+                wait_sec = retry_err.retry_after + 2.0
                 logger.warning(f"Background FloodWait on sticker {idx+1}: waiting {wait_sec}s")
                 await asyncio.sleep(wait_sec)
             except Exception as e:
                 logger.warning(f"Background add sticker {idx+1} error (attempt {attempt+1}): {e}")
-                await asyncio.sleep(1.0)
-        # Polite spacing to avoid fast rate limits
-        await asyncio.sleep(0.4)
+                await asyncio.sleep(1.5)
+        # Polite spacing to avoid fast rate limits (1.8s + network ensures safe 25-30 req/min)
+        await asyncio.sleep(1.8)
 
     logger.info(f"Background worker completed for {pack_name} (Total: {total_count})")
     try:
@@ -636,8 +636,8 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
     """
     Bulletproof Generation Endpoint:
     - Verifies user balance (deducts once)
-    - Creates sticker set immediately
-    - Adds initial batch synchronously and runs remaining batch in background
+    - Creates sticker set immediately with initial 1 sticker (instant success)
+    - Adds remaining batch in background with polite pacing to prevent Telegram 429
     - Returns instant success response to Mini App
     """
     if req is None:
@@ -748,7 +748,7 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
         pack_name = req.pack_name
         pack_title = req.pack_name
         try:
-            sync_limit = min(5, len(input_stickers))
+            sync_limit = min(2, len(input_stickers))
             for idx in range(sync_limit):
                 for attempt in range(4):
                     try:
@@ -762,12 +762,12 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
                         await asyncio.sleep(retry_err.retry_after + 1.0)
                     except Exception as add_err:
                         logger.warning(f"Add sticker {idx+1} warning (attempt {attempt+1}): {add_err}")
-                        await asyncio.sleep(0.2)
-                await asyncio.sleep(0.04)
+                        await asyncio.sleep(1.0)
+                await asyncio.sleep(1.5)
 
             pack_link = f"https://t.me/addemoji/{pack_name}"
             
-            if len(input_stickers) > 5:
+            if len(input_stickers) > 2:
                 bg_task = asyncio.create_task(
                     background_add_stickers(
                         bot_instance=bot,
@@ -775,7 +775,7 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
                         pack_name=pack_name,
                         pack_title=pack_title,
                         pack_link=pack_link,
-                        stickers_to_add=input_stickers[5:],
+                        stickers_to_add=input_stickers[2:],
                         total_count=len(input_stickers),
                         clean_text=clean_text
                     )
@@ -800,16 +800,20 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
             raise HTTPException(status_code=500, detail=f"Mavjud to'plamga qo'shishda xatolik: {str(e)}")
 
     # Branch B: Create a brand new sticker set
+    is_any_hq = any(183 <= int(''.join(filter(str.isdigit, f.name)) or 0) <= 262 for f in target_files)
     if is_svg_mode:
         raw_slug = to_name_slug(clean_text) if (clean_text and clean_text != "SVG") else "svg"
         pack_title = f"{clean_text} Vector Emojis" if (clean_text and clean_text != "SVG") else "SVG Vector Emojis"
+    elif is_any_hq or req.mode in ("all_hq", "all_high_quality", "hq", "high_quality"):
+        raw_slug = f"{to_name_slug(clean_text)}_hq"
+        pack_title = f"{clean_text} HQ Emojis" if req.mode != "single" else f"{clean_text} HQ ({font_info['name']})"
     else:
         raw_slug = to_name_slug(clean_text)
         pack_title = f"{clean_text} ({font_info['name']})" if req.mode == "single" else f"{clean_text} Emojis"
 
     try:
-        # Step 1: Create new custom emoji sticker set with initial 10 stickers in ONE call
-        initial_count = min(10, len(input_stickers))
+        # Step 1: Create new custom emoji sticker set with initial 1 sticker in ONE call (instant creation)
+        initial_count = 1
         pack_name = await create_unique_custom_emoji_set(
             bot_instance=bot,
             user_id=req.user_id,
@@ -823,8 +827,8 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
         save_user_pack(req.user_id, pack_name, pack_title)
         increment_user_packs(req.user_id)
 
-        # Step 2: If more than 10 stickers, spawn background worker for the rest
-        if len(input_stickers) > 10:
+        # Step 2: If more than 1 sticker, spawn background worker for the rest with polite spacing
+        if len(input_stickers) > 1:
             bg_task = asyncio.create_task(
                 background_add_stickers(
                     bot_instance=bot,
@@ -832,7 +836,7 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
                     pack_name=pack_name,
                     pack_title=pack_title,
                     pack_link=pack_link,
-                    stickers_to_add=input_stickers[10:],
+                    stickers_to_add=input_stickers[1:],
                     total_count=len(input_stickers),
                     clean_text=clean_text
                 )
@@ -882,7 +886,7 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
         logger.warning(f"Telegram FloodWait: {e.retry_after}s")
         raise HTTPException(
             status_code=429,
-            detail=f"Telegram serveri vaqtinchalik cheklov qo'ydi ({e.retry_after} soniya). Stars qaytarildi. Iltimos, birozdan so'ng urinib ko'ring."
+            detail=f"Telegram serveri vaqtinchalik cheklov qo'ydi ({e.retry_after} soniya). Stars balansingizga to'liq qaytarildi. Iltimos, {e.retry_after} soniyadan so'ng qayta urinib ko'ring."
         )
     except TelegramAPIError as api_err:
         if total_cost > 0:
