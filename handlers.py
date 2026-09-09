@@ -53,7 +53,10 @@ from database import (
     get_emoji_price,
     get_referral_bonus,
     get_referral_stats,
-    use_promocode
+    use_promocode,
+    get_pending_order,
+    save_pending_order,
+    delete_pending_order
 )
 
 logger = logging.getLogger(__name__)
@@ -633,7 +636,77 @@ async def process_successful_payment(message: Message, bot: Bot):
         )
         return
 
-    # 2. Direct Stars purchase for emoji pack
+    # 2. Modern unified Stars order handling (Stores 100% of customization: text_color, svg, scale)
+    if payload.startswith("order:"):
+        order_id = payload.split(":", 1)[1]
+        order_info = get_pending_order(order_id)
+        if not order_info:
+            logger.error(f"Pending order not found in DB: {order_id}")
+            add_user_balance(
+                user_id=user_id,
+                amount=total_amount,
+                tx_type="deposit_stars",
+                description=f"Stars to'lovi balansga o'tkazildi (+{total_amount} ⭐)"
+            )
+            await message.answer(
+                f"✅ <b>To'lov muvaffaqiyatli qabul qilindi ({total_amount} ⭐)!</b>\n\n"
+                f"Biroq buyurtma tafsilotlari topilmadi. {total_amount} ⭐ hisobingizga qo'shildi.\n"
+                f"Mini App orqali balansingizdan foydalanib emojilarni yaratishingiz mumkin.",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        order_data = order_info["order_data"]
+        clean_text = order_data.get("text") or "EMOJI"
+
+        # Record payment transaction
+        add_user_balance(
+            user_id=user_id,
+            amount=total_amount,
+            tx_type="deposit_stars",
+            description=f"Telegram Stars to'lovi: {clean_text}"
+        )
+        deduct_user_balance(
+            user_id=user_id,
+            amount=total_amount,
+            tx_type="purchase_stars_direct",
+            description=f"Stars to'lovi orqali emoji yaratildi: {clean_text}"
+        )
+
+        status_msg = await message.answer(
+            f"✅ <b>To'lov qabul qilindi ({total_amount} ⭐)!</b>\n"
+            f"🎨 <b>\"{clean_text}\"</b> uchun barcha tanlangan sozlamalar bilan emoji yaratish boshlanmoqda...\n"
+            f"⏳ <i>Iltimos, biroz kuting...</i>",
+            parse_mode=ParseMode.HTML
+        )
+
+        try:
+            from server import GenerateRequest, generate_emoji_pack
+            gen_req = GenerateRequest(**order_data)
+            gen_req.user_id = user_id
+            await generate_emoji_pack(req=gen_req, is_stars_order=True)
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
+        except Exception as gen_err:
+            logger.error(f"Error during unified Stars emoji generation: {gen_err}", exc_info=True)
+            add_user_balance(
+                user_id=user_id,
+                amount=total_amount,
+                tx_type="refund",
+                description=f"Muvaffaqiyatsiz Stars buyurtmasi qaytarildi: {clean_text}"
+            )
+            await message.answer(
+                f"❌ <b>Emoji yaratishda xatolik yuz berdi:</b> {gen_err}\n\n"
+                f"To'langan <b>{total_amount} ⭐ Stars</b> to'liq balansingizga qaytarildi.",
+                parse_mode=ParseMode.HTML
+            )
+        finally:
+            delete_pending_order(order_id)
+        return
+
+    # 3. Fallback for legacy buy_pack: invoices
     if payload.startswith("buy_pack:") or payload.startswith("buy_single:"):
         parts = payload.split(":")
         _, p_uid, font_key, clean_text, action_type, extra_param = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]

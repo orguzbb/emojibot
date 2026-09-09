@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 import os
+import time
 import re
 import gzip
 import json
@@ -46,6 +47,7 @@ from config import (
 )
 from lottie_processor import process_tgs_template
 from database import (
+    init_db,
     add_or_update_user,
     increment_user_packs,
     save_user_pack,
@@ -55,9 +57,15 @@ from database import (
     add_user_balance,
     get_emoji_price,
     get_referral_bonus,
-    get_referral_stats
+    get_referral_stats,
+    save_pending_order,
+    get_pending_order,
+    delete_pending_order
 )
 from handlers import FONTS_MAP, DEFAULT_EMOJIS, to_name_slug, create_unique_custom_emoji_set
+
+# Initialize SQLite database tables including pending_orders
+init_db()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("GnEmojiServer")
@@ -358,7 +366,7 @@ async def create_invoice_endpoint(req: Optional[CreateInvoiceRequest] = Body(Non
 @app.api_route("/api/send_invoice_to_chat", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/send_invoice_to_chat/", methods=["GET", "POST", "OPTIONS"])
 async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body(None)):
-    """Sends a Telegram Stars (XTR) invoice directly to user's Telegram chat"""
+    """Sends a Telegram Stars (XTR) invoice directly to user's Telegram chat with full parameter preservation"""
     if req is None:
         req = SendInvoiceRequest()
     if not req.user_id:
@@ -371,44 +379,24 @@ async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
     
     if is_svg_mode:
-        try:
-            clean_svg = validate_and_clean_svg(req.svg_data)
-            svg_title = req.text or "SVG"
-            svg_id = cache_svg(clean_svg, svg_title, badge_color=req.badge_color, badge_bg_color=req.badge_bg_color, text_color=req.text_color)
-            clean_text = svg_id
-            font_key = "svg"
-            action_type = "svg_all" if req.mode == "all" else ("svg_one" if req.mode == "single" else "svg_selected")
-            inv_title = f"{svg_title[:20]} SVG Emojilar"
-            inv_desc = f"'{svg_title[:20]}' (SVG) uchun {count} ta emoji to'lovi."
-        except Exception as e:
-            logger.error(f"SVG validation error in invoice: {e}")
-            clean_text = "SVG"
-            font_key = "svg"
-            action_type = "svg_one"
-            inv_title = "SVG Emoji to'plami"
-            inv_desc = f"SVG uchun {count} ta emoji to'lovi."
+        svg_title = (req.text.strip() if req.text else "") or "SVG"
+        inv_title = f"{svg_title[:20]} SVG Emojilar"
+        inv_desc = f"'{svg_title[:20]}' (SVG) uchun {count} ta emoji to'lovi."
     else:
         clean_text = req.text.strip().upper()[:16] if req.text else "EMOJI"
         if not clean_text:
             clean_text = "EMOJI"
-        font_key = req.font or "stapel"
-        action_type = "gen_all" if req.mode == "all" else ("gen_one" if req.mode == "single" else "gen_selected")
         inv_title = "Emoji to'plam generatsiyasi"
         inv_desc = f"'{clean_text}' uchun {count} ta emoji to'lovi."
 
+    # Save complete customization parameters into SQLite database
+    order_id = f"ord_{req.user_id}_{int(time.time())}_{random.randint(1000, 9999)}"
+    save_pending_order(order_id, req.user_id, req.dict(), total_cost)
+
+    # Ultra-compact invoice payload (guaranteed under Telegram's 128-byte limit)
+    payload = f"order:{order_id}"
+
     bot = get_bot()
-
-    if req.selected_templates and len(req.selected_templates) > 0:
-        raw_files = ",".join(req.selected_templates)
-    elif req.mode == "single":
-        raw_files = req.template_id or ("14.tgs" if is_svg_mode else "1.tgs")
-    else:
-        raw_files = "all"
-
-    dest_flag = f"add_{req.pack_name}" if (req.mode == "add_to_pack" and req.pack_name) else "new"
-    extra_param = f"{raw_files}|{dest_flag}"
-
-    payload = f"buy_pack:{req.user_id}:{font_key}:{clean_text}:{action_type}:{extra_param}:{total_cost}"
 
     try:
         await bot.send_invoice(
@@ -419,9 +407,10 @@ async def send_invoice_to_chat_endpoint(req: Optional[SendInvoiceRequest] = Body
             currency="XTR",
             prices=[LabeledPrice(label=f"Stars ({count} ta emoji)", amount=total_cost)]
         )
-        return {"ok": True, "total_cost": total_cost, "user_id": req.user_id}
+        return {"ok": True, "order_id": order_id, "total_cost": total_cost, "user_id": req.user_id}
     except Exception as e:
         logger.error(f"Send invoice to chat error: {e}", exc_info=True)
+        delete_pending_order(order_id)
         raise HTTPException(status_code=500, detail=f"Botga hisob-faktura yuborishda xatolik: {e}")
 
 
@@ -632,10 +621,10 @@ async def background_add_stickers(
 
 @app.api_route("/api/generate", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/generate/", methods=["GET", "POST", "OPTIONS"])
-async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
+async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_stars_order: bool = False):
     """
     Bulletproof Generation Endpoint:
-    - Verifies user balance (deducts once)
+    - Verifies user balance (deducts once) if not direct Stars order
     - Creates sticker set immediately with initial 1 sticker (instant success)
     - Adds remaining batch in background with polite pacing to prevent Telegram 429
     - Returns instant success response to Mini App
@@ -683,12 +672,12 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
     if not target_files:
         raise HTTPException(status_code=404, detail="Shablonlar topilmadi")
 
-    # Pricing & Balance Check
+    # Pricing & Balance Check (Bypass wallet deduction for direct Stars orders since already paid via invoice)
     total_stickers_count = len(target_files)
     emoji_price = get_emoji_price()
     total_cost = total_stickers_count * emoji_price
     
-    if total_cost > 0:
+    if not is_stars_order and total_cost > 0:
         balance = get_user_balance(req.user_id)
         if balance < total_cost:
             raise HTTPException(
@@ -782,6 +771,26 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None)):
                 )
                 _background_tasks.add(bg_task)
                 bg_task.add_done_callback(_background_tasks.discard)
+            else:
+                try:
+                    markup = InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [InlineKeyboardButton(text="➕ To'plamni ochish", url=pack_link)]
+                        ]
+                    )
+                    await bot.send_message(
+                        chat_id=req.user_id,
+                        text=(
+                            f"🎉 <b>Stikerlar to'plamga muvaffaqiyatli qo'shildi!</b>\n\n"
+                            f"📦 <b>To'plam:</b> <a href=\"{pack_link}\">{pack_title}</a>\n"
+                            f"⚡ <b>Qo'shilgan emojilar:</b> {len(input_stickers)} ta\n\n"
+                            f"<i>Foydalanish uchun to'plamni oching:</i>"
+                        ),
+                        reply_markup=markup,
+                        parse_mode=ParseMode.HTML
+                    )
+                except Exception as notify_err:
+                    logger.info(f"Add to pack notification warning: {notify_err}")
 
             new_bal = get_user_balance(req.user_id)
             return {

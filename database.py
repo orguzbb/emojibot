@@ -1,4 +1,4 @@
-from __future__ import annotations
+import json
 import sqlite3
 from pathlib import Path
 from datetime import datetime
@@ -97,6 +97,63 @@ def init_db():
         )
     """)
 
+    # 7. Pending orders table (stores full customization parameters for Stars purchases)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS pending_orders (
+            order_id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            order_data TEXT NOT NULL,
+            total_cost INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def save_pending_order(order_id: str, user_id: int, order_data: dict, total_cost: int):
+    """Saves pending order with all customization parameters (text_color, svg_data, templates, etc.)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO pending_orders (order_id, user_id, order_data, total_cost)
+        VALUES (?, ?, ?, ?)
+    """, (order_id, user_id, json.dumps(order_data), total_cost))
+    conn.commit()
+    conn.close()
+
+
+def get_pending_order(order_id: str) -> Optional[dict]:
+    """Retrieves full order parameters by order_id"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT order_id, user_id, order_data, total_cost, created_at
+        FROM pending_orders WHERE order_id = ?
+    """, (order_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    try:
+        data = json.loads(row["order_data"])
+    except Exception:
+        data = {}
+    return {
+        "order_id": row["order_id"],
+        "user_id": row["user_id"],
+        "order_data": data,
+        "total_cost": row["total_cost"],
+        "created_at": row["created_at"]
+    }
+
+
+def delete_pending_order(order_id: str):
+    """Deletes a completed or cancelled pending order"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM pending_orders WHERE order_id = ?", (order_id,))
     conn.commit()
     conn.close()
 
