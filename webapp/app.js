@@ -437,6 +437,10 @@ const dom = {
     btnShareTelegramRef: document.getElementById('btn-share-telegram-ref'),
     refStatCount: document.getElementById('ref-stat-count'),
     refStatEarned: document.getElementById('ref-stat-earned'),
+    profilePriceDisplay: document.getElementById('profile-price-display'),
+    profileRefDesc: document.getElementById('profile-ref-desc'),
+    profileRefBonusText: document.getElementById('profile-ref-bonus-text'),
+    profileRefBadge: document.getElementById('profile-ref-badge'),
     profilePacksCount: document.getElementById('profile-packs-count'),
     profilePacksList: document.getElementById('profile-packs-list'),
     btnGotoStudio: document.getElementById('btn-goto-studio'),
@@ -965,6 +969,9 @@ async function initApp() {
         setTimeout(() => {
             dom.loadingScreen?.classList.add('fade-out');
             dom.appContainer?.classList.remove('hidden');
+            if (window.lucide && window.lucide.createIcons) {
+                window.lucide.createIcons();
+            }
         }, 150);
         
     } catch (err) {
@@ -1279,13 +1286,21 @@ function updateProfileUI() {
         }
     }
 
-    // 2. Stars Balance
+    // 2. Stars Balance & Dynamic Emoji Price
     const balance = state.userBalance ?? 0;
     if (dom.profileStarsCount) dom.profileStarsCount.textContent = balance;
+    
+    const emojiPrice = state.emojiPrice || 1;
+    if (dom.profilePriceDisplay) dom.profilePriceDisplay.textContent = `${emojiPrice} ⭐ Stars`;
 
-    // 3. Referral Link & Stats
+    // 3. Referral Link, Bonus & Stats
     const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
     if (dom.profileRefLinkInput) dom.profileRefLinkInput.value = refLink;
+
+    const refBonus = state.referralBonus || 1;
+    if (dom.profileRefBonusText) dom.profileRefBonusText.textContent = `+${refBonus} ⭐ Stars`;
+    if (dom.profileRefBadge) dom.profileRefBadge.textContent = `+${refBonus} ⭐ BONUS`;
+    if (dom.profileRefDesc) dom.profileRefDesc.innerHTML = `Har bir yangi do'st uchun bepul <b id="profile-ref-bonus-text">+${refBonus} ⭐ Stars</b> oling!`;
 
     const refStats = state.referralStats || { count: 0, total_earned: 0 };
     if (dom.refStatCount) dom.refStatCount.textContent = `${refStats.count || 0} ta`;
@@ -1293,6 +1308,11 @@ function updateProfileUI() {
 
     // 4. Packs History
     renderProfilePacks();
+
+    // 5. Render Lucide Icons
+    if (window.lucide && window.lucide.createIcons) {
+        window.lucide.createIcons();
+    }
 }
 
 function switchMainView(viewName) {
@@ -1309,6 +1329,9 @@ function switchMainView(viewName) {
         dom.navBtnProfile?.classList.remove('active');
         dom.navBtnStudio?.classList.add('active');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (window.lucide && window.lucide.createIcons) {
+        window.lucide.createIcons();
     }
 }
 

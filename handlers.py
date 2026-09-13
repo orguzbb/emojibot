@@ -268,9 +268,8 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
         full_name = user.first_name or "Foydalanuvchi"
 
     welcome_text = (
-        f"👋 Salom, {full_name}!\n\n"
-        "Bir necha bosishda to'liq sozlanadigan emoji va stikerlar yarating!\n"
-        "💎"
+        f"Salom, {full_name}!\n\n"
+        "Bu yerda siz emoji yasashingiz mumkin ."
     )
 
     await message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id))
@@ -286,9 +285,8 @@ async def cb_menu_main(callback: CallbackQuery, state: FSMContext):
         full_name = user.first_name or "Foydalanuvchi"
 
     text = (
-        f"👋 Salom, {full_name}!\n\n"
-        "Bir necha bosishda to'liq sozlanadigan emoji va stikerlar yarating!\n"
-        "💎"
+        f"Salom, {full_name}!\n\n"
+        "Bu yerda siz emoji yasashingiz mumkin ."
     )
     await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id))
     await callback.answer()
@@ -923,85 +921,12 @@ async def handle_name_input(message: Message):
     if raw_text.startswith("/"):
         return
 
-    # Check if raw_text is SVG XML code
-    if "<svg" in raw_text.lower() and "</svg>" in raw_text.lower():
-        try:
-            clean_svg = validate_and_clean_svg(raw_text)
-            svg_id = cache_svg(clean_svg, "SVG_Vector")
-            p = Path(TEMPLATES_DIR)
-            tgs_count = len(list(p.glob("*.tgs"))) if p.exists() else 117
-            price = get_emoji_price()
-            balance = get_user_balance(user.id)
-
-            text = (
-                f"🎨 <b>SVG Vektor kodi qabul qilindi!</b>\n\n"
-                f"💰 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b> (Balansingiz: <b>{balance} ⭐</b>)\n\n"
-                f"Qanday tarzda tayyorlashni xohlaysiz?"
-            )
-
-            markup = InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(
-                            text=f"🌟 Barcha {tgs_count} ta shablon (To'liq to'plam)",
-                            callback_data=f"choose_dest:svg_all:svg:{svg_id}:all"
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            text="🎯 Bitta shablonni tanlash",
-                            callback_data=f"svg_pick:{svg_id}:0"
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")
-                    ]
-                ]
-            )
-            await message.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
-            return
-        except Exception as e:
-            logger.warning(f"Failed to parse raw SVG text: {e}")
-
-    clean_text = re.sub(r'[^a-zA-Z0-9а-яА-ЯёЁ_ \-]', '', raw_text).strip().upper()
-    if not clean_text:
-        await message.answer("⚠️ Iltimos, faqat harf va raqamlardan iborat to'g'ri ism yoki so'z kiriting.")
-        return
-
-    if len(clean_text) > 16:
-        await message.answer("⚠️ Iltimos, 16 ta belgidan oshmagan ism yoki so'z kiriting.")
-        return
-
-    price = get_emoji_price()
-    balance = get_user_balance(user.id)
-
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="1️⃣ Stapel (Qalin & Geometrik)", callback_data=f"font:stapel:{clean_text}"),
-            ],
-            [
-                InlineKeyboardButton(text="2️⃣ Inter (Klassik & Toza)", callback_data=f"font:inter:{clean_text}")
-            ],
-            [
-                InlineKeyboardButton(text="3️⃣ Grobold (Qalin & Zamonaviy)", callback_data=f"font:grobold:{clean_text}")
-            ],
-            [
-                InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")
-            ]
-        ]
-    )
-
     text_msg = (
-        f"✍️ <b>Ismingiz:</b> <code>{clean_text}</code>\n"
-        f"💰 <b>Narxi:</b> <b>{price} ⭐ Stars</b> (Balansingiz: <b>{balance} ⭐</b>)\n\n"
-        f"Qaysi shriftda emoji yaratmoqchisiz? Shriftni tanlang: 👇\n\n"
-        f"<b>1. Stapel: <a href=\"https://t.me/addemoji/asilbek_1704_by_BepulEmojiBot\">Namunani Ko'rish</a></b>\n"
-        f"<b>2. Inter: <a href=\"https://t.me/addemoji/asilbek_3103_by_BepulEmojiBot\">Namunani Ko'rish</a></b>\n"
-        f"<b>3. Grobold: <a href=\"https://t.me/addemoji/asilbek_4966_by_BepulEmojiBot\">Namunani Ko'rish</a></b>"
+        "✨ <b>Emoji va stikerlarni faqat Konstruktor orqali yaratishingiz mumkin!</b>\n\n"
+        "Quyidagi tugmani bosing va 260+ ta animatsiyalarni jonli prevyuda o'zingiz istagandek sozlang:"
     )
 
-    await message.answer(text_msg, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    await message.answer(text_msg, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
 
 
 # --- FONT TANLANGANDAN SO'NG REJIMNI TANLASH ---

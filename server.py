@@ -253,6 +253,7 @@ async def get_info():
     p = Path(TEMPLATES_DIR)
     total_templates = len(list(p.glob("*.tgs"))) if p.exists() else 0
     emoji_price = get_emoji_price()
+    referral_bonus = get_referral_bonus()
 
     return {
         "bot_username": BOT_USERNAME,
@@ -262,6 +263,7 @@ async def get_info():
         "grey_templates_count": 65,
         "high_quality_templates_count": 80,
         "emoji_price": emoji_price,
+        "referral_bonus": referral_bonus,
         "fonts": [
             {"id": "stapel", "name": "Stapel", "description": "Qalin va Geometrik"},
             {"id": "inter", "name": "Inter", "description": "Klassik va Toza"},
