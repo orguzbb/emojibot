@@ -246,6 +246,13 @@ const dom = {
     loaderStatus: document.getElementById('loader-status'),
     appContainer: document.getElementById('app-container'),
     
+    // Main App Views & Bottom Navigation
+    viewStudio: document.getElementById('view-studio'),
+    viewProfile: document.getElementById('view-profile'),
+    bottomNav: document.getElementById('bottom-nav'),
+    navBtnStudio: document.getElementById('nav-btn-studio'),
+    navBtnProfile: document.getElementById('nav-btn-profile'),
+    
     // Header
     userAvatar: document.getElementById('user-avatar'),
     userName: document.getElementById('user-name'),
@@ -413,7 +420,28 @@ const dom = {
     // Toast
     toast: document.getElementById('toast'),
     toastMsg: document.getElementById('toast-msg'),
-    toastIcon: document.getElementById('toast-icon')
+    toastIcon: document.getElementById('toast-icon'),
+    
+    // Profile Page Elements
+    profileAvatar: document.getElementById('profile-avatar'),
+    profileInitials: document.getElementById('profile-initials'),
+    profileFullName: document.getElementById('profile-full-name'),
+    profileUsername: document.getElementById('profile-username'),
+    profileIdBadge: document.getElementById('profile-id-badge'),
+    profileStarsCount: document.getElementById('profile-stars-count'),
+    btnProfileTopup: document.getElementById('btn-profile-topup'),
+    profileRefLinkInput: document.getElementById('profile-ref-link-input'),
+    btnCopyRef: document.getElementById('btn-copy-ref'),
+    copyBtnText: document.getElementById('copy-btn-text'),
+    copyIconSvg: document.getElementById('copy-icon-svg'),
+    btnShareTelegramRef: document.getElementById('btn-share-telegram-ref'),
+    refStatCount: document.getElementById('ref-stat-count'),
+    refStatEarned: document.getElementById('ref-stat-earned'),
+    profilePacksCount: document.getElementById('profile-packs-count'),
+    profilePacksList: document.getElementById('profile-packs-list'),
+    btnGotoStudio: document.getElementById('btn-goto-studio'),
+    btnProfileChannel: document.getElementById('btn-profile-channel'),
+    btnProfileHelp: document.getElementById('btn-profile-help')
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -1032,6 +1060,7 @@ async function loadUserInfo(userId) {
         
         renderExistingPacksDropdown();
         renderUserPacks();
+        updateProfileUI();
         updateSelectionStatus();
     } catch (e) {
         console.warn('User info fetch error:', e);
@@ -1142,12 +1171,145 @@ function renderUserPacks() {
         item.innerHTML = `
             <div class="pack-info-left">
                 <span class="pack-name-txt">${escapeHtml(ptitle)}</span>
-                <span class="pack-date-txt">${pdate || pname}</span>
+                <span class="pack-date-txt">${escapeHtml(pdate || pname)}</span>
             </div>
             <span class="pack-btn-open">Ochish</span>
         `;
         dom.userPacksList.appendChild(item);
     });
+}
+
+function renderProfilePacks() {
+    if (!dom.profilePacksList) return;
+    const packs = state.userPacks || [];
+
+    if (dom.profilePacksCount) {
+        dom.profilePacksCount.textContent = `${packs.length} ta`;
+    }
+
+    if (packs.length === 0) {
+        dom.profilePacksList.innerHTML = `
+            <div class="packs-empty-state">
+                <div class="empty-icon-wrap">📦</div>
+                <p class="empty-title">Hali to'plamlar yo'q</p>
+                <p class="empty-sub">Studiyaga o'ting va birinchi eksklyuziv emoji to'plamingizni yarating!</p>
+                <button type="button" class="btn-goto-studio" id="btn-goto-studio-inline">
+                    <span>🎨 Studiyaga o'tish</span>
+                </button>
+            </div>
+        `;
+        document.getElementById('btn-goto-studio-inline')?.addEventListener('click', () => {
+            haptic('selection');
+            switchMainView('studio');
+        });
+        return;
+    }
+
+    dom.profilePacksList.innerHTML = '';
+    packs.forEach(pack => {
+        let pname = "";
+        let ptitle = "";
+        let pdate = "";
+        if (Array.isArray(pack)) {
+            pname = pack[0] || "";
+            ptitle = pack[1] || pack[0] || "";
+            pdate = pack[2] || "";
+        } else if (typeof pack === 'object' && pack !== null) {
+            pname = pack.pack_name || pack.name || "";
+            ptitle = pack.pack_title || pack.title || pname;
+            pdate = pack.created_at || "";
+        } else if (typeof pack === 'string') {
+            pname = pack;
+            ptitle = pack;
+        }
+        if (!pname) return;
+
+        const packLink = `https://t.me/addemoji/${pname}`;
+        const item = document.createElement('a');
+        item.href = packLink;
+        item.target = '_blank';
+        item.className = 'pack-item-card';
+        item.onclick = (e) => {
+            haptic('light');
+            if (tg) {
+                e.preventDefault();
+                tg.openTelegramLink(packLink);
+            }
+        };
+
+        item.innerHTML = `
+            <div class="pack-info-left">
+                <span class="pack-name-txt">${escapeHtml(ptitle)}</span>
+                <span class="pack-date-txt">${escapeHtml(pdate || pname)}</span>
+            </div>
+            <span class="pack-btn-open">Ochish ↗</span>
+        `;
+        dom.profilePacksList.appendChild(item);
+    });
+}
+
+function updateProfileUI() {
+    const user = state.user || window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const userId = user?.id || 1323217434;
+
+    // 1. Full name & initials from Telegram
+    let fullName = "Abdurahim Abdurahmonov";
+    if (user?.first_name || user?.last_name) {
+        fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+    } else if (user?.username) {
+        fullName = user.username;
+    }
+
+    let initials = "AA";
+    if (user?.first_name && user?.last_name) {
+        initials = (user.first_name[0] + user.last_name[0]).toUpperCase();
+    } else if (user?.first_name) {
+        initials = user.first_name.slice(0, 2).toUpperCase();
+    }
+
+    if (dom.profileFullName) dom.profileFullName.textContent = fullName;
+    if (dom.profileUsername) dom.profileUsername.textContent = user?.username ? `@${user.username}` : "—";
+    if (dom.profileIdBadge) dom.profileIdBadge.textContent = `ID: ${userId}`;
+
+    if (dom.profileAvatar) {
+        if (user?.photo_url) {
+            dom.profileAvatar.innerHTML = `<img src="${user.photo_url}" alt="${escapeHtml(fullName)}">`;
+        } else {
+            dom.profileAvatar.innerHTML = `<span id="profile-initials">${escapeHtml(initials)}</span>`;
+        }
+    }
+
+    // 2. Stars Balance
+    const balance = state.userBalance ?? 0;
+    if (dom.profileStarsCount) dom.profileStarsCount.textContent = balance;
+
+    // 3. Referral Link & Stats
+    const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`;
+    if (dom.profileRefLinkInput) dom.profileRefLinkInput.value = refLink;
+
+    const refStats = state.referralStats || { count: 0, total_earned: 0 };
+    if (dom.refStatCount) dom.refStatCount.textContent = `${refStats.count || 0} ta`;
+    if (dom.refStatEarned) dom.refStatEarned.textContent = `+${refStats.total_earned || 0} ⭐`;
+
+    // 4. Packs History
+    renderProfilePacks();
+}
+
+function switchMainView(viewName) {
+    if (viewName === 'profile') {
+        dom.viewStudio?.classList.add('hidden');
+        dom.viewProfile?.classList.remove('hidden');
+        dom.navBtnStudio?.classList.remove('active');
+        dom.navBtnProfile?.classList.add('active');
+        updateProfileUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        dom.viewProfile?.classList.add('hidden');
+        dom.viewStudio?.classList.remove('hidden');
+        dom.navBtnProfile?.classList.remove('active');
+        dom.navBtnStudio?.classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 }
 
 function getPreviewCacheKey(file, scale) {
@@ -3025,6 +3187,89 @@ function setupEventListeners() {
     dom.btnAddToPackModal?.addEventListener('click', addToExistingPack);
     dom.btnCloseSuccess?.addEventListener('click', () => {
         dom.modalSuccess?.classList.add('hidden');
+    });
+
+    // ==================== BOTTOM NAVIGATION & PROFILE LISTENERS ====================
+    dom.navBtnStudio?.addEventListener('click', () => {
+        haptic('selection');
+        switchMainView('studio');
+    });
+
+    dom.navBtnProfile?.addEventListener('click', () => {
+        haptic('selection');
+        switchMainView('profile');
+    });
+
+    dom.btnGotoStudio?.addEventListener('click', () => {
+        haptic('selection');
+        switchMainView('studio');
+    });
+
+    // 1-Click Copy Referral Link
+    dom.btnCopyRef?.addEventListener('click', () => {
+        haptic('success');
+        const refInput = dom.profileRefLinkInput;
+        const uid = state.user?.id || 1323217434;
+        const refUrl = refInput?.value || `https://t.me/${BOT_USERNAME}?start=ref_${uid}`;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(refUrl).catch(() => {
+                refInput?.select();
+                document.execCommand('copy');
+            });
+        } else {
+            refInput?.select();
+            document.execCommand('copy');
+        }
+
+        if (dom.copyBtnText) dom.copyBtnText.textContent = "Nusxalandi! ✨";
+        dom.btnCopyRef?.classList.add('copied');
+        showToast("Taklif havolangiz nusxalandi! Do'stlaringizga yuboring ✨", "🔗", 3000);
+
+        setTimeout(() => {
+            if (dom.copyBtnText) dom.copyBtnText.textContent = "Nusxalash";
+            dom.btnCopyRef?.classList.remove('copied');
+        }, 2500);
+    });
+
+    // Share to Telegram button
+    dom.btnShareTelegramRef?.addEventListener('click', () => {
+        haptic('medium');
+        const uid = state.user?.id || 1323217434;
+        const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${uid}`;
+        const shareText = "✨ Ismingiz bilan eksklyuziv animatsiyali Telegram emoji to'plamini yarating!";
+        const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(refLink)}&text=${encodeURIComponent(shareText)}`;
+        if (tg?.openTelegramLink) {
+            tg.openTelegramLink(shareUrl);
+        } else {
+            window.open(shareUrl, '_blank');
+        }
+    });
+
+    // Profile Topup button
+    dom.btnProfileTopup?.addEventListener('click', () => {
+        haptic('medium');
+        openBalanceModal(state.userBalance || 0, (state.lastNeededBal || state.emojiPrice || 6));
+    });
+
+    // Profile Channel link
+    dom.btnProfileChannel?.addEventListener('click', (e) => {
+        haptic('light');
+        const channelUrl = "https://t.me/c/3900982155/1";
+        if (tg?.openTelegramLink) {
+            e.preventDefault();
+            tg.openTelegramLink(channelUrl);
+        }
+    });
+
+    // Profile Help button
+    dom.btnProfileHelp?.addEventListener('click', () => {
+        haptic('light');
+        if (tg?.openTelegramLink) {
+            tg.openTelegramLink(`https://t.me/${BOT_USERNAME}?start=help`);
+        } else {
+            showToast("Botda /help yoki 🗪 Yordam bo'limiga o'ting", "ℹ️");
+        }
     });
 }
 

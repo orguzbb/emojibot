@@ -167,7 +167,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=6.3.0">
+    <link rel="stylesheet" href="style.css?v=6.4.0">
 </head>
 <body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
 
@@ -264,6 +264,9 @@
                 </div>
             </div>
         </header>
+
+        <!-- ==================== VIEW 1: STUDIYA (EMOJI CONSTRUCTOR) ==================== -->
+        <div id="view-studio" class="app-view active">
 
         <!-- Hero Input Card (Har doim yuqorida turadi) -->
         <section class="hero-section">
@@ -852,7 +855,7 @@
             </div>
         </footer>
 
-        <!-- Bottom Action Floating Bar -->
+        <!-- Bottom Action Floating Bar (Studiyaning o'zida) -->
         <div class="bottom-action-bar">
             <button type="button" class="btn-main-action" id="btn-main-action">
                 <span class="action-glow"></span>
@@ -862,6 +865,232 @@
                 <span class="action-title" id="main-btn-text">Tanlangan Emojini Yaratish</span>
             </button>
         </div>
+
+        </div> <!-- /#view-studio -->
+
+        <!-- ==================== VIEW 2: PROFIL & REFERAL ==================== -->
+        <div id="view-profile" class="app-view hidden">
+            <div class="profile-page-wrap">
+
+                <!-- 1. User Identity Hero Card -->
+                <div class="profile-hero-card">
+                    <div class="profile-avatar-wrap">
+                        <div class="profile-avatar" id="profile-avatar">
+                            <span id="profile-initials">AA</span>
+                        </div>
+                        <div class="profile-verified-badge" title="Tasdiqlangan Foydalanuvchi">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="#38bdf8">
+                                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="profile-user-info">
+                        <h2 class="profile-full-name" id="profile-full-name">Foydalanuvchi</h2>
+                        <div class="profile-meta-row">
+                            <span class="profile-username" id="profile-username">@username</span>
+                            <span class="profile-dot">•</span>
+                            <span class="profile-id-badge" id="profile-id-badge">ID: —</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Balance & Top-Up Card -->
+                <div class="profile-balance-card">
+                    <div class="balance-card-glow"></div>
+                    <div class="balance-card-content">
+                        <div class="balance-left">
+                            <span class="balance-sub">Joriy Stars Balansingiz</span>
+                            <div class="balance-amount-row">
+                                <img src="images/image.png" alt="Stars" class="balance-star-logo">
+                                <span class="balance-big-number" id="profile-stars-count">0</span>
+                                <span class="balance-unit">Stars</span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-profile-topup" id="btn-profile-topup">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            <span>To'ldirish</span>
+                        </button>
+                    </div>
+                    <div class="balance-footer-info">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <span>1 ta emoji yaratish narxi: <b>1 ⭐ Stars</b></span>
+                    </div>
+                </div>
+
+                <!-- 3. Supercharged Referral System Card -->
+                <div class="profile-referral-card">
+                    <div class="ref-card-header">
+                        <div class="ref-header-left">
+                            <div class="ref-icon-glow">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#38bdf8" stroke-width="2">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="8.5" cy="7" r="4"></circle>
+                                    <polyline points="17 11 19 13 23 9"></polyline>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="ref-title">Do'stlarni Taklif Qilish</h3>
+                                <p class="ref-desc">Har bir yangi do'st uchun bepul <b>+1 ⭐ Stars</b> oling!</p>
+                            </div>
+                        </div>
+                        <span class="ref-badge-bonus">+1 ⭐ BONUS</span>
+                    </div>
+
+                    <!-- Referral Link Box with 1-Click Copy -->
+                    <div class="ref-link-box">
+                        <input type="text" readonly id="profile-ref-link-input" class="ref-link-input" value="https://t.me/GnEmojiBot?start=ref_...">
+                        <button type="button" class="btn-copy-ref" id="btn-copy-ref" title="Nusxalash">
+                            <svg id="copy-icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span id="copy-btn-text">Nusxalash</span>
+                        </button>
+                    </div>
+
+                    <!-- Share Buttons Row -->
+                    <div class="ref-actions-row">
+                        <button type="button" class="btn-share-telegram" id="btn-share-telegram-ref">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.52 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z"/>
+                            </svg>
+                            <span>Do'stlarga Ulashish</span>
+                        </button>
+                    </div>
+
+                    <!-- Referral Stats Grid -->
+                    <div class="ref-stats-grid">
+                        <div class="ref-stat-box">
+                            <span class="ref-stat-num" id="ref-stat-count">0 ta</span>
+                            <span class="ref-stat-label">Taklif qilingan do'stlar</span>
+                        </div>
+                        <div class="ref-stat-box">
+                            <span class="ref-stat-num highlight" id="ref-stat-earned">+0 ⭐</span>
+                            <span class="ref-stat-label">Jami ishlangan Stars</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Created Emojis History Section -->
+                <div class="profile-history-card">
+                    <div class="history-header-row">
+                        <div class="history-title-wrap">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <h3 class="history-title">Yaratilgan To'plamlar Tarixi</h3>
+                        </div>
+                        <span class="history-count-badge" id="profile-packs-count">0 ta</span>
+                    </div>
+
+                    <div class="history-packs-list" id="profile-packs-list">
+                        <!-- Javascript orqali to'plamlar chiqariladi -->
+                        <div class="packs-empty-state">
+                            <div class="empty-icon-wrap">📦</div>
+                            <p class="empty-title">Hali to'plamlar yo'q</p>
+                            <p class="empty-sub">Studiyaga o'ting va birinchi eksklyuziv emoji to'plamingizni yarating!</p>
+                            <button type="button" class="btn-goto-studio" id="btn-goto-studio">
+                                <span>🎨 Studiyaga o'tish</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Channel & Support Quick Links -->
+                <div class="profile-links-card">
+                    <a href="https://t.me/c/3900982155/1" target="_blank" class="profile-link-item" id="btn-profile-channel">
+                        <div class="link-item-left">
+                            <div class="link-item-icon channel">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                </svg>
+                            </div>
+                            <div class="link-item-text">
+                                <span class="link-title">➤ Rasmiy Kanalimiz</span>
+                                <span class="link-sub">Yangiliklar, tanlovlar va promokodlar</span>
+                            </div>
+                        </div>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="link-arrow">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
+
+                    <button type="button" class="profile-link-item" id="btn-profile-help">
+                        <div class="link-item-left">
+                            <div class="link-item-icon help">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div class="link-item-text">
+                                <span class="link-title">🗪 Yordam & Narxlar</span>
+                                <span class="link-sub">Qanday ishlatish va barcha qoidalar</span>
+                            </div>
+                        </div>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="link-arrow">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Footer inside profile view -->
+                <footer class="app-footer">
+                    <div class="footer-badge-shield">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <polyline points="9 12 11 14 15 10"/>
+                        </svg>
+                        <span>Mualliflik Huquqi Himoyalangan</span>
+                    </div>
+                    <p class="footer-brand-copy">
+                        © 2026 <b>GN Studio</b>. Barcha huquqlar himoyalangan.
+                    </p>
+                    <div class="footer-tags-row">
+                        <span class="footer-tag">Ver: 6.4.0</span>
+                        <span class="footer-tag-dot">•</span>
+                        <span class="footer-tag">Official Telegram Mini App</span>
+                    </div>
+                </footer>
+
+            </div>
+        </div> <!-- /#view-profile -->
+
+        <!-- ==================== BOTTOM NAVIGATION BAR ==================== -->
+        <nav class="bottom-nav" id="bottom-nav">
+            <button type="button" class="bottom-nav-item active" id="nav-btn-studio" data-view="studio">
+                <div class="nav-icon-wrap">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+                    </svg>
+                </div>
+                <span class="nav-label">Studiya</span>
+                <span class="nav-active-pill"></span>
+            </button>
+
+            <button type="button" class="bottom-nav-item" id="nav-btn-profile" data-view="profile">
+                <div class="nav-icon-wrap">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <span class="nav-label">Profil</span>
+                <span class="nav-active-pill"></span>
+            </button>
+        </nav>
 
     </div>
 
@@ -1149,15 +1378,15 @@
         }
 
         var s1 = document.createElement('script');
-        s1.src = 'ticket_templates.js?v=6.3.0';
+        s1.src = 'ticket_templates.js?v=6.4.0';
         s1.onload = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=6.3.0';
+            s2.src = 'app.js?v=6.4.0';
             document.body.appendChild(s2);
         };
         s1.onerror = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=6.3.0';
+            s2.src = 'app.js?v=6.4.0';
             document.body.appendChild(s2);
         };
         document.body.appendChild(s1);

@@ -33,7 +33,7 @@ from aiogram.types import (
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramRetryAfter, TelegramAPIError
 
-from config import BOT_USERNAME, TEMPLATES_DIR, FONTS_DIR, WEBAPP_URL
+from config import BOT_USERNAME, TEMPLATES_DIR, FONTS_DIR, WEBAPP_URL, CHANNEL_ID, CHANNEL_URL
 from lottie_processor import (
     process_tgs_template,
     process_all_templates,
@@ -186,40 +186,28 @@ async def create_unique_custom_emoji_set(
 
 
 def get_main_menu_markup(user_id: int) -> InlineKeyboardMarkup:
-    balance = get_user_balance(user_id)
-    ref_bonus = get_referral_bonus()
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="Web App ☰",
+                    text="✎︎ Konstruktorni ochish",
                     web_app=WebAppInfo(url=WEBAPP_URL)
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"💳 Hamyon ({balance} ⭐)",
-                    callback_data="menu_wallet"
-                ),
-                InlineKeyboardButton(
-                    text="🏷 Promokod",
-                    callback_data="menu_promo"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text=f"👥 Do'stlarni taklif qilish (+{ref_bonus} ⭐)",
-                    callback_data="menu_referral"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="📁 Mening To'plamlarim",
-                    callback_data="cmd_mypacks_cb"
-                ),
-                InlineKeyboardButton(
-                    text="ℹ️ Yordam & Narxlar",
+                    text="🗪 Yordam",
                     callback_data="cmd_help_cb"
+                ),
+                InlineKeyboardButton(
+                    text="≡ Ma'lumot",
+                    callback_data="cmd_info_cb"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="➤ Kanal",
+                    url=CHANNEL_URL
                 )
             ]
         ]
@@ -275,38 +263,36 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
         except Exception as e:
             logger.warning(f"Referrer xabarnoma xatosi {awarded_ref}: {e}")
 
-    price = get_emoji_price()
-    balance = get_user_balance(user.id)
+    # Format user full name
+    if user.last_name:
+        full_name = f"{user.first_name} {user.last_name}".strip()
+    else:
+        full_name = user.first_name or "Foydalanuvchi"
 
     welcome_text = (
-        f"👋 <b>Assalomu alaykum, {user.first_name or 'Hurmatli foydalanuvchi'}!</b>\n\n"
-        "✨ Ushbu bot orqali siz o'zingizning ismingiz bilan "
-        "<b>Telegram Premium Animatsiyali Emoji Pack</b> yaratishingiz mumkin!\n\n"
-        f"💰 <b>Sizning balansingiz:</b> <b>{balance} ⭐ Stars</b>\n"
-        f"💎 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b>\n\n"
-        "🚀 <b>Mini App orqali foydalanish:</b>\n"
-        "Pastdagi <b>📱 Mini App</b> tugmasini bosing va 100+ shablonlarni jonli prevyuda ko'ring!\n\n"
-        "🔤 <b>Bot orqali yaratish:</b>\n"
-        "Ismingizni botga yozing (masalan: <code>ASILBEK</code>)."
+        f"👋 Salom, {full_name}!\n\n"
+        "Bir necha bosishda to'liq sozlanadigan emoji va stikerlar yarating!\n"
+        "💎"
     )
 
-    await message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
+    await message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id))
 
 
 @router.callback_query(F.data == "menu_main")
 async def cb_menu_main(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     user = callback.from_user
-    price = get_emoji_price()
-    balance = get_user_balance(user.id)
+    if user.last_name:
+        full_name = f"{user.first_name} {user.last_name}".strip()
+    else:
+        full_name = user.first_name or "Foydalanuvchi"
 
     text = (
-        f"👋 <b>Bosh menyu</b>\n\n"
-        f"💰 <b>Sizning balansingiz:</b> <b>{balance} ⭐ Stars</b>\n"
-        f"💎 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b>\n\n"
-        "<i>Ismingizni yozib yuboring yoki quyidagi bo'limlardan birini tanlang:</i>"
+        f"👋 Salom, {full_name}!\n\n"
+        "Bir necha bosishda to'liq sozlanadigan emoji va stikerlar yarating!\n"
+        "💎"
     )
-    await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
+    await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id))
     await callback.answer()
 
 
@@ -775,23 +761,64 @@ async def cb_help(event: Union[Message, CallbackQuery]):
     price = get_emoji_price()
     ref_bonus = get_referral_bonus()
     help_text = (
-        "ℹ️ <b>Yordam & Narxlar</b>\n\n"
+        "🗪 <b>Yordam & Yo'riqnoma</b>\n\n"
         f"💎 <b>1 ta emoji narxi:</b> <b>{price} ⭐ Stars</b>\n"
         f"🎁 <b>Do'st taklif qilish bonusi:</b> <b>+{ref_bonus} ⭐ Stars</b> har bir do'st uchun!\n\n"
-        "• <b>Mini App:</b> Yuqoridagi '🚀 Mini Appni Ochish' tugmasini bosing — unda barcha 117 ta shablon jonli ko'rinadi!\n"
-        "• Botga istalgan so'z yoki ism yuborib ham yaratishingiz mumkin (1-16 ta belgi).\n"
-        "• 3 xil zamonaviy shrift: <b>Stapel</b>, <b>Inter</b> va <b>Grobold</b>.\n"
-        "• <b>To'lov usullari:</b> Hamyon balansi orqali yoki to'g'ridan-to'g'ri Telegram Stars orqali.\n"
-        "• Mavjud to'plamingizga yangi stikerlarni ham qo'shishingiz mumkin!"
+        "• <b>Konstruktor:</b> Yuqoridagi <b>✎︎ Konstruktorni ochish</b> tugmasini bosing — unda barcha 262 ta animatsiyali shablonlar (Ticket, Logo, Grey 3D, High Quality) jonli ishlaydi!\n"
+        "• <b>Matnli emoji:</b> Ismingiz yoki so'zingizni kiritib, 3 xil shrift va o'zingiz istagan ranglarni sozlashingiz mumkin.\n"
+        "• <b>SVG Vektor:</b> O'z logotipingiz yoki SVG faylingizni yuklab, uni bir zumda emojiga aylantirishingiz mumkin.\n"
+        "• <b>To'lov:</b> Mini App orqali to'g'ridan-to'g'ri Telegram Stars yoki hamyon balansi orqali amalga oshiriladi.\n\n"
+        "Savollar yoki yordam uchun: @GnStudioAdmin"
     )
     markup = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="menu_main")]]
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✎︎ Konstruktorni ochish", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [InlineKeyboardButton(text="🔙 Bosh menyu", callback_data="menu_main")]
+        ]
     )
     if isinstance(event, CallbackQuery):
-        await event.message.answer(help_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        try:
+            await event.message.edit_text(help_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        except Exception:
+            await event.message.answer(help_text, reply_markup=markup, parse_mode=ParseMode.HTML)
         await event.answer()
     else:
         await event.answer(help_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+@router.callback_query(F.data == "cmd_info_cb")
+@router.message(Command("info"))
+async def cb_info(event: Union[Message, CallbackQuery]):
+    price = get_emoji_price()
+    ref_bonus = get_referral_bonus()
+    info_text = (
+        "≡ <b>GnEmoji Studio haqida ma'lumot</b>\n\n"
+        "🌟 <b>GnEmoji Studio</b> — Telegram uchun eksklyuziv animatsiyali emoji va stikerlar yaratish platformasi.\n\n"
+        "✨ <b>Asosiy imkoniyatlar:</b>\n"
+        "• 260+ dan ortiq maxsus Premium animatsion shablonlar;\n"
+        "• Ticket, Logo, Grey Metallic 3D va High Quality toifalar;\n"
+        "• 3-bosqichli to'liq rang sozlamalari (Tashqi, Ichki va Matn);\n"
+        "• SVG vektor fayllarni bir zumda jonli emojiga aylantirish;\n"
+        "• Shaxsiy referal tizimi orqali do'stlarni taklif qilib bepul Stars ishlash;\n"
+        "• Telegram Stars orqali xavfsiz va tezkor to'lov.\n\n"
+        f"💎 <b>Narx:</b> 1 ta emoji = {price} ⭐ Stars\n"
+        f"👥 <b>Referal:</b> Har bir do'st uchun = +{ref_bonus} ⭐ Stars\n\n"
+        f"➤ Rasmiy kanalimiz: <a href=\"{CHANNEL_URL}\">GN Studio Kanali</a>"
+    )
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="➤ Kanalga o'tish", url=CHANNEL_URL)],
+            [InlineKeyboardButton(text="🔙 Bosh menyu", callback_data="menu_main")]
+        ]
+    )
+    if isinstance(event, CallbackQuery):
+        try:
+            await event.message.edit_text(info_text, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        except Exception:
+            await event.message.answer(info_text, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        await event.answer()
+    else:
+        await event.answer(info_text, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
 
 
 @router.message(F.web_app_data)

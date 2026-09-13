@@ -11,7 +11,10 @@ TEMPLATES_DIR = BASE_DIR / "shablonlar"
 FONTS_DIR = BASE_DIR / "fonts"
 DEFAULT_FONT_PATH = FONTS_DIR / "stapel.ttf"
 
-WEBAPP_URL = "https://xs134.xuss.us/?v=6.3.0"
+WEBAPP_URL = "https://xs134.xuss.us/?v=6.4.0"
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 8000
+
+CHANNEL_ID = -1003900982155
+CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/c/3900982155/1")
 
