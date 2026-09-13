@@ -5,10 +5,12 @@ echo "=== GnEmoji Bot Yangilanmoqda ==="
 cd "$(dirname "$0")"
 
 # 1. Eski jarayonlarni to'xtatish
-killall -9 python3 2>/dev/null || kill -9 $(ps -u $USER -o pid,comm | grep python | awk '{print $1}') 2>/dev/null || true
+kill -9 $(ps -u $USER -o pid,comm | grep python | awk '{print $1}') 2>/dev/null || true
+pkill -9 -f "python.*main.py" 2>/dev/null || true
 
-# 2. Gitdan oxirgi kodni olish
-git pull origin main
+# 2. Gitdan oxirgi kodni olish (aniq sinxronizatsiya)
+git fetch origin main
+git reset --hard origin/main
 
 # 3. WebApp fayllarini nusxalash
 if [ -d "$HOME/www/xs134.xuss.us" ]; then
