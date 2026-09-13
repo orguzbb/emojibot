@@ -13,7 +13,7 @@ import logging
 import asyncio
 import urllib.parse
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Union
 
 from aiogram import Bot, Router, F
 from aiogram.filters import CommandStart, Command
@@ -31,12 +31,11 @@ from aiogram.types import (
     WebAppInfo
 )
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramRetryAfter, TelegramAPIError
+from aiogram.exceptions import TelegramRetryAfter
 
-from config import BOT_USERNAME, TEMPLATES_DIR, FONTS_DIR, WEBAPP_URL, CHANNEL_ID, CHANNEL_URL
+from config import BOT_USERNAME, TEMPLATES_DIR, FONTS_DIR, WEBAPP_URL, CHANNEL_URL
 from lottie_processor import (
     process_tgs_template,
-    process_all_templates,
     validate_and_clean_svg,
     cache_svg,
     get_cached_svg,
@@ -55,7 +54,6 @@ from database import (
     get_referral_stats,
     use_promocode,
     get_pending_order,
-    save_pending_order,
     delete_pending_order
 )
 
@@ -546,7 +544,7 @@ async def handle_referral_menu(event: Union[Message, CallbackQuery]):
     ref_link = f"https://t.me/{BOT_USERNAME}?start=ref_{user_id}"
 
     share_text = f"✨ Ismingiz bilan eksklyuziv animatsiyali Telegram emoji to'plamini yarating!\n{ref_link}"
-    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote('✨ Ismingiz bilan eksklyuziv animatsiyali Telegram emoji to`plamini yarating!')}"
+    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote(share_text)}"
 
     text = (
         "👥 <b>Do'stlarni taklif qilish va Stars ishlash!</b>\n\n"
@@ -695,7 +693,7 @@ async def process_successful_payment(message: Message, bot: Bot):
     # 3. Fallback for legacy buy_pack: invoices
     if payload.startswith("buy_pack:") or payload.startswith("buy_single:"):
         parts = payload.split(":")
-        _, p_uid, font_key, clean_text, action_type, extra_param = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
+        _, _, font_key, clean_text, action_type, extra_param = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
 
         # Record payment transaction
         add_user_balance(
@@ -1346,7 +1344,7 @@ async def handle_pay_from_wallet(callback: CallbackQuery, bot: Bot):
             logger.error(f"Direct invoice send error: {e}", exc_info=True)
         return
 
-    deducted = deduct_user_balance(
+    deduct_user_balance(
         user_id=user_id,
         amount=total_cost,
         tx_type="purchase_wallet",
@@ -1503,7 +1501,7 @@ async def execute_selected_templates_generation(bot: Bot, user_id: int, clean_te
             ]
         )
 
-        type_text = f"🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"✍️ <b>Matn:</b> {clean_text}\n🎨 <b>Shrift:</b> {font_info['name']}"
+        type_text = "🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"✍️ <b>Matn:</b> {clean_text}\n🎨 <b>Shrift:</b> {font_info['name']}"
         await status_msg.edit_text(
             f"🎉 <b>Tabriklaymiz! Emoji to'plamingiz tayyor!</b>\n\n"
             f"{type_text}\n"
@@ -1553,7 +1551,6 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
                 text_color=text_color if (is_logo or is_grey) else None
             )
 
-        rand_suffix = random.randint(1000, 99999)
         if svg_data:
             slug_text = to_svg_slug(clean_text)
             pack_title = f"{clean_text} Vector Emoji"
@@ -1585,7 +1582,7 @@ async def execute_single_sticker_generation(bot: Bot, user_id: int, clean_text: 
             ]
         )
 
-        type_text = f"🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"✍️ <b>Matn:</b> {clean_text}\n🎨 <b>Shrift:</b> {font_info['name']}"
+        type_text = "🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"✍️ <b>Matn:</b> {clean_text}\n🎨 <b>Shrift:</b> {font_info['name']}"
         await status_msg.edit_text(
             f"🎉 <b>Tabriklaymiz! Emoji yaratildi!</b>\n\n"
             f"{type_text}\n"
@@ -1748,6 +1745,7 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
                 stickers=[input_stickers[0]]
             )
             emoji_pack_created = True
+            total_stickers = len(input_stickers)
 
             if emoji_pack_created and total_stickers > 1:
                 for idx in range(1, total_stickers):
@@ -1818,7 +1816,7 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
             except:
                 pass
 
-            type_text = f"🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"🔤 <b>Matn:</b> <code>{clean_text}</code>\n🎨 <b>Shrift:</b> <b>{font_info['name']}</b>"
+            type_text = "🎨 <b>Turi:</b> SVG Vektor" if svg_data else f"🔤 <b>Matn:</b> <code>{clean_text}</code>\n🎨 <b>Shrift:</b> <b>{font_info['name']}</b>"
             await bot.send_message(
                 chat_id=chat_id,
                 text=(
