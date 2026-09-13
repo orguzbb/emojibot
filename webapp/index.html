@@ -168,11 +168,11 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <!-- Lucide Vector Icons -->
-    <script src="lucide.min.js?v=6.5.0"></script>
+    <script src="lucide.min.js?v=6.6.0"></script>
     <!-- React & ReactDOM Core -->
-    <script src="react.min.js?v=6.5.0"></script>
-    <script src="react-dom.min.js?v=6.5.0"></script>
-    <link rel="stylesheet" href="style.css?v=6.5.0">
+    <script src="react.min.js?v=6.6.0"></script>
+    <script src="react-dom.min.js?v=6.6.0"></script>
+    <link rel="stylesheet" href="style.css?v=6.6.0">
 </head>
 <body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
 
@@ -854,22 +854,11 @@
                 Maxsus Telegram Mini App litsenziyasi ostida taqdim etiladi. Sayt va kodlardan ruxsatsiz nusxa ko'chirish qat'iyan man etiladi.
             </p>
             <div class="footer-tags-row">
-                <span class="footer-tag">Ver: 5.7.2</span>
+                <span class="footer-tag">Ver: 6.6.0</span>
                 <span class="footer-tag-dot">•</span>
                 <span class="footer-tag">Official Telegram Mini App</span>
             </div>
         </footer>
-
-        <!-- Bottom Action Floating Bar (Studiyaning o'zida) -->
-        <div class="bottom-action-bar">
-            <button type="button" class="btn-main-action" id="btn-main-action">
-                <span class="action-glow"></span>
-                <svg id="main-btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                </svg>
-                <span class="action-title" id="main-btn-text">Tanlangan Emojini Yaratish</span>
-            </button>
-        </div>
 
         </div> <!-- /#view-studio -->
 
@@ -1047,7 +1036,7 @@
                         © 2026 <b>GN Studio</b>. Barcha huquqlar himoyalangan.
                     </p>
                     <div class="footer-tags-row">
-                        <span class="footer-tag">Ver: 6.4.0</span>
+                        <span class="footer-tag">Ver: 6.6.0</span>
                         <span class="footer-tag-dot">•</span>
                         <span class="footer-tag">Official Telegram Mini App</span>
                     </div>
@@ -1055,6 +1044,21 @@
 
             </div>
         </div> <!-- /#view-profile -->
+
+        <!-- ==================== FLOATING BOTTOM ACTION BAR ==================== -->
+        <div class="bottom-action-bar" id="bottom-action-bar">
+            <button type="button" class="btn-main-action" id="btn-main-action">
+                <span class="action-glow"></span>
+                <div class="action-btn-inner">
+                    <div class="action-icon-pill">
+                        <svg id="main-btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                    </div>
+                    <span class="action-title" id="main-btn-text">Tanlangan Emojini Yaratish</span>
+                </div>
+            </button>
+        </div>
 
         <!-- ==================== BOTTOM NAVIGATION BAR ==================== -->
         <nav class="bottom-nav" id="bottom-nav">
@@ -1361,15 +1365,15 @@
         }
 
         var s1 = document.createElement('script');
-        s1.src = 'ticket_templates.js?v=6.5.0';
+        s1.src = 'ticket_templates.js?v=6.6.0';
         s1.onload = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=6.5.0';
+            s2.src = 'app.js?v=6.6.0';
             document.body.appendChild(s2);
         };
         s1.onerror = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=6.5.0';
+            s2.src = 'app.js?v=6.6.0';
             document.body.appendChild(s2);
         };
         document.body.appendChild(s1);

@@ -363,6 +363,7 @@ const dom = {
     btnRefreshPacks: document.getElementById('btn-refresh-packs'),
     
     // Bottom Action
+    bottomActionBar: document.getElementById('bottom-action-bar'),
     btnMainAction: document.getElementById('btn-main-action'),
     mainBtnText: document.getElementById('main-btn-text'),
     
@@ -1321,6 +1322,7 @@ function switchMainView(viewName) {
         dom.viewProfile?.classList.remove('hidden');
         dom.navBtnStudio?.classList.remove('active');
         dom.navBtnProfile?.classList.add('active');
+        dom.bottomActionBar?.classList.remove('visible');
         updateProfileUI();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -1328,6 +1330,7 @@ function switchMainView(viewName) {
         dom.viewStudio?.classList.remove('hidden');
         dom.navBtnProfile?.classList.remove('active');
         dom.navBtnStudio?.classList.add('active');
+        updateSelectionStatus();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     if (window.lucide && window.lucide.createIcons) {
@@ -1335,7 +1338,7 @@ function switchMainView(viewName) {
     }
 }
 
-function getPreviewCacheKey(file, scale) {
+function getPreviewCacheKey(file, scale, text = null) {
     const tplNum = parseInt(getTemplateNumber(file));
     const isHQ = tplNum >= 183;
     const isGrey = tplNum >= 118 && !isHQ;
@@ -1347,7 +1350,8 @@ function getPreviewCacheKey(file, scale) {
         const tCol = state.textColor || '#FFFFFF';
         return `${file}_svg_${scale}_${svgHash}_${bColor}_${bgCol}_${tCol}`;
     }
-    const cleanTxt = (state.text && state.text.trim()) ? state.text.trim().toUpperCase() : "ISMINGIZ";
+    const txtToUse = text !== null ? text : state.text;
+    const cleanTxt = (txtToUse && txtToUse.trim() && txtToUse.trim().toUpperCase() !== "SVG") ? txtToUse.trim().toUpperCase() : "ISMINGIZ";
     if (isGrey || isHQ) {
         const tCol = state.textColor || '#FFFFFF';
         return `${file}_${state.font}_${scale}_${cleanTxt}_${tCol}`;
@@ -1368,7 +1372,7 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
     const isGrey = tplNum >= 118 && !isHQ;
     const isLogo = (tplNum >= 14 && !isGrey && !isHQ) || isSvg;
     const cleanTxt = isSvg ? "" : ((text && text.trim() && text.trim().toUpperCase() !== "SVG") ? text.trim().toUpperCase() : "ISMINGIZ");
-    const cacheKey = getPreviewCacheKey(templateFile, scale);
+    const cacheKey = getPreviewCacheKey(templateFile, scale, text);
     
     if (state.previewCache.has(cacheKey)) {
         return state.previewCache.get(cacheKey);
@@ -1425,7 +1429,7 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
     
     templateFiles.forEach(file => {
         const isLogo = parseInt(getTemplateNumber(file)) >= 14 || isSvg;
-        const cacheKey = getPreviewCacheKey(file, scale);
+        const cacheKey = getPreviewCacheKey(file, scale, text);
         if (state.previewCache.has(cacheKey)) {
             results[file] = state.previewCache.get(cacheKey);
         } else if (isSvg && !state.svgData) {
@@ -1476,7 +1480,7 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
         const data = await res.json();
         if (data.previews) {
             Object.entries(data.previews).forEach(([fname, lottieData]) => {
-                const cacheKey = getPreviewCacheKey(fname, scale);
+                const cacheKey = getPreviewCacheKey(fname, scale, text);
                 state.previewCache.set(cacheKey, lottieData);
                 results[fname] = lottieData;
             });
@@ -1833,6 +1837,86 @@ function updateSelectionStatus() {
         const num = getTemplateNumber(state.selectedTemplate);
         dom.mainBtnText.innerHTML = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
     }
+
+    // Floating action bar visibility (Only appears on screen when emoji(s) are selected!)
+    const bar = dom.bottomActionBar || document.getElementById('bottom-action-bar');
+    if (bar) {
+        if (totalSelected > 0 && dom.viewStudio && !dom.viewStudio.classList.contains('hidden')) {
+            bar.classList.add('visible');
+        } else {
+            bar.classList.remove('visible');
+        }
+    }
+}
+
+// Dynamically update or revert a single card's preview
+async function updateCardPreview(file, tabKey, isSelected) {
+    if (!file) return;
+    const num = getTemplateNumber(file);
+    let container = null;
+    let playersMap = null;
+    if (tabKey === 'name') {
+        container = document.getElementById(`thumb-ticket-${num}`);
+        playersMap = state.ticketPlayers;
+    } else if (tabKey === 'logo') {
+        container = document.getElementById(`thumb-logo-${num}`);
+        playersMap = state.logoPlayers;
+    } else if (tabKey === 'grey') {
+        container = document.getElementById(`thumb-grey-${num}`);
+        playersMap = state.greyPlayers;
+    } else if (tabKey === 'hq') {
+        container = document.getElementById(`thumb-hq-${num}`);
+        playersMap = state.hqPlayers;
+    }
+    if (!container) return;
+
+    // Selected cards get user text/svg; unselected cards revert to clean template sample!
+    const txt = isSelected ? (state.inputType === 'svg' ? "" : state.text) : "";
+    let data = null;
+    if (!isSelected && state.inputType !== 'svg') {
+        data = getPreRenderedTemplateData(file, state.font, state.scale);
+    }
+    if (!data) {
+        data = await fetchLottiePreview(file, txt, state.font, state.scale);
+    }
+    if (data && container) {
+        if (playersMap && playersMap[file]) {
+            try { playersMap[file].destroy(); } catch (e) {}
+            delete playersMap[file];
+        }
+        container.innerHTML = '';
+        const player = safeLoadLottieAnimation({
+            container: container,
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            animationData: data
+        });
+        if (player && playersMap) {
+            playersMap[file] = player;
+        }
+    }
+}
+
+// Update all currently selected cards in active tab
+function updateSelectedCardsPreview() {
+    let activeSet = state.selectedTickets;
+    let tabKey = 'name';
+    if (state.activeTab === 'logo') {
+        activeSet = state.selectedLogos;
+        tabKey = 'logo';
+    } else if (state.activeTab === 'grey') {
+        activeSet = state.selectedGrey;
+        tabKey = 'grey';
+    } else if (state.activeTab === 'hq') {
+        activeSet = state.selectedHQ;
+        tabKey = 'hq';
+    }
+    
+    if (!activeSet || activeSet.size === 0) return;
+    activeSet.forEach(file => {
+        updateCardPreview(file, tabKey, true);
+    });
 }
 
 // Render the 13 Ticket Emojis in Name Tab (1.tgs to 13.tgs)
@@ -1887,14 +1971,23 @@ async function renderTicketsGrid(filterText = '') {
         dom.templatesGrid.appendChild(card);
     });
     
-    const batchFiles = filtered.map(t => t.file);
-    const batchData = await fetchBatchPreviews(batchFiles, state.text, state.font, state.scale);
+    const selectedFiles = filtered.filter(t => state.selectedTickets.has(t.file)).map(t => t.file);
+    const unselectedFiles = filtered.filter(t => !state.selectedTickets.has(t.file)).map(t => t.file);
+    
+    let batchDataSelected = {};
+    if (selectedFiles.length > 0 && state.text) {
+        batchDataSelected = await fetchBatchPreviews(selectedFiles, state.text, state.font, state.scale);
+    }
+    const batchDataUnselected = await fetchBatchPreviews(unselectedFiles, "", state.font, state.scale);
     
     filtered.forEach(tpl => {
         const file = tpl.file;
         const num = tpl.id;
         const container = document.getElementById(`thumb-ticket-${num}`);
-        const data = batchData[file] || (state.inputType === 'svg' ? null : getPreRenderedTemplateData(file, state.font, state.scale));
+        const isSel = state.selectedTickets.has(file);
+        const data = isSel 
+            ? (batchDataSelected[file] || (state.inputType === 'svg' ? null : getPreRenderedTemplateData(file, state.font, state.scale)))
+            : (batchDataUnselected[file] || (state.inputType === 'svg' ? null : getPreRenderedTemplateData(file, state.font, state.scale)));
         
         if (container && data) {
             container.innerHTML = '';
@@ -1967,12 +2060,21 @@ async function renderLogosGrid(filterText = '') {
     
     // Load first 24 logos immediately
     const initialBatch = filtered.slice(0, 24).map(t => t.file);
-    const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
+    const selBatch = initialBatch.filter(f => state.selectedLogos.has(f));
+    const unselBatch = initialBatch.filter(f => !state.selectedLogos.has(f));
     
-    Object.entries(batchData).forEach(([file, data]) => {
+    let batchSel = {};
+    if (selBatch.length > 0 && (state.text || state.svgData)) {
+        batchSel = await fetchBatchPreviews(selBatch, (state.inputType === 'svg' ? "" : state.text), state.font, state.scale);
+    }
+    const batchUnsel = await fetchBatchPreviews(unselBatch, "", state.font, state.scale);
+    
+    initialBatch.forEach(file => {
         const num = getTemplateNumber(file);
         const container = document.getElementById(`thumb-logo-${num}`);
-        const lottieData = data || getPreRenderedTemplateData(file, state.font, state.scale);
+        const isSel = state.selectedLogos.has(file);
+        const lottieData = isSel ? (batchSel[file] || getPreRenderedTemplateData(file, state.font, state.scale))
+                                 : (batchUnsel[file] || getPreRenderedTemplateData(file, state.font, state.scale));
         if (container && lottieData) {
             container.innerHTML = '';
             const player = safeLoadLottieAnimation({
@@ -1997,7 +2099,9 @@ async function renderLogosGrid(filterText = '') {
                     const container = document.getElementById(`thumb-logo-${num}`);
                     
                     if (container && !state.logoPlayers[file]) {
-                        const data = await fetchLottiePreview(file, (state.inputType === 'svg' ? "" : state.text), state.font, state.scale);
+                        const isSel = state.selectedLogos.has(file);
+                        const txtToUse = isSel ? (state.inputType === 'svg' ? "" : state.text) : "";
+                        const data = await fetchLottiePreview(file, txtToUse, state.font, state.scale);
                         if (data && container) {
                             container.innerHTML = '';
                             const player = safeLoadLottieAnimation({
@@ -2081,11 +2185,21 @@ async function renderGreyGrid(filterText = '') {
     
     // Load first 12 grey emojis immediately via batch preview (fast & light payload)
     const initialBatch = filtered.slice(0, 12).map(t => t.file);
+    const selBatch = initialBatch.filter(f => state.selectedGrey.has(f));
+    const unselBatch = initialBatch.filter(f => !state.selectedGrey.has(f));
+
+    let batchSel = {};
+    if (selBatch.length > 0 && state.text) {
+        batchSel = await fetchBatchPreviews(selBatch, state.text, state.font, state.scale);
+    }
+    const batchUnsel = await fetchBatchPreviews(unselBatch, "", state.font, state.scale);
+
     try {
-        const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
-        Object.entries(batchData).forEach(([file, data]) => {
+        initialBatch.forEach(file => {
             const num = getTemplateNumber(file);
             const container = document.getElementById(`thumb-grey-${num}`);
+            const isSel = state.selectedGrey.has(file);
+            const data = isSel ? batchSel[file] : batchUnsel[file];
             if (container && data && !state.greyPlayers[file]) {
                 container.innerHTML = '';
                 const player = safeLoadLottieAnimation({
@@ -2114,7 +2228,8 @@ async function renderGreyGrid(filterText = '') {
                     
                     if (container && !state.greyPlayers[file]) {
                         try {
-                            const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
+                            const isSel = state.selectedGrey.has(file);
+                            const data = await fetchLottiePreview(file, isSel ? state.text : "", state.font, state.scale);
                             if (data && container && !state.greyPlayers[file]) {
                                 container.innerHTML = '';
                                 const player = safeLoadLottieAnimation({
@@ -2205,11 +2320,21 @@ async function renderHQGrid(filterText = '') {
     
     // Load first 12 HQ emojis immediately via batch preview
     const initialBatch = filtered.slice(0, 12).map(t => t.file);
+    const selBatch = initialBatch.filter(f => state.selectedHQ.has(f));
+    const unselBatch = initialBatch.filter(f => !state.selectedHQ.has(f));
+
+    let batchSel = {};
+    if (selBatch.length > 0 && state.text) {
+        batchSel = await fetchBatchPreviews(selBatch, state.text, state.font, state.scale);
+    }
+    const batchUnsel = await fetchBatchPreviews(unselBatch, "", state.font, state.scale);
+
     try {
-        const batchData = await fetchBatchPreviews(initialBatch, state.text, state.font, state.scale);
-        Object.entries(batchData).forEach(([file, data]) => {
+        initialBatch.forEach(file => {
             const num = getTemplateNumber(file);
             const container = document.getElementById(`thumb-hq-${num}`);
+            const isSel = state.selectedHQ.has(file);
+            const data = isSel ? batchSel[file] : batchUnsel[file];
             if (container && data && !state.hqPlayers[file]) {
                 container.innerHTML = '';
                 const player = safeLoadLottieAnimation({
@@ -2238,7 +2363,8 @@ async function renderHQGrid(filterText = '') {
                     
                     if (container && !state.hqPlayers[file]) {
                         try {
-                            const data = await fetchLottiePreview(file, state.text, state.font, state.scale);
+                            const isSel = state.selectedHQ.has(file);
+                            const data = await fetchLottiePreview(file, isSel ? state.text : "", state.font, state.scale);
                             if (data && container && !state.hqPlayers[file]) {
                                 container.innerHTML = '';
                                 const player = safeLoadLottieAnimation({
@@ -2283,10 +2409,11 @@ function toggleCardSelection(filename, tabKey) {
         container = dom.hqGrid;
     }
     
-    if (targetSet.has(filename)) {
-        targetSet.delete(filename);
-    } else {
+    const isNowSelected = !targetSet.has(filename);
+    if (isNowSelected) {
         targetSet.add(filename);
+    } else {
+        targetSet.delete(filename);
     }
     
     // Update live hero preview to clicked item
@@ -2301,6 +2428,9 @@ function toggleCardSelection(filename, tabKey) {
             card.classList.remove('selected');
         }
     });
+    
+    // Update preview for this specific card
+    updateCardPreview(filename, tabKey, isNowSelected);
     
     updateSelectionStatus();
 }
@@ -2325,23 +2455,24 @@ function toggleSelectAll(tabKey) {
         container = dom.hqGrid;
     }
     
-    if (targetSet.size === allList.length) {
+    const selectAll = targetSet.size !== allList.length;
+    if (!selectAll) {
         // Deselect all
         targetSet.clear();
+        container?.querySelectorAll('.tpl-card').forEach(card => {
+            card.classList.remove('selected');
+            updateCardPreview(card.dataset.file, tabKey, false);
+        });
     } else {
         // Select all
         allList.forEach(t => targetSet.add(t.file));
         state.selectedTemplate = allList[0].file;
         updateLivePreview();
-    }
-    
-    container?.querySelectorAll('.tpl-card').forEach(card => {
-        if (targetSet.has(card.dataset.file)) {
+        container?.querySelectorAll('.tpl-card').forEach(card => {
             card.classList.add('selected');
-        } else {
-            card.classList.remove('selected');
-        }
-    });
+            updateCardPreview(card.dataset.file, tabKey, true);
+        });
+    }
     
     updateSelectionStatus();
 }
@@ -2839,12 +2970,10 @@ function setupEventListeners() {
         dom.charCount.textContent = `${len}/16`;
     }
     
-    // Fast real-time live preview update
+    // Fast real-time live preview update (Hero preview + selected cards only)
     const debouncedLiveTextUpdate = debounce(() => {
         updateLivePreview();
-        if (typeof debouncedFullUpdate === 'function') {
-            debouncedFullUpdate();
-        }
+        updateSelectedCardsPreview();
     }, 100);
     
     dom.nameInput.addEventListener('input', () => {
@@ -3009,6 +3138,7 @@ function setupEventListeners() {
         updateCharCount();
         dom.nameInput?.focus();
         updateLivePreview();
+        updateSelectedCardsPreview();
     });
     
     // Font Selection Pills
