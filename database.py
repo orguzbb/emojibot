@@ -108,6 +108,35 @@ def init_db():
         )
     """)
 
+    # 8. Cheks table (Channel stars vouchers)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cheks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT UNIQUE NOT NULL,
+            amount INTEGER NOT NULL,
+            total_count INTEGER NOT NULL,
+            remaining_count INTEGER NOT NULL,
+            channel_id INTEGER,
+            channel_username TEXT,
+            message_id INTEGER,
+            created_by INTEGER NOT NULL,
+            is_active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # 9. Chek Usages table (One use per user per chek)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chek_usages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chek_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(chek_id, user_id),
+            FOREIGN KEY (chek_id) REFERENCES cheks (id) ON DELETE CASCADE
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -591,3 +620,148 @@ def get_stats_summary() -> Dict[str, Any]:
         "total_stars_deposited": total_stars_deposited,
         "ref_joined": ref_joined
     }
+
+
+# ==================== CHEK (GIFT VOUCHER) SYSTEM ====================
+
+def create_chek(
+    code: str,
+    amount: int,
+    total_count: int,
+    channel_id: Optional[int] = None,
+    channel_username: Optional[str] = None,
+    message_id: Optional[int] = None,
+    created_by: int = 0
+) -> int:
+    """Creates a new chek and returns its ID."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO cheks (code, amount, total_count, remaining_count, channel_id, channel_username, message_id, created_by, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+    """, (code, amount, total_count, total_count, channel_id, channel_username, message_id, created_by))
+    chek_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return chek_id
+
+
+def update_chek_message_id(chek_id: int, message_id: int):
+    """Updates the published telegram message_id of the chek."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE cheks SET message_id = ? WHERE id = ?", (message_id, chek_id))
+    conn.commit()
+    conn.close()
+
+
+def get_chek(code: str) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM cheks WHERE code = ?", (code,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_chek_by_id(chek_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM cheks WHERE id = ?", (chek_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_all_cheks(limit: int = 25) -> List[Dict[str, Any]]:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM cheks
+        ORDER BY id DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def delete_chek(chek_id: int) -> bool:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM cheks WHERE id = ?", (chek_id,))
+    cursor.execute("DELETE FROM chek_usages WHERE chek_id = ?", (chek_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def has_user_claimed_chek(chek_id: int, user_id: int) -> bool:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM chek_usages WHERE chek_id = ? AND user_id = ?", (chek_id, user_id))
+    row = cursor.fetchone()
+    conn.close()
+    return bool(row)
+
+
+def claim_chek(code: str, user_id: int) -> Tuple[bool, int, str, Optional[Dict[str, Any]]]:
+    """
+    Atomically claims a chek for a user.
+    Returns (success, amount, message, chek_data)
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM cheks WHERE code = ?", (code,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return False, 0, "Bunday chek topilmadi yoki o'chirilgan.", None
+
+    chek = dict(row)
+    chek_id = chek["id"]
+    amount = chek["amount"]
+    remaining = chek["remaining_count"]
+    is_active = chek["is_active"]
+
+    if not is_active or remaining <= 0:
+        conn.close()
+        return False, 0, "Kechirasiz, ushbu chekning barcha nusxalari tugagan!", chek
+
+    # Check if user already claimed
+    cursor.execute("SELECT id FROM chek_usages WHERE chek_id = ? AND user_id = ?", (chek_id, user_id))
+    if cursor.fetchone():
+        conn.close()
+        return False, 0, "Siz ushbu chekni allaqachon faollashtirgansiz! (Chek faqat 1 marta ishlatiladi)", chek
+
+    try:
+        # Record usage
+        cursor.execute("INSERT INTO chek_usages (chek_id, user_id) VALUES (?, ?)", (chek_id, user_id))
+
+        # Decrement remaining
+        new_remaining = remaining - 1
+        new_active = 1 if new_remaining > 0 else 0
+        cursor.execute("UPDATE cheks SET remaining_count = ?, is_active = ? WHERE id = ?", (new_remaining, new_active, chek_id))
+
+        # Add balance to user
+        cursor.execute("INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0)", (user_id,))
+        cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+
+        # Record transaction
+        cursor.execute("""
+            INSERT INTO transactions (user_id, amount, type, description)
+            VALUES (?, ?, 'chek', ?)
+        """, (user_id, amount, f"Kanal cheki faollashtirildi: {code} (+{amount} Stars)"))
+
+        cursor.execute("SELECT * FROM cheks WHERE id = ?", (chek_id,))
+        updated_chek = dict(cursor.fetchone())
+
+        conn.commit()
+        conn.close()
+        return True, amount, f"Chek muvaffaqiyatli faollashtirildi! Balansingizga +{amount} ⭐ Stars qo'shildi.", updated_chek
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, 0, f"Xatolik yuz berdi: {e}", None

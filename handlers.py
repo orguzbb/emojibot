@@ -54,7 +54,10 @@ from database import (
     get_referral_stats,
     use_promocode,
     get_pending_order,
-    delete_pending_order
+    delete_pending_order,
+    get_chek,
+    has_user_claimed_chek,
+    claim_chek
 )
 
 logger = logging.getLogger(__name__)
@@ -222,8 +225,18 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
     ref_id = None
 
     if len(args) > 1:
-        ref_arg = args[1].strip()
-        digits = re.findall(r'\d+', ref_arg)
+        param = args[1].strip()
+        if param.startswith("chek_"):
+            chek_code = param[5:].strip()
+            add_or_update_user(
+                user_id=user.id,
+                username=user.username,
+                first_name=user.first_name
+            )
+            await process_chek_activation(message, bot, chek_code)
+            return
+
+        digits = re.findall(r'\d+', param)
         if digits:
             try:
                 candidate_id = int(digits[0])
@@ -1763,3 +1776,182 @@ async def execute_full_pack_generation(bot: Bot, user_id: int, clean_text: str, 
         await bot.send_message(chat_id, "❌ Kutilmagan texnik xatolik yuz berdi.")
     finally:
         ACTIVE_USERS.discard(user_id)
+
+
+# ==================== KANAL CHEKLARI (PROMO STARS) ====================
+
+async def process_chek_activation(event: Union[Message, CallbackQuery], bot: Bot, code: str):
+    """
+    Kanalga yuborilgan Stars chekini faollashtirish jarayoni.
+    - Chek mavjudligi va qolgan sonini tekshiradi.
+    - Foydalanuvchi avval ishlatgan-ishlatmaganligini tekshiradi (1 marta).
+    - Homiy kanalga a'zo bo'lganligini tekshiradi (reklama funksiyasi).
+    - Muvaffaqiyatli bo'lsa, balansiga Stars qo'shadi va kanal xabaridagi sonni yangilaydi.
+    """
+    user = event.from_user
+    chat_id = event.message.chat.id if isinstance(event, CallbackQuery) and event.message else (event.chat.id if isinstance(event, Message) else user.id)
+
+    async def reply_helper(text: str, reply_markup=None):
+        if isinstance(event, CallbackQuery) and event.message:
+            try:
+                await event.message.edit_text(text, reply_markup=reply_markup, parse_mode=ParseMode.HTML)
+                return
+            except Exception:
+                pass
+        await bot.send_message(chat_id, text, reply_markup=reply_markup, parse_mode=ParseMode.HTML)
+
+    chek = get_chek(code)
+    if not chek:
+        await reply_helper(
+            "❌ <b>Bunday chek topilmadi yoki u o'chirilgan.</b>\n\n"
+            "Iltimos, havolani to'g'ri kiritganingizga ishonch hosil qiling."
+        )
+        return
+
+    # 1. User avval bu chekni olganmi?
+    if has_user_claimed_chek(chek["id"], user.id):
+        await reply_helper(
+            "⚠️ <b>Siz ushbu chekni allaqachon faollashtirgansiz!</b>\n\n"
+            "ℹ️ <i>Har bir foydalanuvchi ushbu chekdan faqat 1 marta foydalana oladi.</i>\n"
+            "Yangi cheklarni o'tkazib yubormaslik uchun kanalimizni kuzatib boring!"
+        )
+        return
+
+    # 2. Chek soni tugaganmi?
+    if chek["remaining_count"] <= 0 or not chek["is_active"]:
+        await reply_helper(
+            "❌ <b>Kechirasiz, ushbu chekning barcha nusxalari tugagan!</b>\n\n"
+            f"Jami berilgan: {chek['total_count']} ta.\n"
+            "Keyingi sovg'a va cheklarni o'tkazib yubormaslik uchun kanalimizni kuzatib boring!"
+        )
+        return
+
+    # 3. Reklama maqsadida: Kanalga a'zolikni tekshirish
+    channel_id = chek.get("channel_id")
+    is_subscribed = True
+    channel_link = chek.get("channel_username") or CHANNEL_URL
+    if channel_link and channel_link.startswith("@"):
+        channel_url = f"https://t.me/{channel_link[1:]}"
+    elif channel_link and channel_link.startswith("http"):
+        channel_url = channel_link
+    else:
+        channel_url = CHANNEL_URL
+
+    if channel_id:
+        try:
+            member = await bot.get_chat_member(chat_id=channel_id, user_id=user.id)
+            if member.status in ("left", "kicked"):
+                is_subscribed = False
+        except Exception as e:
+            logger.warning(f"Kanal obunasini tekshirib bo'lmadi ({channel_id}): {e}")
+            # Agar bot kanal a'zolarini ko'rish huquqiga ega bo'lmasa, to'sqinlik qilmaymiz
+            is_subscribed = True
+
+    if not is_subscribed:
+        join_markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="📢 Kanalga a'zo bo'lish", url=channel_url)],
+                [InlineKeyboardButton(text="✅ A'zo bo'ldim (Tekshirish)", callback_data=f"verify_chek:{code}")]
+            ]
+        )
+        await reply_helper(
+            f"🎁 <b>{chek['amount']} Stars uchun chek topildi! ⭐️</b>\n\n"
+            f"⚠️ Chekni faollashtirish va balansingizga <b>+{chek['amount']} ⭐</b> olish uchun avval homiy kanalimizga a'zo bo'lishingiz lozim.\n\n"
+            f"Kanalga a'zo bo'lgach, pastdagi <b>«✅ A'zo bo'ldim (Tekshirish)»</b> tugmasini bosing:",
+            reply_markup=join_markup
+        )
+        return
+
+    # 4. Chekni faollashtirish (atomar tarzda bazaga yozish va balansga qo'shish)
+    success, amount, msg, updated_chek = claim_chek(code, user.id)
+    if not success:
+        await reply_helper(f"❌ <b>Xatolik:</b> {msg}")
+        return
+
+    # 5. Foydalanuvchiga muvaffaqiyatli xabar
+    new_balance = get_user_balance(user.id)
+    success_markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✨ Yangi Emoji yaratish", callback_data="menu_create")],
+            [InlineKeyboardButton(text="💳 Balansni ko'rish", callback_data="menu_wallet")],
+            [InlineKeyboardButton(text="🏠 Asosiy menyu", callback_data="menu_main")]
+        ]
+    )
+
+    await reply_helper(
+        f"🎉 <b>TABRIKLAYMIZ! CHEK FAOLLASHTIRILDI!</b> 🎁\n\n"
+        f"⭐️ <b>Qo'shilgan Stars:</b> <b>+{amount} ⭐</b>\n"
+        f"💰 <b>Joriy balansingiz:</b> <b>{new_balance} ⭐️ Stars</b>\n\n"
+        f"<i>Siz ushbu Stars'lardan botdagi har qanday shaxsiy emoji to'plamlarini yaratishda foydalanishingiz mumkin!</i>",
+        reply_markup=success_markup
+    )
+
+    # 6. Kanal xabaridagi sonni real vaqtda yangilash (Edit)
+    if updated_chek and updated_chek.get("channel_id") and updated_chek.get("message_id"):
+        try:
+            ch_id = updated_chek["channel_id"]
+            m_id = updated_chek["message_id"]
+            rem = updated_chek.get("remaining_count", 0)
+            tot = updated_chek.get("total_count", chek["total_count"])
+            amt = updated_chek.get("amount", chek["amount"])
+
+            if rem > 0:
+                new_caption = (
+                    f"🎁 {amt} stars uchun chek ⭐️\n"
+                    f"Qolgan chek: {rem} из {tot}"
+                )
+                ch_kb = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="🎁 Chekni faollashtirish",
+                                url=f"https://t.me/{BOT_USERNAME}?start=chek_{code}"
+                            )
+                        ]
+                    ]
+                )
+            else:
+                new_caption = (
+                    f"🎁 {amt} stars uchun chek ⭐️\n"
+                    f"❌ Chek tugadi (0 из {tot})"
+                )
+                ch_kb = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            InlineKeyboardButton(
+                                text="🔒 Chek tugadi",
+                                callback_data="chek_finished"
+                            )
+                        ]
+                    ]
+                )
+
+            try:
+                await bot.edit_message_caption(
+                    chat_id=ch_id,
+                    message_id=m_id,
+                    caption=new_caption,
+                    reply_markup=ch_kb
+                )
+            except Exception:
+                await bot.edit_message_text(
+                    chat_id=ch_id,
+                    message_id=m_id,
+                    text=new_caption,
+                    reply_markup=ch_kb
+                )
+        except Exception as edit_err:
+            logger.warning(f"Kanal xabarini tahrirlashda xatolik (chek {code}): {edit_err}")
+
+
+@router.callback_query(F.data.startswith("verify_chek:"))
+async def cb_verify_chek(callback: CallbackQuery, bot: Bot):
+    code = callback.data.split(":", 1)[1].strip()
+    await callback.answer("⏳ Obuna tekshirilmoqda...", show_alert=False)
+    await process_chek_activation(callback, bot, code)
+
+
+@router.callback_query(F.data == "chek_finished")
+async def cb_chek_finished(callback: CallbackQuery):
+    await callback.answer("❌ Ushbu chekning barcha nusxalari tugagan!", show_alert=True)
+

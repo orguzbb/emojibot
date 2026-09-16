@@ -5,6 +5,7 @@ import json
 import logging
 import asyncio
 import re
+import secrets
 from pathlib import Path
 from typing import Union, Optional, List, Dict, Any
 
@@ -16,13 +17,14 @@ from aiogram.types import (
     Message,
     CallbackQuery,
     BufferedInputFile,
+    FSInputFile,
     InlineKeyboardMarkup,
     InlineKeyboardButton
 )
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 
-from config import ADMIN_IDS, TEMPLATES_DIR, FONTS_DIR
+from config import ADMIN_IDS, TEMPLATES_DIR, FONTS_DIR, BOT_USERNAME, CHANNEL_ID, CHANNEL_URL
 from lottie_processor import process_tgs_template, process_all_templates
 from database import (
     get_users_count,
@@ -38,7 +40,11 @@ from database import (
     create_promocode,
     get_all_promocodes,
     delete_promocode,
-    get_stats_summary
+    get_stats_summary,
+    create_chek,
+    get_all_cheks,
+    get_chek_by_id,
+    delete_chek
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +74,11 @@ class AdminStates(StatesGroup):
     # Template deletion states
     waiting_for_template_delete = State()
 
+    # Chek creation states
+    waiting_for_chek_amount = State()
+    waiting_for_chek_count = State()
+    waiting_for_chek_channel = State()
+
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
@@ -87,6 +98,10 @@ def get_admin_menu_keyboard() -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text="⚙️ Narx va Sozlamalar", callback_data="admin:settings"),
                 InlineKeyboardButton(text="🎁 Promokodlar", callback_data="admin:promocodes")
+            ],
+            [
+                InlineKeyboardButton(text="🎫 Kanalga Chek Yaratish", callback_data="admin:create_chek"),
+                InlineKeyboardButton(text="📋 Cheklar ro'yxati", callback_data="admin:cheks_list")
             ],
             [
                 InlineKeyboardButton(text="👥 Foydalanuvchilar (ID & User)", callback_data="admin:users:0"),
@@ -1347,3 +1362,306 @@ async def cb_admin_users_list(callback: CallbackQuery):
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
     await callback.message.edit_text("\n".join(lines), reply_markup=markup, parse_mode=ParseMode.HTML)
     await callback.answer()
+
+
+# ==================== KANALGA CHEK YARATISH ====================
+
+@admin_router.message(Command("chek"))
+@admin_router.message(Command("create_chek"))
+@admin_router.callback_query(F.data == "admin:create_chek")
+async def cb_admin_create_chek(event: Union[Message, CallbackQuery], state: FSMContext):
+    user_id = event.from_user.id
+    if not is_admin(user_id):
+        if isinstance(event, CallbackQuery):
+            await event.answer("🚫 Ruxsat berilmagan.", show_alert=True)
+        return
+
+    await state.set_state(AdminStates.waiting_for_chek_amount)
+
+    text = (
+        "🎫 <b>Kanal uchun Yangi Chek Yaratish</b>\n\n"
+        "1️⃣ <b>Chek miqdorini kiriting:</b>\n"
+        "Har bir foydalanuvchiga necha Stars berilsin? (masalan: <code>10</code> yoki <code>25</code>)\n\n"
+        "<i>Bekor qilish uchun /cancel deb yozing.</i>"
+    )
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="admin:main")]]
+    )
+
+    if isinstance(event, CallbackQuery):
+        await event.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        await event.answer()
+    else:
+        await event.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+@admin_router.message(AdminStates.waiting_for_chek_amount)
+async def handle_chek_amount_input(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    raw = message.text.strip()
+    if raw.lower() in ("/cancel", "cancel", "bekor"):
+        await state.clear()
+        await message.answer("❌ Chek yaratish bekor qilindi.", reply_markup=get_admin_menu_keyboard())
+        return
+
+    try:
+        amount = int(raw)
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        await message.answer("⚠️ Miqdor 0 dan katta butun son bo'lishi kerak. Qaytadan kiriting (masalan: <code>10</code>):", parse_mode=ParseMode.HTML)
+        return
+
+    await state.update_data(chek_amount=amount)
+    await state.set_state(AdminStates.waiting_for_chek_count)
+
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="admin:main")]]
+    )
+    await message.answer(
+        (
+            f"✅ Chek miqdori: <b>{amount} ⭐ Stars</b>\n\n"
+            "2️⃣ <b>Foydalanuvchilar sonini (limitni) kiriting:</b>\n"
+            "Ushbu chekni jami nechta odam faollashtirishi mumkin? (masalan: <code>50</code> yoki <code>100</code>):\n\n"
+            "<i>Bekor qilish uchun /cancel deb yozing.</i>"
+        ),
+        reply_markup=markup,
+        parse_mode=ParseMode.HTML
+    )
+
+
+@admin_router.message(AdminStates.waiting_for_chek_count)
+async def handle_chek_count_input(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    raw = message.text.strip()
+    if raw.lower() in ("/cancel", "cancel", "bekor"):
+        await state.clear()
+        await message.answer("❌ Chek yaratish bekor qilindi.", reply_markup=get_admin_menu_keyboard())
+        return
+
+    try:
+        count = int(raw)
+        if count <= 0:
+            raise ValueError
+    except ValueError:
+        await message.answer("⚠️ Odamlar soni 0 dan katta butun son bo'lishi kerak. Qaytadan kiriting (masalan: <code>50</code>):", parse_mode=ParseMode.HTML)
+        return
+
+    await state.update_data(chek_count=count)
+    await state.set_state(AdminStates.waiting_for_chek_channel)
+
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Asosiy kanalga yuborish", callback_data="admin:chek_use_default_channel")],
+            [InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="admin:main")]
+        ]
+    )
+    await message.answer(
+        (
+            f"✅ Foydalanuvchilar soni: <b>{count} ta</b>\n\n"
+            "3️⃣ <b>Qaysi kanalga yuborilsin?</b>\n\n"
+            "Kanal username'ini kiriting (masalan: <code>@kanalim</code> yoki <code>-100...</code> IDsi):\n\n"
+            "⚠️ <i>Eslatma: Bot ushbu kanalda <b>Admin</b> bo'lishi va xabar yuborish ruxsatiga ega bo'lishi shart!</i>\n\n"
+            "Agar botdagi asosiy kanalga yubormoqchi bo'lsangiz, pastdagi tugmani bosing yoki <code>/default</code> deb yuboring:"
+        ),
+        reply_markup=markup,
+        parse_mode=ParseMode.HTML
+    )
+
+
+@admin_router.callback_query(F.data == "admin:chek_use_default_channel")
+async def cb_chek_use_default_channel(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    if not is_admin(callback.from_user.id):
+        return
+    await process_chek_creation(callback.message, state, bot, str(CHANNEL_ID), is_callback=True)
+    await callback.answer()
+
+
+@admin_router.message(AdminStates.waiting_for_chek_channel)
+async def handle_chek_channel_input(message: Message, state: FSMContext, bot: Bot):
+    if not is_admin(message.from_user.id):
+        return
+
+    raw = message.text.strip()
+    if raw.lower() in ("/cancel", "cancel", "bekor"):
+        await state.clear()
+        await message.answer("❌ Chek yaratish bekor qilindi.", reply_markup=get_admin_menu_keyboard())
+        return
+
+    target_channel = str(CHANNEL_ID) if raw.lower() == "/default" else raw
+    await process_chek_creation(message, state, bot, target_channel, is_callback=False)
+
+
+async def process_chek_creation(event_msg: Message, state: FSMContext, bot: Bot, target_channel: str, is_callback: bool = False):
+    data = await state.get_data()
+    amount = data.get("chek_amount", 10)
+    count = data.get("chek_count", 50)
+    await state.clear()
+
+    # Generate random 8-character unique uppercase code
+    code = secrets.token_hex(4).upper()
+
+    # Validate channel target
+    try:
+        chat = await bot.get_chat(target_channel)
+        channel_id = chat.id
+        channel_username = f"@{chat.username}" if chat.username else (chat.title or str(chat.id))
+    except Exception as e:
+        logger.error(f"Kanalni topib bo'lmadi ({target_channel}): {e}")
+        text = (
+            f"❌ <b>Kanal topilmadi yoki bot u yerda admin emas!</b>\n\n"
+            f"Xatolik: <code>{e}</code>\n\n"
+            "Iltimos, botni kanalga admin qiling va kanal username yoki ID sini tekshirib qaytadan urinib ko'ring."
+        )
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Qaytadan urinish", callback_data="admin:create_chek")],
+                [InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="admin:main")]
+            ]
+        )
+        if is_callback:
+            await event_msg.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        else:
+            await event_msg.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        return
+
+    # Post to channel with image and inline button
+    banner_path = Path("images/chek_banner.png")
+    caption = (
+        f"🎁 {amount} stars uchun chek ⭐️\n"
+        f"Qolgan chek: {count} из {count}"
+    )
+    inline_kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🎁 Chekni faollashtirish",
+                    url=f"https://t.me/{BOT_USERNAME}?start=chek_{code}"
+                )
+            ]
+        ]
+    )
+
+    try:
+        if banner_path.exists():
+            sent_msg = await bot.send_photo(
+                chat_id=channel_id,
+                photo=FSInputFile(str(banner_path)),
+                caption=caption,
+                reply_markup=inline_kb
+            )
+        else:
+            sent_msg = await bot.send_message(
+                chat_id=channel_id,
+                text=caption,
+                reply_markup=inline_kb
+            )
+
+        message_id = sent_msg.message_id
+
+        # Save to database
+        create_chek(
+            code=code,
+            amount=amount,
+            total_count=count,
+            channel_id=channel_id,
+            channel_username=channel_username,
+            message_id=message_id,
+            created_by=event_msg.chat.id
+        )
+
+        success_text = (
+            "🎉 <b>Chek muvaffaqiyatli yaratildi va kanalga yuborildi!</b>\n\n"
+            f"🎁 <b>Miqdori:</b> <b>{amount} ⭐ Stars</b>\n"
+            f"👥 <b>Soni:</b> <b>{count} ta</b> foydalanuvchi uchun\n"
+            f"📢 <b>Kanal:</b> <b>{channel_username}</b>\n"
+            f"🔑 <b>Kod:</b> <code>{code}</code>\n\n"
+            f"🔗 <b>Faollashtirish havolasi:</b>\n"
+            f"<code>https://t.me/{BOT_USERNAME}?start=chek_{code}</code>"
+        )
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="📋 Cheklar ro'yxati", callback_data="admin:cheks_list")],
+                [InlineKeyboardButton(text="🔙 Admin menyusi", callback_data="admin:main")]
+            ]
+        )
+        if is_callback:
+            await event_msg.edit_text(success_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        else:
+            await event_msg.answer(success_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+    except Exception as e:
+        logger.error(f"Kanalga post yuborishda xatolik: {e}")
+        err_text = (
+            f"❌ <b>Kanalga xabar yuborishda xatolik yuz berdi!</b>\n\n"
+            f"Sabab: <code>{e}</code>\n\n"
+            "<i>Iltimos, bot kanalda admin ekanligiga va 'Post Messages' (Xabarlar yuborish) huquqi borligiga ishonch hosil qiling.</i>"
+        )
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Qaytadan urinish", callback_data="admin:create_chek")],
+                [InlineKeyboardButton(text="🔙 Asosiy menyu", callback_data="admin:main")]
+            ]
+        )
+        if is_callback:
+            await event_msg.edit_text(err_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        else:
+            await event_msg.answer(err_text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+# ==================== CHEKLAR RO'YXATI VA BOSHQARUV ====================
+
+@admin_router.callback_query(F.data == "admin:cheks_list")
+async def cb_admin_cheks_list(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+
+    cheks = get_all_cheks(limit=15)
+    if not cheks:
+        text = "📋 <b>Hozircha hech qanday chek yaratilmagan.</b>"
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="➕ Chek yaratish", callback_data="admin:create_chek")],
+                [InlineKeyboardButton(text="🔙 Admin Menyusi", callback_data="admin:main")]
+            ]
+        )
+        await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        await callback.answer()
+        return
+
+    lines = ["📋 <b>Oxirgi yaratilgan cheklar:</b>\n"]
+    buttons = []
+
+    for c in cheks:
+        status = "🟢 Faol" if (c["is_active"] and c["remaining_count"] > 0) else "🔴 Tugagan"
+        ch = c["channel_username"] or f"ID:{c['channel_id']}"
+        lines.append(
+            f"🎫 <code>{c['code']}</code> — <b>{c['amount']} ⭐</b> | {status}\n"
+            f"   📊 Qolgan: <b>{c['remaining_count']} / {c['total_count']} ta</b>\n"
+            f"   📢 Kanal: {ch} | 📅 {c['created_at'][:16]}\n"
+        )
+        buttons.append([
+            InlineKeyboardButton(text=f"🗑 O'chirish: {c['code']} ({c['amount']} ⭐)", callback_data=f"admin:del_chek:{c['id']}")
+        ])
+
+    buttons.append([InlineKeyboardButton(text="➕ Yangi Chek Yaratish", callback_data="admin:create_chek")])
+    buttons.append([InlineKeyboardButton(text="🔙 Admin Menyusi", callback_data="admin:main")])
+
+    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await callback.message.edit_text("\n".join(lines), reply_markup=markup, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+@admin_router.callback_query(F.data.startswith("admin:del_chek:"))
+async def cb_admin_del_chek(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+
+    chek_id = int(callback.data.split(":")[2])
+    delete_chek(chek_id)
+    await callback.answer("✅ Chek o'chirildi!", show_alert=True)
+    await cb_admin_cheks_list(callback)
