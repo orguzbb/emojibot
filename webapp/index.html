@@ -164,6 +164,472 @@
         }
     </style>
 
+    <!-- CRITICAL EMBEDDED STYLES: Guaranteed zero unstyled elements even if client caches style.css -->
+    <style id="critical-components-css">
+        /* Daily Bonus 3 Stars Card */
+        .daily-bonus-card {
+            position: relative;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+            border: 1.5px solid rgba(245, 158, 11, 0.35) !important;
+            border-radius: 18px !important;
+            padding: 16px 18px !important;
+            overflow: hidden !important;
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15) !important;
+            margin-bottom: 16px !important;
+        }
+        .bonus-card-glow {
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .bonus-card-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .bonus-icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            animation: bounceSlow 3s ease-in-out infinite;
+        }
+        @keyframes bounceSlow {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .bonus-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .bonus-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffffff !important;
+            margin: 0 !important;
+        }
+        .bonus-desc {
+            font-size: 11.5px;
+            color: #cbd5e1 !important;
+            line-height: 1.3;
+            margin: 0 !important;
+        }
+        .btn-claim-bonus {
+            padding: 10px 16px !important;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            border: none !important;
+            border-radius: 999px !important;
+            color: #ffffff !important;
+            font-family: 'Outfit', sans-serif !important;
+            font-size: 12.5px !important;
+            font-weight: 800 !important;
+            cursor: pointer !important;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4) !important;
+            transition: all 0.2s ease !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .btn-claim-bonus:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.55) !important;
+        }
+        .btn-claim-bonus:disabled {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #64748b !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: none !important;
+            cursor: not-allowed !important;
+            transform: none !important;
+        }
+
+        /* Language Card */
+        .profile-settings-card {
+            background: rgba(15, 23, 42, 0.85) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 18px !important;
+            padding: 16px 18px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            margin-bottom: 16px !important;
+        }
+        .profile-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .profile-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #ffffff !important;
+        }
+        .lang-switch-row {
+            display: flex !important;
+            gap: 8px !important;
+            width: 100% !important;
+        }
+        .lang-switch-btn {
+            flex: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            padding: 10px 12px !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 12px !important;
+            color: #94a3b8 !important;
+            font-family: 'Outfit', sans-serif !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease !important;
+        }
+        .lang-switch-btn:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #ffffff !important;
+        }
+        .lang-switch-btn.active {
+            background: rgba(168, 85, 247, 0.2) !important;
+            border-color: #a855f7 !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 14px rgba(168, 85, 247, 0.35) !important;
+        }
+
+        /* Rating / Leaderboard */
+        #view-rating {
+            width: 100%;
+        }
+        .rating-page-wrap {
+            padding: 16px;
+            padding-bottom: 90px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .rating-header-card {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 20px;
+            padding: 20px 16px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .rating-badge-glow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            color: #f59e0b;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .rating-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: #ffffff;
+            margin: 0 0 4px 0;
+        }
+        .rating-subtitle {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 0 0 16px 0;
+            line-height: 1.4;
+        }
+        .rating-toggle-pill {
+            display: inline-flex;
+            background: rgba(8, 12, 22, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            padding: 4px;
+            gap: 4px;
+            width: 100%;
+            max-width: 340px;
+            margin: 0 auto;
+        }
+        .rating-tab-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: transparent;
+            border: none;
+            border-radius: 999px;
+            color: #94a3b8;
+            font-family: 'Outfit', sans-serif;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .rating-tab-btn.active {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+        }
+        .my-rank-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 16px;
+            padding: 14px 18px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+        }
+        .my-rank-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .my-rank-num {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .my-rank-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .my-rank-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .my-rank-val {
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+        .my-rank-badge {
+            background: rgba(245, 158, 11, 0.18);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: #f59e0b;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .podium-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 10px;
+            padding: 24px 8px 0;
+            margin-top: 10px;
+        }
+        .podium-item {
+            flex: 1;
+            max-width: 110px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .podium-crown {
+            font-size: 22px;
+            margin-bottom: 4px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .podium-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 8px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+        .podium-first .podium-avatar {
+            width: 62px;
+            height: 62px;
+            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            border: 3px solid #fde68a;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+        }
+        .podium-second .podium-avatar {
+            background: linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%);
+            border: 2.5px solid #f1f5f9;
+        }
+        .podium-third .podium-avatar {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            border: 2.5px solid #fed7aa;
+        }
+        .podium-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            color: #f8fafc;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        .podium-score {
+            font-size: 12px;
+            font-weight: 800;
+            color: #f59e0b;
+            margin-bottom: 10px;
+        }
+        .podium-pillar {
+            width: 100%;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 10px;
+            box-sizing: border-box;
+        }
+        .podium-pillar span {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .pillar-1 {
+            height: 110px;
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.35) 0%, rgba(217, 119, 6, 0.15) 100%);
+            border-top: 2px solid #f59e0b;
+            border-left: 1px solid rgba(245, 158, 11, 0.3);
+            border-right: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .pillar-2 {
+            height: 85px;
+            background: linear-gradient(180deg, rgba(148, 163, 184, 0.25) 0%, rgba(100, 116, 139, 0.1) 100%);
+            border-top: 2px solid #cbd5e1;
+            border-left: 1px solid rgba(148, 163, 184, 0.2);
+            border-right: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .pillar-3 {
+            height: 65px;
+            background: linear-gradient(180deg, rgba(180, 83, 9, 0.25) 0%, rgba(146, 64, 14, 0.1) 100%);
+            border-top: 2px solid #d97706;
+            border-left: 1px solid rgba(180, 83, 9, 0.2);
+            border-right: 1px solid rgba(180, 83, 9, 0.2);
+        }
+        .leaderboard-list-wrap {
+            margin-top: 10px;
+        }
+        .leaderboard-list-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+        }
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .lb-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 10px 14px;
+            transition: all 0.2s ease;
+        }
+        .lb-row:hover {
+            background: rgba(26, 32, 45, 0.85);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .lb-row-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
+        }
+        .lb-rank {
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            color: #64748b;
+            width: 24px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .lb-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .lb-name {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .lb-score {
+            font-family: 'Outfit', sans-serif;
+            font-size: 13.5px;
+            font-weight: 800;
+            color: #f59e0b;
+            flex-shrink: 0;
+        }
+    </style>
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -173,11 +639,11 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <!-- Lucide Vector Icons -->
-    <script src="lucide.min.js?v=6.6.0"></script>
+    <script src="lucide.min.js?v=7.2.0"></script>
     <!-- React & ReactDOM Core -->
-    <script src="react.min.js?v=6.6.0"></script>
-    <script src="react-dom.min.js?v=6.6.0"></script>
-    <link rel="stylesheet" href="style.css?v=6.6.0">
+    <script src="react.min.js?v=7.2.0"></script>
+    <script src="react-dom.min.js?v=7.2.0"></script>
+    <link rel="stylesheet" href="style.css?v=7.2.0">
 </head>
 <body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
 
@@ -906,11 +1372,11 @@
 
                     <!-- Toggle Tabs: Referrals vs Creators -->
                     <div class="rating-toggle-pill">
-                        <button type="button" class="rating-tab-btn active" id="tab-rating-referral" data-type="referral">
+                        <button type="button" class="rating-tab-btn active" id="tab-rating-referral" data-type="referral" onclick="window.switchRatingTab('referral')">
                             <i data-lucide="users" style="width:16px;height:16px;"></i>
                             <span data-i18n="rating_tab_ref">Do'stlar taklifi</span>
                         </button>
-                        <button type="button" class="rating-tab-btn" id="tab-rating-creator" data-type="creator">
+                        <button type="button" class="rating-tab-btn" id="tab-rating-creator" data-type="creator" onclick="window.switchRatingTab('creator')">
                             <i data-lucide="sparkles" style="width:16px;height:16px;"></i>
                             <span data-i18n="rating_tab_creator">Emoji ustalari</span>
                         </button>
@@ -1006,7 +1472,7 @@
                             <h4 class="bonus-title" data-i18n="bonus_card_title">Kunlik Bonus: +3 ⭐ Stars</h4>
                             <p class="bonus-desc" id="bonus-desc-text" data-i18n="bonus_card_desc">Har 24 soatda bepul Stars sovg'asini oling!</p>
                         </div>
-                        <button type="button" class="btn-claim-bonus" id="btn-claim-daily-bonus">
+                        <button type="button" class="btn-claim-bonus" id="btn-claim-daily-bonus" onclick="window.claimDailyBonus()">
                             <span id="claim-btn-text" data-i18n="btn_claim_now">Olish (3 ⭐)</span>
                         </button>
                     </div>
@@ -1158,13 +1624,13 @@
                         </span>
                     </div>
                     <div class="lang-switch-row">
-                        <button type="button" class="lang-switch-btn active" data-lang="uz">
+                        <button type="button" class="lang-switch-btn active" data-lang="uz" onclick="window.applyLanguage('uz')">
                             <span>🇺🇿</span> O'zbekcha
                         </button>
-                        <button type="button" class="lang-switch-btn" data-lang="ru">
+                        <button type="button" class="lang-switch-btn" data-lang="ru" onclick="window.applyLanguage('ru')">
                             <span>🇷🇺</span> Русский
                         </button>
-                        <button type="button" class="lang-switch-btn" data-lang="en">
+                        <button type="button" class="lang-switch-btn" data-lang="en" onclick="window.applyLanguage('en')">
                             <span>🇬🇧</span> English
                         </button>
                     </div>
@@ -1182,7 +1648,7 @@
                         © 2026 <b>GN Studio</b>. Barcha huquqlar himoyalangan.
                     </p>
                     <div class="footer-tags-row">
-                        <span class="footer-tag">Ver: 6.6.0</span>
+                        <span class="footer-tag">Ver: 7.2.0</span>
                         <span class="footer-tag-dot">•</span>
                         <span class="footer-tag">Official Telegram Mini App</span>
                     </div>
@@ -1208,7 +1674,7 @@
 
         <!-- ==================== BOTTOM NAVIGATION BAR ==================== -->
         <nav class="bottom-nav" id="bottom-nav">
-            <button type="button" class="bottom-nav-item active" id="nav-btn-studio" data-view="studio">
+            <button type="button" class="bottom-nav-item active" id="nav-btn-studio" data-view="studio" onclick="window.switchMainView('studio')">
                 <div class="nav-icon-wrap">
                     <i data-lucide="palette" class="lucide-nav-icon" style="width:22px;height:22px;"></i>
                 </div>
@@ -1216,7 +1682,7 @@
                 <span class="nav-active-pill"></span>
             </button>
 
-            <button type="button" class="bottom-nav-item" id="nav-btn-rating" data-view="rating">
+            <button type="button" class="bottom-nav-item" id="nav-btn-rating" data-view="rating" onclick="window.switchMainView('rating')">
                 <div class="nav-icon-wrap">
                     <i data-lucide="trophy" class="lucide-nav-icon" style="width:22px;height:22px;"></i>
                 </div>
@@ -1224,7 +1690,7 @@
                 <span class="nav-active-pill"></span>
             </button>
 
-            <button type="button" class="bottom-nav-item" id="nav-btn-profile" data-view="profile">
+            <button type="button" class="bottom-nav-item" id="nav-btn-profile" data-view="profile" onclick="window.switchMainView('profile')">
                 <div class="nav-icon-wrap">
                     <i data-lucide="user" class="lucide-nav-icon" style="width:22px;height:22px;"></i>
                 </div>
@@ -1519,15 +1985,15 @@
         }
 
         var s1 = document.createElement('script');
-        s1.src = 'ticket_templates.js?v=6.6.0';
+        s1.src = 'ticket_templates.js?v=7.2.0';
         s1.onload = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=6.6.0';
+            s2.src = 'app.js?v=7.2.0';
             document.body.appendChild(s2);
         };
         s1.onerror = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=6.6.0';
+            s2.src = 'app.js?v=7.2.0';
             document.body.appendChild(s2);
         };
         document.body.appendChild(s1);

@@ -217,42 +217,27 @@ async def create_unique_custom_emoji_set(
 
 
 def get_main_menu_markup(user_id: int) -> InlineKeyboardMarkup:
-    lang = get_user_language(user_id)
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=f"📱 {t('btn_open_miniapp', lang)}",
+                    text="✎︎ Konstruktorni ochish",
                     web_app=WebAppInfo(url=WEBAPP_URL)
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"🎁 {t('btn_daily_bonus', lang)}",
-                    callback_data="menu_daily_bonus"
+                    text="🗪 Yordam",
+                    callback_data="cmd_help_cb"
                 ),
                 InlineKeyboardButton(
-                    text=f"💳 {t('btn_wallet', lang)}",
-                    callback_data="menu_wallet"
+                    text="≡ Ma'lumot",
+                    callback_data="cmd_info_cb"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"👥 {t('btn_referral', lang)}",
-                    callback_data="menu_ref"
-                ),
-                InlineKeyboardButton(
-                    text=f"📦 {t('btn_my_packs', lang)}",
-                    callback_data="menu_packs"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text=f"🌐 {t('btn_language', lang)}",
-                    callback_data="menu_language"
-                ),
-                InlineKeyboardButton(
-                    text="📢 Kanal",
+                    text="➤ Kanal",
                     url=CHANNEL_URL
                 )
             ]
@@ -334,20 +319,25 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
             logger.warning(f"Referrer xabarnoma xatosi {awarded_ref}: {e}")
 
     full_name = f"{user.first_name} {user.last_name}".strip() if user.last_name else (user.first_name or "Foydalanuvchi")
-    welcome_text = t("start_greeting", lang, name=full_name)
+    welcome_text = (
+        f"Salom, {full_name}!\n\n"
+        "Bu yerda siz emoji yasashingiz mumkin ."
+    )
 
-    await message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
+    await message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id))
 
 
 @router.callback_query(F.data == "menu_main")
 async def cb_menu_main(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     user = callback.from_user
-    lang = get_user_language(user.id)
     full_name = f"{user.first_name} {user.last_name}".strip() if user.last_name else (user.first_name or "Foydalanuvchi")
 
-    text = t("start_greeting", lang, name=full_name)
-    await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
+    text = (
+        f"Salom, {full_name}!\n\n"
+        "Bu yerda siz emoji yasashingiz mumkin ."
+    )
+    await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id))
     await callback.answer()
 
 

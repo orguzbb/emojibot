@@ -464,7 +464,29 @@ const dom = {
     profilePacksList: document.getElementById('profile-packs-list'),
     btnGotoStudio: document.getElementById('btn-goto-studio'),
     btnProfileChannel: document.getElementById('btn-profile-channel'),
-    btnProfileHelp: document.getElementById('btn-profile-help')
+    btnProfileHelp: document.getElementById('btn-profile-help'),
+
+    // Views & Main Navigation
+    viewStudio: document.getElementById('view-studio'),
+    viewRating: document.getElementById('view-rating'),
+    viewProfile: document.getElementById('view-profile'),
+    navBtnStudio: document.getElementById('nav-btn-studio'),
+    navBtnRating: document.getElementById('nav-btn-rating'),
+    navBtnProfile: document.getElementById('nav-btn-profile'),
+
+    // Rating (Leaderboard) Elements
+    tabRatingReferral: document.getElementById('tab-rating-referral'),
+    tabRatingCreator: document.getElementById('tab-rating-creator'),
+    myRankNum: document.getElementById('my-rank-num'),
+    myRankVal: document.getElementById('my-rank-val'),
+    myRankBadge: document.getElementById('my-rank-badge'),
+    leaderboardList: document.getElementById('leaderboard-list'),
+
+    // Daily Bonus Elements
+    dailyBonusCard: document.getElementById('daily-bonus-card'),
+    btnClaimDailyBonus: document.getElementById('btn-claim-daily-bonus'),
+    claimBtnText: document.getElementById('claim-btn-text'),
+    bonusDescText: document.getElementById('bonus-desc-text')
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -1433,39 +1455,47 @@ function applyLanguage(lang) {
 
 // ==================== VIEW SWITCHER (3 TABS) ====================
 function switchMainView(viewName) {
-    if (viewName === 'rating') {
-        dom.viewStudio?.classList.add('hidden');
-        dom.viewProfile?.classList.add('hidden');
-        dom.viewRating?.classList.remove('hidden');
+    haptic('selection');
+    const vStudio = dom.viewStudio || document.getElementById('view-studio');
+    const vRating = dom.viewRating || document.getElementById('view-rating');
+    const vProfile = dom.viewProfile || document.getElementById('view-profile');
+    const btnStudio = dom.navBtnStudio || document.getElementById('nav-btn-studio');
+    const btnRating = dom.navBtnRating || document.getElementById('nav-btn-rating');
+    const btnProfile = dom.navBtnProfile || document.getElementById('nav-btn-profile');
 
-        dom.navBtnStudio?.classList.remove('active');
-        dom.navBtnProfile?.classList.remove('active');
-        dom.navBtnRating?.classList.add('active');
+    if (viewName === 'rating') {
+        vStudio?.classList.add('hidden');
+        vProfile?.classList.add('hidden');
+        vRating?.classList.remove('hidden');
+
+        btnStudio?.classList.remove('active');
+        btnProfile?.classList.remove('active');
+        btnRating?.classList.add('active');
 
         dom.bottomActionBar?.classList.remove('visible');
         loadLeaderboard(state.ratingTab || 'referral');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (viewName === 'profile') {
-        dom.viewStudio?.classList.add('hidden');
-        dom.viewRating?.classList.add('hidden');
-        dom.viewProfile?.classList.remove('hidden');
+        vStudio?.classList.add('hidden');
+        vRating?.classList.add('hidden');
+        vProfile?.classList.remove('hidden');
 
-        dom.navBtnStudio?.classList.remove('active');
-        dom.navBtnRating?.classList.remove('active');
-        dom.navBtnProfile?.classList.add('active');
+        btnStudio?.classList.remove('active');
+        btnRating?.classList.remove('active');
+        btnProfile?.classList.add('active');
 
         dom.bottomActionBar?.classList.remove('visible');
         updateProfileUI();
         checkDailyBonusStatus();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-        dom.viewRating?.classList.add('hidden');
-        dom.viewProfile?.classList.add('hidden');
-        dom.viewStudio?.classList.remove('hidden');
+        vRating?.classList.add('hidden');
+        vProfile?.classList.add('hidden');
+        vStudio?.classList.remove('hidden');
 
-        dom.navBtnRating?.classList.remove('active');
-        dom.navBtnProfile?.classList.remove('active');
-        dom.navBtnStudio?.classList.add('active');
+        btnRating?.classList.remove('active');
+        btnProfile?.classList.remove('active');
+        btnStudio?.classList.add('active');
 
         updateSelectionStatus();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1474,6 +1504,24 @@ function switchMainView(viewName) {
         window.lucide.createIcons();
     }
 }
+window.switchMainView = switchMainView;
+
+function switchRatingTab(tabType) {
+    haptic('selection');
+    state.ratingTab = tabType;
+    const tabRef = dom.tabRatingReferral || document.getElementById('tab-rating-referral');
+    const tabCreator = dom.tabRatingCreator || document.getElementById('tab-rating-creator');
+    if (tabType === 'creator') {
+        tabCreator?.classList.add('active');
+        tabRef?.classList.remove('active');
+    } else {
+        tabRef?.classList.add('active');
+        tabCreator?.classList.remove('active');
+    }
+    loadLeaderboard(tabType);
+}
+window.switchRatingTab = switchRatingTab;
+window.applyLanguage = applyLanguage;
 
 // ==================== LEADERBOARD (REYTING) ====================
 state.ratingTab = 'referral';
@@ -1587,9 +1635,9 @@ function updateDailyBonusUI(data) {
         clearInterval(bonusCooldownTimer);
         bonusCooldownTimer = null;
     }
-    const btn = dom.btnClaimDailyBonus;
-    const btnTxt = dom.claimBtnText;
-    const descTxt = dom.bonusDescText;
+    const btn = dom.btnClaimDailyBonus || document.getElementById('btn-claim-daily-bonus');
+    const btnTxt = dom.claimBtnText || document.getElementById('claim-btn-text');
+    const descTxt = dom.bonusDescText || document.getElementById('bonus-desc-text');
     if (!btn || !btnTxt) return;
 
     if (data.can_claim) {
@@ -1618,7 +1666,7 @@ function updateDailyBonusUI(data) {
 
 async function claimDailyBonus() {
     const uid = state.user?.id || 1323217434;
-    const btn = dom.btnClaimDailyBonus;
+    const btn = dom.btnClaimDailyBonus || document.getElementById('btn-claim-daily-bonus');
     if (!btn || btn.disabled) return;
     btn.disabled = true;
     haptic('medium');
@@ -1651,6 +1699,7 @@ async function claimDailyBonus() {
         btn.disabled = false;
     }
 }
+window.claimDailyBonus = claimDailyBonus;
 
 
 function getPreviewCacheKey(file, scale, text = null) {
