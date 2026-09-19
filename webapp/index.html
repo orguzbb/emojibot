@@ -201,9 +201,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
             flex-shrink: 0;
             animation: bounceSlow 3s ease-in-out infinite;
+        }
+        .bonus-svg-icon {
+            width: 26px;
+            height: 26px;
+            filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.6));
         }
         @keyframes bounceSlow {
             0%, 100% { transform: translateY(0); }
@@ -294,8 +298,8 @@
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 6px !important;
-            padding: 10px 12px !important;
+            gap: 8px !important;
+            padding: 10px 10px !important;
             background: rgba(255, 255, 255, 0.05) !important;
             border: 1px solid rgba(255, 255, 255, 0.12) !important;
             border-radius: 12px !important;
@@ -315,6 +319,26 @@
             border-color: #a855f7 !important;
             color: #ffffff !important;
             box-shadow: 0 0 14px rgba(168, 85, 247, 0.35) !important;
+        }
+        .lang-svg-flag {
+            width: 20px;
+            height: 15px;
+            border-radius: 3px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .podium-svg-crown {
+            width: 28px;
+            height: 28px;
+            filter: drop-shadow(0 2px 10px rgba(245, 158, 11, 0.7));
+            animation: bounceSlow 3s ease-in-out infinite;
+        }
+        .podium-svg-medal {
+            width: 24px;
+            height: 24px;
+            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
         }
 
         /* Rating / Leaderboard */
@@ -639,11 +663,11 @@
     <!-- Canvas Confetti -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <!-- Lucide Vector Icons -->
-    <script src="lucide.min.js?v=7.2.0"></script>
+    <script src="lucide.min.js?v=7.3.0"></script>
     <!-- React & ReactDOM Core -->
-    <script src="react.min.js?v=7.2.0"></script>
-    <script src="react-dom.min.js?v=7.2.0"></script>
-    <link rel="stylesheet" href="style.css?v=7.2.0">
+    <script src="react.min.js?v=7.3.0"></script>
+    <script src="react-dom.min.js?v=7.3.0"></script>
+    <link rel="stylesheet" href="style.css?v=7.3.0">
 </head>
 <body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
 
@@ -664,26 +688,32 @@
             
             <div class="guard-badge">
                 <span class="guard-badge-dot"></span>
-                <span>FAQAT TELEGRAM ILovasi UCHUN</span>
+                <span data-i18n="guard_badge">FAQAT TELEGRAM ILOVASI UCHUN</span>
             </div>
 
-            <h2 class="guard-title">Faqat Telegram orqali ochiladi</h2>
-            <p class="guard-desc">
+            <h2 class="guard-title" data-i18n="guard_title">Faqat Telegram orqali ochiladi</h2>
+            <p class="guard-desc" data-i18n="guard_desc">
                 <b>GnEmoji Studio</b> mini ilovasi faqat rasmiy <b>Telegram</b> orqali xavfsiz foydalanish va maxsus emoji to'plamlarini avtomatik chiqarish uchun himoyalangan.
             </p>
 
             <div class="guard-features-list">
                 <div class="guard-feat-item">
-                    <span class="guard-feat-icon">⚡</span>
-                    <span>180+ Telegram Animated Emojilar</span>
+                    <span class="guard-feat-icon">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#38bdf8" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    </span>
+                    <span data-i18n="guard_feat_1">180+ Telegram Animated Emojilar</span>
                 </div>
                 <div class="guard-feat-item">
-                    <span class="guard-feat-icon">🎨</span>
-                    <span>Matnli, Logo va 3D Metallik Uslublar</span>
+                    <span class="guard-feat-icon">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#a855f7" stroke-width="2.5"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"></path></svg>
+                    </span>
+                    <span data-i18n="guard_feat_2">Matnli, Logo va 3D Metallik Uslublar</span>
                 </div>
                 <div class="guard-feat-item">
-                    <span class="guard-feat-icon">🔒</span>
-                    <span>Rasmiy Telegram Stars & API orqali himoyalangan</span>
+                    <span class="guard-feat-icon">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </span>
+                    <span data-i18n="guard_feat_3">Rasmiy Telegram Stars & API orqali himoyalangan</span>
                 </div>
             </div>
 
@@ -692,7 +722,7 @@
                     <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z"/>
                     </svg>
-                    <span>Telegram Botda Ochish</span>
+                    <span data-i18n="guard_btn_open">Telegram Botda Ochish</span>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
@@ -700,7 +730,7 @@
             </div>
 
             <div class="guard-footer">
-                <span>© 2026 GN Studio • Barcha huquqlar himoyalangan</span>
+                <span data-i18n="guard_copy">© 2026 GN Studio • Barcha huquqlar himoyalangan</span>
             </div>
         </div>
     </div>
@@ -716,7 +746,7 @@
             <div class="loader-bar-bg">
                 <div class="loader-bar-fill" id="loader-bar"></div>
             </div>
-            <span class="loader-status" id="loader-status">Shablonlar yuklanmoqda...</span>
+            <span class="loader-status" id="loader-status" data-i18n="loader_status">Shablonlar yuklanmoqda...</span>
         </div>
     </div>
 
@@ -755,7 +785,7 @@
                             <line x1="9" y1="20" x2="15" y2="20"></line>
                             <line x1="12" y1="4" x2="12" y2="20"></line>
                         </svg>
-                        <span>Matn</span>
+                        <span data-i18n="mode_text">Matn</span>
                     </button>
                     <button type="button" class="mode-tab" id="mode-tab-svg" data-mode="svg">
                         <svg class="mode-tab-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -764,7 +794,7 @@
                             <path d="M2 2l7.586 7.586"></path>
                             <circle cx="11" cy="11" r="2"></circle>
                         </svg>
-                        <span>SVG Vektor</span>
+                        <span data-i18n="mode_svg">SVG Vektor</span>
                         <span class="mode-badge-new">NEW</span>
                     </button>
                 </div>
@@ -777,7 +807,7 @@
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
-                            <span>Ism yoki Matn kiriting</span>
+                            <span data-i18n="label_name_input">Ism yoki Matn kiriting</span>
                         </label>
                         <div class="input-actions-top">
                             <button type="button" class="btn-text-action" id="btn-clear-name" title="Tozalash">
@@ -795,6 +825,7 @@
                             id="name-input" 
                             class="name-input" 
                             placeholder="MASALAN: ISMINGIZ" 
+                            data-i18n-ph="ph_name_input"
                             maxlength="16" 
                             autocomplete="off" 
                             spellcheck="false"
@@ -810,48 +841,48 @@
                                 <line x1="9" y1="20" x2="15" y2="20"></line>
                                 <line x1="12" y1="4" x2="12" y2="20"></line>
                             </svg>
-                            Shrift turi:
+                            <span data-i18n="font_selector_label">Shrift turi:</span>
                         </span>
                         <div class="font-pills" id="font-pills">
                             <button type="button" class="font-pill active" data-font="stapel">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-stapel">Stapel</span>
-                                <span class="pill-sub">Geometrik</span>
+                                <span class="pill-sub" data-i18n="font_stapel_sub">Geometrik</span>
                             </button>
                             <button type="button" class="font-pill" data-font="inter">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-inter">Inter</span>
-                                <span class="pill-sub">Klassik</span>
+                                <span class="pill-sub" data-i18n="font_inter_sub">Klassik</span>
                             </button>
                             <button type="button" class="font-pill" data-font="grobold">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-grobold">Grobold</span>
-                                <span class="pill-sub">Zamonaviy</span>
+                                <span class="pill-sub" data-i18n="font_grobold_sub">Zamonaviy</span>
                             </button>
                             <button type="button" class="font-pill" data-font="montserrat">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-montserrat">Montserrat</span>
-                                <span class="pill-sub">Hashamatli</span>
+                                <span class="pill-sub" data-i18n="font_montserrat_sub">Hashamatli</span>
                             </button>
                             <button type="button" class="font-pill" data-font="bebas">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-bebas">Bebas</span>
-                                <span class="pill-sub">Tik & Kuchli</span>
+                                <span class="pill-sub" data-i18n="font_bebas_sub">Tik & Kuchli</span>
                             </button>
                             <button type="button" class="font-pill" data-font="rubik">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-rubik">Rubik</span>
-                                <span class="pill-sub">Yumshoq</span>
+                                <span class="pill-sub" data-i18n="font_rubik_sub">Yumshoq</span>
                             </button>
                             <button type="button" class="font-pill" data-font="poppins">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-poppins">Poppins</span>
-                                <span class="pill-sub">Silliq</span>
+                                <span class="pill-sub" data-i18n="font_poppins_sub">Silliq</span>
                             </button>
                             <button type="button" class="font-pill" data-font="impact">
                                 <span class="pill-dot"></span>
                                 <span class="pill-title font-impact">Impact</span>
-                                <span class="pill-sub">Katta & Qalin</span>
+                                <span class="pill-sub" data-i18n="font_impact_sub">Katta & Qalin</span>
                             </button>
                         </div>
                     </div>
@@ -866,7 +897,7 @@
                                 <polyline points="17 8 12 3 7 8"></polyline>
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
-                            <span>SVG Vektor Fayl (.svg)</span>
+                            <span data-i18n="label_svg_file">SVG Vektor Fayl (.svg)</span>
                         </label>
                     </div>
 
@@ -884,8 +915,8 @@
                                 </svg>
                             </div>
                             <div class="svg-dropzone-text">
-                                <span class="dropzone-main-txt"><strong>SVG faylni tanlang</strong> yoki bu yerga tashlang</span>
-                                <span class="dropzone-sub-txt">Faqat <code>.svg</code> vektor fayli (PNG/JPG qabul qilinmaydi)</span>
+                                <span class="dropzone-main-txt"><strong data-i18n="dropzone_main">SVG faylni tanlang</strong> yoki bu yerga tashlang</span>
+                                <span class="dropzone-sub-txt" data-i18n="dropzone_sub">Faqat <code>.svg</code> vektor fayli (PNG/JPG qabul qilinmaydi)</span>
                             </div>
                         </div>
                     </div>
@@ -895,10 +926,10 @@
                         <div class="svg-thumb-preview" id="svg-thumb-preview"></div>
                         <div class="svg-file-info">
                             <span class="svg-file-title" id="svg-file-name">Fayl.svg</span>
-                            <span class="svg-file-status">✓ SVG faol va tayyor</span>
+                            <span class="svg-file-status" data-i18n="svg_active_status">✓ SVG faol va tayyor</span>
                         </div>
                         <div class="svg-card-actions">
-                            <button type="button" class="btn-change-svg" id="btn-change-svg" title="Boshqa SVG tanlash">
+                            <button type="button" class="btn-change-svg" id="btn-change-svg" title="Boshqa SVG tanlash" data-i18n="btn_change_svg">
                                 Almashtirish
                             </button>
                             <button type="button" class="btn-remove-svg" id="btn-remove-svg" title="SVG ni o'chirish">
@@ -915,7 +946,7 @@
                                     <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                                     <line x1="7" y1="7" x2="7.01" y2="7"></line>
                                 </svg>
-                                <span>To'plam nomi (Link uchun nom)</span>
+                                <span data-i18n="label_svg_pack">To'plam nomi (Link uchun nom)</span>
                             </label>
                         </div>
                         <div class="input-field-wrapper">
@@ -924,6 +955,7 @@
                                 id="svg-pack-name-input" 
                                 class="name-input" 
                                 placeholder="MASALAN: ABDURAHIM" 
+                                data-i18n-ph="ph_svg_pack"
                                 maxlength="20" 
                                 autocomplete="off" 
                                 spellcheck="false"
@@ -935,7 +967,7 @@
                 <!-- Text / SVG Scale Slider (O'lcham) -->
                 <div class="size-slider-row">
                     <div class="size-slider-label-wrap">
-                        <span class="size-slider-label">O'lcham (Masshtab)</span>
+                        <span class="size-slider-label" data-i18n="size_label">O'lcham (Masshtab)</span>
                         <span class="size-val-badge" id="size-val-display">100%</span>
                     </div>
                     <div class="slider-track-wrap">
@@ -953,13 +985,13 @@
                                     <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12"></path>
                                     <circle cx="12" cy="12" r="4"></circle>
                                 </svg>
-                                <span id="color-picker-label-text">Ranglarni sozlash</span>
+                                <span id="color-picker-label-text" data-i18n="color_customizer_title">Ranglarni sozlash</span>
                             </span>
                         </div>
                         <div class="color-summary-badges">
-                            <span class="color-mini-badge" id="badge-summary-outer" title="Tashqi chegara"><span class="badge-dot" id="dot-summary-outer" style="background-color: #ffffff;"></span> Tashqi</span>
-                            <span class="color-mini-badge" id="badge-summary-inner" title="Ichki qism"><span class="badge-dot" id="dot-summary-inner" style="background-color: #000000;"></span> Ichki</span>
-                            <span class="color-mini-badge" id="badge-summary-text" title="Matn rangi"><span class="badge-dot" id="dot-summary-text" style="background-color: #ffffff;"></span> Matn</span>
+                            <span class="color-mini-badge" id="badge-summary-outer" title="Tashqi chegara"><span class="badge-dot" id="dot-summary-outer" style="background-color: #ffffff;"></span> <span data-i18n="badge_outer">Tashqi</span></span>
+                            <span class="color-mini-badge" id="badge-summary-inner" title="Ichki qism"><span class="badge-dot" id="dot-summary-inner" style="background-color: #000000;"></span> <span data-i18n="badge_inner">Ichki</span></span>
+                            <span class="color-mini-badge" id="badge-summary-text" title="Matn rangi"><span class="badge-dot" id="dot-summary-text" style="background-color: #ffffff;"></span> <span data-i18n="badge_text">Matn</span></span>
                         </div>
                     </div>
 
@@ -967,15 +999,15 @@
                     <div class="color-target-pills-row" id="color-target-tabs">
                         <button type="button" class="color-target-pill active" data-target="outer" id="target-pill-outer">
                             <span class="target-indicator-dot" id="target-dot-outer" style="background-color: #ffffff;"></span>
-                            <span class="target-pill-label">Tashqi chegara</span>
+                            <span class="target-pill-label" data-i18n="target_outer">Tashqi chegara</span>
                         </button>
                         <button type="button" class="color-target-pill" data-target="inner" id="target-pill-inner">
                             <span class="target-indicator-dot" id="target-dot-inner" style="background-color: #000000;"></span>
-                            <span class="target-pill-label">Ichki qism</span>
+                            <span class="target-pill-label" data-i18n="target_inner">Ichki qism</span>
                         </button>
                         <button type="button" class="color-target-pill" data-target="text" id="target-pill-text">
                             <span class="target-indicator-dot" id="target-dot-text" style="background-color: #ffffff;"></span>
-                            <span class="target-pill-label">Matn rangi</span>
+                            <span class="target-pill-label" data-i18n="target_text">Matn rangi</span>
                         </button>
                     </div>
                     
@@ -991,12 +1023,12 @@
                             <input type="color" id="logo-color-picker" value="#ffffff" class="native-color-input">
                             <button type="button" class="btn-color-picker-trigger" id="btn-color-picker-trigger" title="Rang palitrasi">
                                 <span class="color-swatch-circle" id="picker-swatch-circle" style="background-color: #ffffff;"></span>
-                                <span>Tanlash</span>
+                                <span data-i18n="btn_choose_color">Tanlash</span>
                             </button>
                         </div>
                         
                         <!-- Reset Button -->
-                        <button type="button" class="btn-reset-badge-color" id="btn-reset-badge-color" title="Standart holatga qaytarish">
+                        <button type="button" class="btn-reset-badge-color" id="btn-reset-badge-color" title="Standart holatga qaytarish" data-i18n="btn_reset_color">
                             ↺ Qaytarish
                         </button>
                     </div>
@@ -1028,7 +1060,7 @@
                                 <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                                 <line x1="12" y1="22.08" x2="12" y2="12"></line>
                             </svg>
-                            To'plam turi:
+                            <span data-i18n="dest_label">To'plam turi:</span>
                         </span>
                     </div>
                     <div class="destination-toggle-pills" id="destination-pills">
@@ -1037,18 +1069,18 @@
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
-                            <span>Yangi to'plam</span>
+                            <span data-i18n="dest_new">Yangi to'plam</span>
                         </button>
                         <button type="button" class="dest-pill" id="dest-pill-existing" data-dest="existing">
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                             </svg>
-                            <span>Mavjud to'plamga</span>
+                            <span data-i18n="dest_existing">Mavjud to'plamga</span>
                         </button>
                     </div>
                     <div class="existing-pack-select-wrapper hidden" id="existing-pack-select-wrapper">
                         <select id="existing-pack-select" class="custom-select">
-                            <option value="">Yuklanmoqda...</option>
+                            <option value="" data-i18n="ph_select_existing">Yuklanmoqda...</option>
                         </select>
                     </div>
                 </div>
@@ -1059,7 +1091,7 @@
                 <div class="preview-header">
                     <div class="live-badge">
                         <span class="live-pulse"></span>
-                        <span>Jonli Prevyu</span>
+                        <span data-i18n="live_preview_badge">Jonli Prevyu</span>
                     </div>
                     <div class="current-template-tag" id="current-template-tag">
                         Ticket #1
@@ -1070,7 +1102,7 @@
                 </div>
                 <div class="preview-footer">
                     <span class="preview-text-info">
-                        Matn: <b id="preview-text-display">ISMINGIZ</b> | Shrift: <b id="preview-font-display">Stapel</b>
+                        <span data-i18n="preview_info_text">Matn:</span> <b id="preview-text-display">ISMINGIZ</b> | <span data-i18n="preview_info_font">Shrift:</span> <b id="preview-font-display">Stapel</b>
                     </span>
                 </div>
             </div>
@@ -1084,28 +1116,28 @@
                         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                         <line x1="7" y1="7" x2="7.01" y2="7"></line>
                     </svg>
-                    <span class="tab-text">Name</span>
+                    <span class="tab-text" data-i18n="tab_name">Name</span>
                     <span class="tab-counter" id="tab-counter-name">13</span>
                 </button>
                 <button type="button" class="nav-tab" id="tab-btn-logo" data-tab="logo">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path>
                     </svg>
-                    <span class="tab-text">Logo</span>
+                    <span class="tab-text" data-i18n="tab_logo">Logo</span>
                     <span class="tab-counter" id="tab-counter-logo">103</span>
                 </button>
                 <button type="button" class="nav-tab" id="tab-btn-grey" data-tab="grey">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
                     </svg>
-                    <span class="tab-text">Grey</span>
+                    <span class="tab-text" data-i18n="tab_grey">Grey</span>
                     <span class="tab-counter" id="tab-counter-grey">65</span>
                 </button>
                 <button type="button" class="nav-tab" id="tab-btn-hq" data-tab="hq">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
-                    <span class="tab-text">HQ</span>
+                    <span class="tab-text" data-i18n="tab_hq">HQ</span>
                     <span class="tab-counter" id="tab-counter-hq">80</span>
                 </button>
             </div>
@@ -1116,24 +1148,24 @@
             <div class="section-intro">
                 <div class="intro-texts">
                     <div class="title-with-badge">
-                        <h2 class="section-title">Ticket Emojilar</h2>
-                        <span class="badge-pill-cyan">13 ta 100x100 Ticket</span>
+                        <h2 class="section-title" data-i18n="tab_name_title">Ticket Emojilar</h2>
+                        <span class="badge-pill-cyan" data-i18n="tab_name_badge">13 ta 100x100 Ticket</span>
                     </div>
-                    <p class="section-desc">1.tgs dan 13.tgs gacha bo'lgan maxsus ticket animatsiyalaridan birini yoki bir nechtasini tanlang</p>
+                    <p class="section-desc" data-i18n="tab_name_desc">1.tgs dan 13.tgs gacha bo'lgan maxsus ticket animatsiyalaridan birini yoki bir nechtasini tanlang</p>
                 </div>
                 <div class="search-bar">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="template-search" placeholder="Ticket raqamini qidirish (1-13)...">
+                    <input type="text" id="template-search" placeholder="Ticket raqamini qidirish (1-13)..." data-i18n-ph="ph_search_tickets">
                 </div>
                 <div class="grid-toolbar">
                     <button type="button" class="btn-select-all" id="btn-select-all-tickets">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        <span id="txt-select-all-tickets">Hammasini belgilash</span>
+                        <span id="txt-select-all-tickets" data-i18n="btn_select_all">Hammasini belgilash</span>
                     </button>
                     <span class="selection-counter" id="ticket-selection-count">0 ta tanlandi</span>
                 </div>
@@ -1152,10 +1184,10 @@
                     <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
-                    PREMIUM LOGO PACK
+                    <span data-i18n="tab_logo_badge">PREMIUM LOGO PACK</span>
                 </div>
-                <h2 class="logo-hero-title">103 ta Logo Shablonlar To'plami</h2>
-                <p class="logo-hero-desc">
+                <h2 class="logo-hero-title" data-i18n="tab_logo_title">103 ta Logo Shablonlar To'plami</h2>
+                <p class="logo-hero-desc" data-i18n="tab_logo_desc">
                     Ismingiz uchun 14.tgs dan 117.tgs gacha barcha turli uslubdagi doiraviy va logo emojilarni 1 bosishda to'liq to'plam sifatida yarating!
                 </p>
 
@@ -1163,31 +1195,31 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                     </svg>
-                    <span class="btn-text">To'liq 103 ta Logoni Yaratish</span>
+                    <span class="btn-text" data-i18n="btn_create_fullpack_logo">To'liq 103 ta Logoni Yaratish</span>
                 </button>
             </div>
 
             <div class="section-intro" style="margin-top: 24px;">
                 <div class="intro-texts">
                     <div class="title-with-badge">
-                        <h2 class="section-title">Barcha Logo Shablonlar</h2>
+                        <h2 class="section-title" data-i18n="all_logos_title">Barcha Logo Shablonlar</h2>
                         <span class="badge-pill-cyan">14.tgs — 117.tgs</span>
                     </div>
-                    <p class="section-desc">Kerakli logoni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
+                    <p class="section-desc" data-i18n="all_logos_desc">Kerakli logoni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
                 </div>
                 <div class="search-bar">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="logo-search" placeholder="Logo raqamini qidirish (14-117)...">
+                    <input type="text" id="logo-search" placeholder="Logo raqamini qidirish (14-117)..." data-i18n-ph="ph_search_logos">
                 </div>
                 <div class="grid-toolbar">
                     <button type="button" class="btn-select-all" id="btn-select-all-logos">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        <span id="txt-select-all-logos">Hammasini belgilash</span>
+                        <span id="txt-select-all-logos" data-i18n="btn_select_all">Hammasini belgilash</span>
                     </button>
                     <span class="selection-counter" id="logo-selection-count">0 ta tanlandi</span>
                 </div>
@@ -1207,41 +1239,41 @@
                     <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
-                    PREMIUM GREY PACK
+                    <span data-i18n="tab_grey_badge">PREMIUM GREY PACK</span>
                 </div>
-                <h2 class="logo-hero-title">65 ta Grey 3D Emoji Shablonlar</h2>
-                <p class="logo-hero-desc">
+                <h2 class="logo-hero-title" data-i18n="tab_grey_title">65 ta Grey 3D Emoji Shablonlar</h2>
+                <p class="logo-hero-desc" data-i18n="tab_grey_desc">
                     Kumushrang, metallik va nozik 3D uslubdagi yangi shablonlar to'plami. Tanlangan yoki to'liq 65 ta emojini 1 bosishda yarating!
                 </p>
                 <button type="button" class="btn-create-fullpack" id="btn-create-grey-fullpack" style="background: linear-gradient(135deg, #475569 0%, #334155 100%); box-shadow: 0 8px 25px rgba(71, 85, 105, 0.45); border: 1px solid rgba(255, 255, 255, 0.15);">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                     </svg>
-                    <span class="btn-text">To'liq 65 ta Grey Emojini Yaratish</span>
+                    <span class="btn-text" data-i18n="btn_create_fullpack_grey">To'liq 65 ta Grey Emojini Yaratish</span>
                 </button>
             </div>
 
             <div class="section-intro" style="margin-top: 24px;">
                 <div class="intro-texts">
                     <div class="title-with-badge">
-                        <h2 class="section-title">Barcha Grey Shablonlar</h2>
+                        <h2 class="section-title" data-i18n="all_grey_title">Barcha Grey Shablonlar</h2>
                         <span class="badge-pill-cyan" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3);">118.tgs — 182.tgs</span>
                     </div>
-                    <p class="section-desc">Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
+                    <p class="section-desc" data-i18n="all_grey_desc">Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
                 </div>
                 <div class="search-bar">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="grey-search" placeholder="Grey emoji raqamini qidirish (1-65)...">
+                    <input type="text" id="grey-search" placeholder="Grey emoji raqamini qidirish (1-65)..." data-i18n-ph="ph_search_grey">
                 </div>
                 <div class="grid-toolbar">
                     <button type="button" class="btn-select-all" id="btn-select-all-grey">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        <span id="txt-select-all-grey">Hammasini belgilash</span>
+                        <span id="txt-select-all-grey" data-i18n="btn_select_all">Hammasini belgilash</span>
                     </button>
                     <span class="selection-counter" id="grey-selection-count">0 ta tanlandi</span>
                 </div>
@@ -1261,41 +1293,41 @@
                     <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
-                    HIGH QUALITY PACK
+                    <span data-i18n="tab_hq_badge">HIGH QUALITY PACK</span>
                 </div>
-                <h2 class="logo-hero-title">80 ta High Quality 3D Emoji Shablonlar</h2>
-                <p class="logo-hero-desc">
+                <h2 class="logo-hero-title" data-i18n="tab_hq_title">80 ta High Quality 3D Emoji Shablonlar</h2>
+                <p class="logo-hero-desc" data-i18n="tab_hq_desc">
                     Premium darajadagi eng so'nggi 3D harakatlanuvchi zamonaviy shablonlar to'plami. Barcha 80 ta emojini 1 bosishda to'liq yarating!
                 </p>
                 <button type="button" class="btn-create-fullpack" id="btn-create-hq-fullpack" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.45); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; font-weight: 800;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                     </svg>
-                    <span class="btn-text">To'liq 80 ta High Quality Emojini Yaratish</span>
+                    <span class="btn-text" data-i18n="btn_create_fullpack_hq">To'liq 80 ta High Quality Emojini Yaratish</span>
                 </button>
             </div>
 
             <div class="section-intro" style="margin-top: 24px;">
                 <div class="intro-texts">
                     <div class="title-with-badge">
-                        <h2 class="section-title">Barcha High Quality Shablonlar</h2>
+                        <h2 class="section-title" data-i18n="all_hq_title">Barcha High Quality Shablonlar</h2>
                         <span class="badge-pill-cyan" style="background: rgba(44, 219, 158, 0.15); color: #2cdb9e; border-color: rgba(44, 219, 158, 0.35);">183.tgs — 262.tgs</span>
                     </div>
-                    <p class="section-desc">Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
+                    <p class="section-desc" data-i18n="all_hq_desc">Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
                 </div>
                 <div class="search-bar">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="hq-search" placeholder="High Quality emoji raqamini qidirish (1-80)...">
+                    <input type="text" id="hq-search" placeholder="High Quality emoji raqamini qidirish (1-80)..." data-i18n-ph="ph_search_hq">
                 </div>
                 <div class="grid-toolbar">
                     <button type="button" class="btn-select-all" id="btn-select-all-hq">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        <span id="txt-select-all-hq">Hammasini belgilash</span>
+                        <span id="txt-select-all-hq" data-i18n="btn_select_all">Hammasini belgilash</span>
                     </button>
                     <span class="selection-counter" id="hq-selection-count">0 ta tanlandi</span>
                 </div>
@@ -1314,7 +1346,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        <h3 class="subsection-title">Sizning To'plamlaringiz</h3>
+                        <h3 class="subsection-title" data-i18n="your_packs_title">Sizning To'plamlaringiz</h3>
                     </div>
                     <button type="button" class="btn-refresh-packs" id="btn-refresh-packs" title="Yangilash">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
@@ -1329,7 +1361,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
                             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                         </svg>
-                        <span>Hali yaratilgan to'plamlar yo'q</span>
+                        <span data-i18n="packs_empty_title">Hali yaratilgan to'plamlar yo'q</span>
                     </div>
                 </div>
             </div>
@@ -1341,16 +1373,16 @@
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     <polyline points="9 12 11 14 15 10"/>
                 </svg>
-                <span>Mualliflik Huquqi Himoyalangan</span>
+                <span data-i18n="footer_copyright">Mualliflik Huquqi Himoyalangan</span>
             </div>
-            <p class="footer-brand-copy">
+            <p class="footer-brand-copy" data-i18n="footer_all_rights">
                 © 2026 <b>GN Studio</b>. Barcha huquqlar himoyalangan.
             </p>
-            <p class="footer-license-note">
+            <p class="footer-license-note" data-i18n="footer_desc">
                 Maxsus Telegram Mini App litsenziyasi ostida taqdim etiladi. Sayt va kodlardan ruxsatsiz nusxa ko'chirish qat'iyan man etiladi.
             </p>
             <div class="footer-tags-row">
-                <span class="footer-tag">Ver: 6.6.0</span>
+                <span class="footer-tag">Ver: 7.3.0</span>
                 <span class="footer-tag-dot">•</span>
                 <span class="footer-tag">Official Telegram Mini App</span>
             </div>
@@ -1393,7 +1425,16 @@
                         </div>
                     </div>
                     <div class="my-rank-right">
-                        <span class="my-rank-badge" id="my-rank-badge">🏆 Faol</span>
+                        <span class="my-rank-badge" id="my-rank-badge">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="#f59e0b" stroke="currentColor" stroke-width="1.5">
+                                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                                <path d="M4 22h16"></path>
+                                <path d="M10 14.66V17c0 .55-.45 1-1 1H7v2h10v-2h-2c-.55 0-1-.45-1-1v-2.34"></path>
+                                <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+                            </svg>
+                            <span data-i18n="rank_badge_active">Faol</span>
+                        </span>
                     </div>
                 </div>
 
@@ -1401,7 +1442,14 @@
                 <div class="podium-container" id="podium-container">
                     <!-- 2nd place -->
                     <div class="podium-item podium-second" id="podium-2">
-                        <div class="podium-crown">🥈</div>
+                        <div class="podium-crown">
+                            <svg class="podium-svg-medal" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#cbd5e1" stroke-width="2">
+                                <circle cx="12" cy="14" r="7" fill="rgba(203, 213, 225, 0.2)"/>
+                                <path d="M8.5 2l3.5 5 3.5-5"/>
+                                <path d="M12 7v1"/>
+                                <text x="12" y="17.5" font-family="'Outfit', sans-serif" font-weight="900" font-size="8.5" fill="#f8fafc" text-anchor="middle">2</text>
+                            </svg>
+                        </div>
                         <div class="podium-avatar" id="podium-avatar-2">2</div>
                         <span class="podium-name" id="podium-name-2">Yuklanmoqda...</span>
                         <span class="podium-score" id="podium-score-2">0</span>
@@ -1409,7 +1457,14 @@
                     </div>
                     <!-- 1st place -->
                     <div class="podium-item podium-first" id="podium-1">
-                        <div class="podium-crown">👑 🥇</div>
+                        <div class="podium-crown">
+                            <svg class="podium-svg-crown" viewBox="0 0 24 24" width="28" height="28" fill="#fbbf24" stroke="#d97706" stroke-width="1.2">
+                                <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-1z"/>
+                                <circle cx="5" cy="4" r="1.5" fill="#fef08a"/>
+                                <circle cx="12" cy="4" r="1.8" fill="#fef08a"/>
+                                <circle cx="19" cy="4" r="1.5" fill="#fef08a"/>
+                            </svg>
+                        </div>
                         <div class="podium-avatar" id="podium-avatar-1">1</div>
                         <span class="podium-name" id="podium-name-1">Yuklanmoqda...</span>
                         <span class="podium-score" id="podium-score-1">0</span>
@@ -1417,7 +1472,14 @@
                     </div>
                     <!-- 3rd place -->
                     <div class="podium-item podium-third" id="podium-3">
-                        <div class="podium-crown">🥉</div>
+                        <div class="podium-crown">
+                            <svg class="podium-svg-medal" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#d97706" stroke-width="2">
+                                <circle cx="12" cy="14" r="7" fill="rgba(217, 119, 6, 0.2)"/>
+                                <path d="M8.5 2l3.5 5 3.5-5"/>
+                                <path d="M12 7v1"/>
+                                <text x="12" y="17.5" font-family="'Outfit', sans-serif" font-weight="900" font-size="8.5" fill="#fed7aa" text-anchor="middle">3</text>
+                            </svg>
+                        </div>
                         <div class="podium-avatar" id="podium-avatar-3">3</div>
                         <span class="podium-name" id="podium-name-3">Yuklanmoqda...</span>
                         <span class="podium-score" id="podium-score-3">0</span>
@@ -1452,7 +1514,7 @@
                         </div>
                     </div>
                     <div class="profile-user-info">
-                        <h2 class="profile-full-name" id="profile-full-name">Foydalanuvchi</h2>
+                        <h2 class="profile-full-name" id="profile-full-name" data-i18n="user_default_name">Foydalanuvchi</h2>
                         <div class="profile-meta-row">
                             <span class="profile-username" id="profile-username">@username</span>
                             <span class="profile-dot">•</span>
@@ -1466,7 +1528,13 @@
                     <div class="bonus-card-glow"></div>
                     <div class="bonus-card-content">
                         <div class="bonus-icon-box">
-                            <span class="bonus-icon">🎁</span>
+                            <svg class="bonus-svg-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 12 20 22 4 22 4 12"></polyline>
+                                <rect x="2" y="7" width="20" height="5"></rect>
+                                <line x1="12" y1="22" x2="12" y2="7"></line>
+                                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
+                                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
+                            </svg>
                         </div>
                         <div class="bonus-info">
                             <h4 class="bonus-title" data-i18n="bonus_card_title">Kunlik Bonus: +3 ⭐ Stars</h4>
@@ -1478,13 +1546,12 @@
                     </div>
                 </div>
 
-
                 <!-- 2. Balance & Top-Up Card -->
                 <div class="profile-balance-card">
                     <div class="balance-card-glow"></div>
                     <div class="balance-card-content">
                         <div class="balance-left">
-                            <span class="balance-sub">Joriy Stars Balansingiz</span>
+                            <span class="balance-sub" data-i18n="balance_sub">Joriy Stars Balansingiz</span>
                             <div class="balance-amount-row">
                                 <img src="images/image.png" alt="Stars" class="balance-star-logo">
                                 <span class="balance-big-number" id="profile-stars-count">0</span>
@@ -1496,12 +1563,12 @@
                                 <line x1="12" y1="5" x2="12" y2="19"></line>
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                             </svg>
-                            <span>To'ldirish</span>
+                            <span data-i18n="btn_profile_topup">To'ldirish</span>
                         </button>
                     </div>
                     <div class="balance-footer-info">
                         <i data-lucide="info" style="width:14px;height:14px;color:rgba(255,255,255,0.6);"></i>
-                        <span>1 ta emoji yaratish narxi: <b id="profile-price-display">1 ⭐ Stars</b></span>
+                        <span><span data-i18n="price_note">1 ta emoji yaratish narxi:</span> <b id="profile-price-display">1 ⭐ Stars</b></span>
                     </div>
                 </div>
 
@@ -1513,8 +1580,8 @@
                                 <i data-lucide="users" style="width:20px;height:20px;color:#38bdf8;"></i>
                             </div>
                             <div>
-                                <h3 class="ref-title">Do'stlarni Taklif Qilish</h3>
-                                <p class="ref-desc" id="profile-ref-desc">Har bir yangi do'st uchun bepul <b id="profile-ref-bonus-text">+1 ⭐ Stars</b> oling!</p>
+                                <h3 class="ref-title" data-i18n="ref_title">Do'stlarni Taklif Qilish</h3>
+                                <p class="ref-desc" id="profile-ref-desc"><span data-i18n="ref_desc_prefix">Har bir yangi do'st uchun bepul</span> <b id="profile-ref-bonus-text">+1 ⭐ Stars</b> oling!</p>
                             </div>
                         </div>
                         <span class="ref-badge-bonus" id="profile-ref-badge">+1 ⭐ BONUS</span>
@@ -1525,7 +1592,7 @@
                         <input type="text" readonly id="profile-ref-link-input" class="ref-link-input" value="https://t.me/GnEmojiBot?start=ref_...">
                         <button type="button" class="btn-copy-ref" id="btn-copy-ref" title="Nusxalash">
                             <i data-lucide="copy" id="copy-icon-svg" style="width:16px;height:16px;"></i>
-                            <span id="copy-btn-text">Nusxalash</span>
+                            <span id="copy-btn-text" data-i18n="btn_copy">Nusxalash</span>
                         </button>
                     </div>
 
@@ -1533,7 +1600,7 @@
                     <div class="ref-actions-row">
                         <button type="button" class="btn-share-telegram" id="btn-share-telegram-ref">
                             <i data-lucide="share-2" style="width:18px;height:18px;"></i>
-                            <span>Do'stlarga Ulashish</span>
+                            <span data-i18n="btn_share_ref">Do'stlarga Ulashish</span>
                         </button>
                     </div>
 
@@ -1541,11 +1608,11 @@
                     <div class="ref-stats-grid">
                         <div class="ref-stat-box">
                             <span class="ref-stat-num" id="ref-stat-count">0 ta</span>
-                            <span class="ref-stat-label">Taklif qilingan do'stlar</span>
+                            <span class="ref-stat-label" data-i18n="stat_invited">Taklif qilingan do'stlar</span>
                         </div>
                         <div class="ref-stat-box">
                             <span class="ref-stat-num highlight" id="ref-stat-earned">+0 ⭐</span>
-                            <span class="ref-stat-label">Jami ishlangan Stars</span>
+                            <span class="ref-stat-label" data-i18n="stat_earned">Jami ishlangan Stars</span>
                         </div>
                     </div>
                 </div>
@@ -1557,7 +1624,7 @@
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                             </svg>
-                            <h3 class="history-title">Yaratilgan To'plamlar Tarixi</h3>
+                            <h3 class="history-title" data-i18n="history_title">Yaratilgan To'plamlar Tarixi</h3>
                         </div>
                         <span class="history-count-badge" id="profile-packs-count">0 ta</span>
                     </div>
@@ -1565,11 +1632,24 @@
                     <div class="history-packs-list" id="profile-packs-list">
                         <!-- Javascript orqali to'plamlar chiqariladi -->
                         <div class="packs-empty-state">
-                            <div class="empty-icon-wrap">📦</div>
-                            <p class="empty-title">Hali to'plamlar yo'q</p>
-                            <p class="empty-sub">Studiyaga o'ting va birinchi eksklyuziv emoji to'plamingizni yarating!</p>
-                            <button type="button" class="btn-goto-studio" id="btn-goto-studio">
-                                <span>🎨 Studiyaga o'tish</span>
+                            <div class="empty-icon-wrap">
+                                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#64748b" stroke-width="1.8">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                </svg>
+                            </div>
+                            <p class="empty-title" data-i18n="packs_empty_title">Hali to'plamlar yo'q</p>
+                            <p class="empty-sub" data-i18n="packs_empty_desc">Studiyaga o'ting va birinchi eksklyuziv emoji to'plamingizni yarating!</p>
+                            <button type="button" class="btn-goto-studio" id="btn-goto-studio" onclick="window.switchMainView('studio')">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+                                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+                                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+                                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+                                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"/>
+                                </svg>
+                                <span data-i18n="btn_goto_studio">Studiyaga o'tish</span>
                             </button>
                         </div>
                     </div>
@@ -1585,8 +1665,8 @@
                                 </svg>
                             </div>
                             <div class="link-item-text">
-                                <span class="link-title">➤ Rasmiy Kanalimiz</span>
-                                <span class="link-sub">Yangiliklar, tanlovlar va promokodlar</span>
+                                <span class="link-title" data-i18n="official_channel">➤ Rasmiy Kanalimiz</span>
+                                <span class="link-sub" data-i18n="channel_desc">Yangiliklar, tanlovlar va promokodlar</span>
                             </div>
                         </div>
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="link-arrow">
@@ -1604,8 +1684,8 @@
                                 </svg>
                             </div>
                             <div class="link-item-text">
-                                <span class="link-title">🗪 Yordam & Narxlar</span>
-                                <span class="link-sub">Qanday ishlatish va barcha qoidalar</span>
+                                <span class="link-title" data-i18n="help_pricing">Yordam & Narxlar</span>
+                                <span class="link-sub" data-i18n="help_desc">Qanday ishlatish va barcha qoidalar</span>
                             </div>
                         </div>
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="link-arrow">
@@ -1625,13 +1705,37 @@
                     </div>
                     <div class="lang-switch-row">
                         <button type="button" class="lang-switch-btn active" data-lang="uz" onclick="window.applyLanguage('uz')">
-                            <span>🇺🇿</span> O'zbekcha
+                            <svg class="lang-svg-flag" viewBox="0 0 32 24" width="20" height="15">
+                                <rect width="32" height="8" fill="#0099B5"/>
+                                <rect y="8" width="32" height="8" fill="#FFFFFF"/>
+                                <rect y="16" width="32" height="8" fill="#1EB53A"/>
+                                <line y1="8" x2="32" y2="8" stroke="#D62718" stroke-width="0.8"/>
+                                <line y1="16" x2="32" y2="16" stroke="#D62718" stroke-width="0.8"/>
+                                <circle cx="6" cy="4" r="2.2" fill="#FFFFFF"/>
+                                <circle cx="6.8" cy="4" r="1.8" fill="#0099B5"/>
+                            </svg>
+                            <span>O'zbekcha</span>
                         </button>
                         <button type="button" class="lang-switch-btn" data-lang="ru" onclick="window.applyLanguage('ru')">
-                            <span>🇷🇺</span> Русский
+                            <svg class="lang-svg-flag" viewBox="0 0 32 24" width="20" height="15">
+                                <rect width="32" height="8" fill="#FFFFFF"/>
+                                <rect y="8" width="32" height="8" fill="#0039A6"/>
+                                <rect y="16" width="32" height="8" fill="#D52B1E"/>
+                            </svg>
+                            <span>Русский</span>
                         </button>
                         <button type="button" class="lang-switch-btn" data-lang="en" onclick="window.applyLanguage('en')">
-                            <span>🇬🇧</span> English
+                            <svg class="lang-svg-flag" viewBox="0 0 32 24" width="20" height="15">
+                                <clipPath id="gb-flag-clip"><rect width="32" height="24" rx="2"/></clipPath>
+                                <g clip-path="url(#gb-flag-clip)">
+                                    <rect width="32" height="24" fill="#012169"/>
+                                    <path d="M0 0 L32 24 M32 0 L0 24" stroke="#FFFFFF" stroke-width="4"/>
+                                    <path d="M0 0 L32 24 M32 0 L0 24" stroke="#C8102E" stroke-width="2"/>
+                                    <path d="M16 0 V24 M0 12 H32" stroke="#FFFFFF" stroke-width="6"/>
+                                    <path d="M16 0 V24 M0 12 H32" stroke="#C8102E" stroke-width="3.5"/>
+                                </g>
+                            </svg>
+                            <span>English</span>
                         </button>
                     </div>
                 </div>
@@ -1642,13 +1746,13 @@
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             <polyline points="9 12 11 14 15 10"/>
                         </svg>
-                        <span>Mualliflik Huquqi Himoyalangan</span>
+                        <span data-i18n="footer_copyright">Mualliflik Huquqi Himoyalangan</span>
                     </div>
-                    <p class="footer-brand-copy">
+                    <p class="footer-brand-copy" data-i18n="footer_all_rights">
                         © 2026 <b>GN Studio</b>. Barcha huquqlar himoyalangan.
                     </p>
                     <div class="footer-tags-row">
-                        <span class="footer-tag">Ver: 7.2.0</span>
+                        <span class="footer-tag">Ver: 7.3.0</span>
                         <span class="footer-tag-dot">•</span>
                         <span class="footer-tag">Official Telegram Mini App</span>
                     </div>
@@ -1667,7 +1771,7 @@
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                         </svg>
                     </div>
-                    <span class="action-title" id="main-btn-text">Tanlangan Emojini Yaratish</span>
+                    <span class="action-title" id="main-btn-text" data-i18n="btn_main_action">Tanlangan Emojini Yaratish</span>
                 </div>
             </button>
         </div>
@@ -1712,22 +1816,22 @@
             </button>
             <div class="modal-header">
                 <span class="modal-tag" id="modal-tpl-tag">Shablon #14</span>
-                <h3 class="modal-title" id="modal-tpl-title">Emoji Tafsiloti</h3>
+                <h3 class="modal-title" id="modal-tpl-title" data-i18n="modal_tpl_title">Emoji Tafsiloti</h3>
             </div>
             <div class="modal-preview-stage">
                 <div id="modal-lottie-player" class="modal-lottie-box"></div>
             </div>
             <div class="modal-info-box">
                 <div class="info-row">
-                    <span>Matn:</span>
+                    <span data-i18n="modal_text_label">Matn:</span>
                     <strong id="modal-text-val">ASILBEK</strong>
                 </div>
                 <div class="info-row">
-                    <span>Shrift:</span>
+                    <span data-i18n="modal_font_label">Shrift:</span>
                     <strong id="modal-font-val">Stapel</strong>
                 </div>
                 <div class="info-row">
-                    <span>Format:</span>
+                    <span data-i18n="modal_format_label">Format:</span>
                     <strong>100x100 Telegram Animated Emoji</strong>
                 </div>
             </div>
@@ -1736,14 +1840,14 @@
                     <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                         <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"></path>
                     </svg>
-                    <span>Shu Emojini Yaratish</span>
+                    <span data-i18n="btn_generate_single">Shu Emojini Yaratish</span>
                 </button>
                 <button type="button" class="btn-modal-secondary" id="btn-add-to-pack-modal">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    <span>Mavjud To'plamga Qo'shish</span>
+                    <span data-i18n="btn_add_to_pack_modal">Mavjud To'plamga Qo'shish</span>
                 </button>
             </div>
         </div>
@@ -1760,8 +1864,8 @@
                     </svg>
                 </div>
             </div>
-            <h3 class="progress-title" id="progress-title">Emoji Tayyorlanmoqda...</h3>
-            <p class="progress-desc" id="progress-desc">Iltimos, kuting, animatsiya render qilinmoqda</p>
+            <h3 class="progress-title" id="progress-title" data-i18n="progress_title">Emoji Tayyorlanmoqda...</h3>
+            <p class="progress-desc" id="progress-desc" data-i18n="progress_desc">Iltimos, kuting, animatsiya render qilinmoqda</p>
 
             <div class="progress-bar-wrap">
                 <div class="progress-bar-fill" id="gen-progress-bar" style="width: 15%;"></div>
@@ -1786,13 +1890,13 @@
                     </svg>
                 </div>
             </div>
-            <h3 class="success-title">Muvaffaqiyatli Tayyorlandi!</h3>
-            <p class="success-desc" id="success-desc">
+            <h3 class="success-title" data-i18n="success_title">Muvaffaqiyatli Tayyorlandi!</h3>
+            <p class="success-desc" id="success-desc" data-i18n="success_desc">
                 Sizning Premium animatsiyali emoji to'plamingiz Telegramda yaratildi.
             </p>
 
             <div class="pack-link-box">
-                <div class="pack-link-label">Emoji Pack Havolasi:</div>
+                <div class="pack-link-label" data-i18n="pack_link_label">Emoji Pack Havolasi:</div>
                 <div class="pack-link-value" id="pack-link-text">https://t.me/addemoji/...</div>
             </div>
 
@@ -1801,7 +1905,7 @@
                     <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                     </svg>
-                    <span>Telegramga Qo'shish</span>
+                    <span data-i18n="btn_open_pack">Telegramga Qo'shish</span>
                 </a>
                 <button type="button" class="btn-share-pack" id="btn-share-pack">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -1811,7 +1915,7 @@
                         <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
                         <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                     </svg>
-                    <span>Do'stlarga Ulashish</span>
+                    <span data-i18n="btn_share_pack">Do'stlarga Ulashish</span>
                 </button>
             </div>
         </div>
@@ -1831,29 +1935,33 @@
                     <img src="images/image.png" alt="Stars" style="width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(245,158,11,0.5));">
                 </div>
             </div>
-            <h3 class="balance-modal-title">Balansingiz yetarli emas!</h3>
-            <p class="balance-modal-desc" id="balance-modal-desc">
+            <h3 class="balance-modal-title" data-i18n="balance_modal_title">Balansingiz yetarli emas!</h3>
+            <p class="balance-modal-desc" id="balance-modal-desc" data-i18n="balance_modal_desc">
                 Tanlangan emojilarni yaratish uchun balansingizda yetarli Stars mavjud emas.
             </p>
 
             <div class="balance-calc-card">
                 <div class="calc-row">
-                    <span class="calc-label">Sizning balansingiz:</span>
+                    <span class="calc-label" data-i18n="calc_curr_bal">Sizning balansingiz:</span>
                     <span class="calc-val-curr" id="modal-curr-bal">0</span>
                 </div>
                 <div class="calc-row">
-                    <span class="calc-label">Kerakli miqdor:</span>
+                    <span class="calc-label" data-i18n="calc_needed_bal">Kerakli miqdor:</span>
                     <span class="calc-val-needed" id="modal-needed-bal">6</span>
                 </div>
                 <div class="calc-row highlight">
-                    <span class="calc-label">Yetishmayotgan:</span>
+                    <span class="calc-label" data-i18n="calc_diff_bal">Yetishmayotgan:</span>
                     <span class="calc-val-diff" id="modal-diff-bal">6</span>
                 </div>
             </div>
 
             <div class="balance-modal-actions">
                 <button type="button" class="btn-topup-main" id="btn-topup-wallet">
-                    <span>➕ Stars Sotib Olish</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span data-i18n="btn_topup_wallet">Stars Sotib Olish</span>
                 </button>
                 <button type="button" class="btn-referral-invite" id="btn-referral-invite" style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-size: 13px; font-weight: 700; padding: 12px; border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; transition: all 0.2s ease;">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -1862,10 +1970,10 @@
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    <span>👥 Do'stlarni taklif qilish (Bepul +10 ⭐)</span>
+                    <span data-i18n="btn_referral_invite">Do'stlarni taklif qilish (Bepul +1 ⭐)</span>
                 </button>
                 <button type="button" class="btn-cancel-balance" id="btn-cancel-balance">
-                    <span>Orqaga</span>
+                    <span data-i18n="btn_back">Orqaga</span>
                 </button>
             </div>
         </div>
@@ -1885,22 +1993,22 @@
                     <img src="images/image.png" alt="Stars" style="width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(245,158,11,0.5));">
                 </div>
             </div>
-            <h3 class="balance-modal-title">To'lov Usulini Tanlang</h3>
-            <p class="balance-modal-desc">
-                Tanlangan <b id="pay-choice-count">1 ta</b> emoji uchun to'lovni tasdiqlang.
+            <h3 class="balance-modal-title" data-i18n="pay_choice_title">To'lov Usulini Tanlang</h3>
+            <p class="balance-modal-desc" data-i18n="pay_choice_desc">
+                Tanlangan emojilar uchun to'lovni tasdiqlang.
             </p>
 
             <div class="balance-calc-card">
                 <div class="calc-row">
-                    <span class="calc-label">Matn:</span>
+                    <span class="calc-label" data-i18n="modal_text_label">Matn:</span>
                     <span class="calc-val-curr" id="pay-choice-text">MATN</span>
                 </div>
                 <div class="calc-row">
-                    <span class="calc-label">Jami narx:</span>
+                    <span class="calc-label" data-i18n="pay_choice_total">Jami narx:</span>
                     <span class="calc-val-needed" id="pay-choice-cost">6</span>
                 </div>
                 <div class="calc-row highlight">
-                    <span class="calc-label">Hamyon balansingiz:</span>
+                    <span class="calc-label" data-i18n="pay_choice_wallet_bal">Hamyon balansingiz:</span>
                     <span class="calc-val-diff" id="pay-choice-balance">0</span>
                 </div>
             </div>
@@ -1909,8 +2017,8 @@
                 <button type="button" class="btn-pay-option btn-pay-stars-bot" id="btn-pay-stars-bot">
                     <img src="images/image.png" alt="Stars" style="width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(245,158,11,0.5));">
                     <div class="btn-pay-col">
-                        <span class="btn-pay-title">Telegram Stars orqali to'lash</span>
-                        <span class="btn-pay-sub" id="pay-stars-sub">Botga to'g'ridan-to'g'ri XTR hisob yuborish</span>
+                        <span class="btn-pay-title" data-i18n="pay_choice_stars_title">Telegram Stars orqali to'lash</span>
+                        <span class="btn-pay-sub" id="pay-stars-sub" data-i18n="pay_choice_stars_sub">Botga to'g'ridan-to'g'ri XTR hisob yuborish</span>
                     </div>
                 </button>
 
@@ -1920,13 +2028,13 @@
                         <line x1="1" y1="10" x2="23" y2="10"></line>
                     </svg>
                     <div class="btn-pay-col">
-                        <span class="btn-pay-title">Hamyondan to'lash</span>
-                        <span class="btn-pay-sub" id="pay-wallet-sub">Mavjud Stars balansidan yechish</span>
+                        <span class="btn-pay-title" data-i18n="pay_choice_wallet_title">Hamyondan to'lash</span>
+                        <span class="btn-pay-sub" id="pay-wallet-sub" data-i18n="pay_choice_wallet_sub">Mavjud Stars balansidan yechish</span>
                     </div>
                 </button>
 
                 <button type="button" class="btn-cancel-balance" id="btn-cancel-pay-choice">
-                    <span>Bekor qilish</span>
+                    <span data-i18n="btn_cancel">Bekor qilish</span>
                 </button>
             </div>
         </div>
@@ -1949,16 +2057,16 @@
                     </svg>
                 </div>
             </div>
-            <h3 class="balance-modal-title" style="color: #22c55e;">Hisob Botga Yuborildi!</h3>
-            <p class="balance-modal-desc" style="margin-bottom: 20px;">
-                Telegram chatiga <b>@GnEmojiBot</b> botiga to'lov hisob-fakturasi yuborildi. Chatga o'tib to'lovni tasdiqlang. To'lov qilingach, bot to'plamingizni avtomatik yaratib beradi!
+            <h3 class="balance-modal-title" style="color: #22c55e;" data-i18n="invoice_sent_title">Hisob Botga Yuborildi!</h3>
+            <p class="balance-modal-desc" style="margin-bottom: 20px;" data-i18n="invoice_sent_desc">
+                Telegram chatiga @GnEmojiBot botiga to'lov hisob-fakturasi yuborildi. Chatga o'tib to'lovni tasdiqlang. To'lov qilingach, bot to'plamingizni avtomatik yaratib beradi!
             </p>
             <div class="balance-modal-actions">
                 <a href="https://t.me/GnEmojiBot" target="_blank" class="btn-topup-main" id="btn-goto-bot" style="text-decoration: none; justify-content: center; gap: 8px;">
                     <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.75-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .36z"/>
                     </svg>
-                    <span>📲 Telegram Botga O'tish</span>
+                    <span data-i18n="btn_goto_bot">Telegram Botga O'tish</span>
                 </a>
             </div>
         </div>
@@ -1966,7 +2074,13 @@
 
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden">
-        <span class="toast-icon" id="toast-icon">ℹ️</span>
+        <span class="toast-icon" id="toast-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+        </span>
         <span class="toast-msg" id="toast-msg">Xabar</span>
     </div>
 
@@ -1985,15 +2099,15 @@
         }
 
         var s1 = document.createElement('script');
-        s1.src = 'ticket_templates.js?v=7.2.0';
+        s1.src = 'ticket_templates.js?v=7.3.0';
         s1.onload = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=7.2.0';
+            s2.src = 'app.js?v=7.3.0';
             document.body.appendChild(s2);
         };
         s1.onerror = function() {
             var s2 = document.createElement('script');
-            s2.src = 'app.js?v=7.2.0';
+            s2.src = 'app.js?v=7.3.0';
             document.body.appendChild(s2);
         };
         document.body.appendChild(s1);

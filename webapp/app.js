@@ -506,8 +506,19 @@ function haptic(style = 'light') {
     }
 }
 
+const toastSvgMap = {
+    info: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+    success: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#22c55e" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
+    warning: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="2.2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    error: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ef4444" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
+    gift: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#c084fc" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>`,
+    copy: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    refresh: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#38bdf8" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>`,
+    palette: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"></path></svg>`
+};
+
 let toastTimeout = null;
-function showToast(msg, icon = 'ℹ️', duration = 3000) {
+function showToast(msg, iconType = 'info', duration = 3000) {
     if (toastTimeout) clearTimeout(toastTimeout);
     let str = msg;
     if (msg instanceof Error) {
@@ -517,11 +528,28 @@ function showToast(msg, icon = 'ℹ️', duration = 3000) {
         else if (msg.detail) str = typeof msg.detail === 'string' ? msg.detail : JSON.stringify(msg.detail);
         else str = JSON.stringify(msg);
     }
-    if (typeof str === 'string' && (str.includes('[object Object]') || str.trim() === '❌' || str.trim() === '⚠️')) {
-        str = "Xatolik yuz berdi. Qaytadan urinib ko'ring.";
+    if (typeof str === 'string') {
+        // Strip any leading emojis so toast is always crisp SVG only
+        str = str.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}⚠️❌✅⭐️🎁🔗🔄↺⏳🎨ℹ️🗑\s]+/u, '').trim();
+        if (str.includes('[object Object]') || !str) {
+            const dict = (typeof i18n !== 'undefined' && i18n[state.lang]) ? i18n[state.lang] : {};
+            str = dict.toast_error || "Xatolik yuz berdi. Qaytadan urinib ko'ring.";
+        }
     }
+    
+    // Map emoji or type string to vector SVG icon
+    let typeKey = 'info';
+    if (iconType === 'success' || iconType === '✅') typeKey = 'success';
+    else if (iconType === 'error' || iconType === '❌') typeKey = 'error';
+    else if (iconType === 'warning' || iconType === '⚠️') typeKey = 'warning';
+    else if (iconType === 'gift' || iconType === '🎁') typeKey = 'gift';
+    else if (iconType === 'copy' || iconType === '🔗') typeKey = 'copy';
+    else if (iconType === 'refresh' || iconType === '🔄' || iconType === '↺' || iconType === '🗑') typeKey = 'refresh';
+    else if (iconType === 'palette' || iconType === '🎨') typeKey = 'palette';
+    else if (toastSvgMap[iconType]) typeKey = iconType;
+
     if (dom.toastMsg) dom.toastMsg.textContent = str || "Xabar";
-    if (dom.toastIcon) dom.toastIcon.textContent = icon;
+    if (dom.toastIcon) dom.toastIcon.innerHTML = toastSvgMap[typeKey] || toastSvgMap.info;
     if (dom.toast) dom.toast.classList.remove('hidden');
     
     toastTimeout = setTimeout(() => {
@@ -1168,7 +1196,7 @@ function renderExistingPacksDropdown() {
         if (pname) {
             const opt = document.createElement('option');
             opt.value = pname;
-            opt.textContent = `📦 ${ptitle}`;
+            opt.textContent = `${ptitle}`;
             dom.existingPackSelect.appendChild(opt);
         }
     });
@@ -1241,13 +1269,29 @@ function renderProfilePacks() {
     }
 
     if (packs.length === 0) {
+        const curLang = state.lang || 'uz';
+        const dict = (typeof i18n !== 'undefined' && i18n[curLang]) ? i18n[curLang] : {};
         dom.profilePacksList.innerHTML = `
             <div class="packs-empty-state">
-                <div class="empty-icon-wrap">📦</div>
-                <p class="empty-title">Hali to'plamlar yo'q</p>
-                <p class="empty-sub">Studiyaga o'ting va birinchi eksklyuziv emoji to'plamingizni yarating!</p>
+                <div class="empty-icon-wrap">
+                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#38bdf8" stroke-width="1.8">
+                        <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                </div>
+                <p class="empty-title">${dict.packs_empty_title || "Hali to'plamlar yo'q"}</p>
+                <p class="empty-sub">${dict.packs_empty_desc || "Studiyaga o'ting va birinchi eksklyuziv emoji to'plamingizni yarating!"}</p>
                 <button type="button" class="btn-goto-studio" id="btn-goto-studio-inline">
-                    <span>🎨 Studiyaga o'tish</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+                        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"></path>
+                    </svg>
+                    <span>${dict.btn_goto_studio || "Studiyaga o'tish"}</span>
                 </button>
             </div>
         `;
@@ -1295,7 +1339,7 @@ function renderProfilePacks() {
                 <span class="pack-name-txt">${escapeHtml(ptitle)}</span>
                 <span class="pack-date-txt">${escapeHtml(pdate || pname)}</span>
             </div>
-            <span class="pack-btn-open">Ochish ↗</span>
+            <span class="pack-btn-open">${(typeof i18n !== "undefined" && i18n[state.lang]?.btn_open_pack) ? i18n[state.lang].btn_open_pack.replace("Telegramga ", "") : "Ochish"} ↗</span>
         `;
         dom.profilePacksList.appendChild(item);
     });
@@ -1365,62 +1409,539 @@ function updateProfileUI() {
 state.lang = localStorage.getItem('gn_lang') || 'uz';
 
 const i18n = {
-    uz: {
-        nav_studio: "Studiya",
-        nav_rating: "Reyting",
-        nav_profile: "Profil",
-        rating_badge: "PESHQADAMLAR",
-        rating_title: "Foydalanuvchilar Reytingi",
-        rating_subtitle: "Eng faol do'st taklif qilganlar va eng ko'p emoji yaratuvchilar",
-        rating_tab_ref: "Do'stlar taklifi",
-        rating_tab_creator: "Emoji ustalari",
-        my_rank_label: "Sizning o'rningiz:",
-        top_list_title: "Yetakchilar ro'yxati (4 - 20)",
-        bonus_card_title: "Kunlik Bonus: +3 ⭐ Stars",
-        bonus_card_desc: "Har 24 soatda bepul Stars sovg'asini oling!",
-        btn_claim_now: "Olish (3 ⭐)",
-        lang_settings_title: "Muloqot tili (Language)",
-        bonus_ready: "Bonus tayyor! 3 Stars sovg'angizni oling!",
-        bonus_next_wait: "Keyingi bonusgacha:",
-        bonus_claimed: "+3 ⭐ Stars hisobingizga qo'shildi!"
+    "uz": {
+        "guard_badge": "FAQAT TELEGRAM ILOVASI UCHUN",
+        "guard_title": "Faqat Telegram orqali ochiladi",
+        "guard_desc": "GnEmoji Studio mini ilovasi faqat rasmiy Telegram orqali xavfsiz foydalanish va maxsus emoji to'plamlarini avtomatik chiqarish uchun himoyalangan.",
+        "guard_feat_1": "180+ Telegram Animatsiyali Emojilar",
+        "guard_feat_2": "Matnli, Logo va 3D Metallik Uslublar",
+        "guard_feat_3": "Rasmiy Telegram Stars & API orqali himoyalangan",
+        "guard_btn_open": "Telegram Botda Ochish",
+        "guard_copy": "© 2026 GN Studio • Barcha huquqlar himoyalangan",
+        "loader_status": "Shablonlar yuklanmoqda...",
+        "nav_studio": "Studiya",
+        "nav_rating": "Reyting",
+        "nav_profile": "Profil",
+        "mode_text": "Matn",
+        "mode_svg": "SVG Vektor",
+        "label_name_input": "Ism yoki Matn kiriting",
+        "ph_name_input": "Masalan: AZIZBEK",
+        "font_selector_label": "Shrift turi:",
+        "font_stapel_sub": "Geometrik",
+        "font_inter_sub": "Klassik",
+        "font_grobold_sub": "Zamonaviy",
+        "font_montserrat_sub": "Hashamatli",
+        "font_bebas_sub": "Tik & Kuchli",
+        "font_rubik_sub": "Yumshoq",
+        "font_poppins_sub": "Silliq",
+        "font_impact_sub": "Katta & Qalin",
+        "label_svg_file": "SVG Vektor Fayl (.svg)",
+        "dropzone_main": "SVG faylni tanlang",
+        "dropzone_sub": "Faqat .svg vektor fayli (PNG/JPG qabul qilinmaydi)",
+        "svg_active_status": "✓ SVG faol va tayyor",
+        "btn_change_svg": "Almashtirish",
+        "label_svg_pack": "To'plam nomi (Link uchun nom)",
+        "ph_svg_pack": "Masalan: my_cool_pack",
+        "size_label": "O'lcham (Masshtab)",
+        "color_customizer_title": "Ranglarni sozlash",
+        "badge_outer": "Tashqi",
+        "badge_inner": "Ichki",
+        "badge_text": "Matn",
+        "target_outer": "Tashqi chegara",
+        "target_inner": "Ichki qism",
+        "target_text": "Matn rangi",
+        "btn_choose_color": "Tanlash",
+        "btn_reset_color": "Qaytarish",
+        "dest_label": "To'plam turi:",
+        "dest_new": "Yangi to'plam",
+        "dest_existing": "Mavjud to'plamga",
+        "ph_select_existing": "Yuklanmoqda...",
+        "live_preview_badge": "Jonli Prevyu",
+        "preview_info_text": "Matn:",
+        "preview_info_font": "Shrift:",
+        "tab_name": "Name",
+        "tab_logo": "Logo",
+        "tab_grey": "Grey",
+        "tab_hq": "HQ",
+        "tab_name_badge": "13 ta 100x100 Ticket",
+        "tab_name_title": "Ticket Emojilar",
+        "tab_name_desc": "1.tgs dan 13.tgs gacha bo'lgan maxsus ticket animatsiyalaridan birini yoki bir nechtasini tanlang",
+        "ph_search_tickets": "Ticket qidirish...",
+        "btn_select_all": "Hammasini belgilash",
+        "btn_deselect_all": "Tanlovni bekor qilish",
+        "tab_logo_badge": "PREMIUM LOGO PACK",
+        "tab_logo_title": "103 ta Logo Shablonlar To'plami",
+        "tab_logo_desc": "Ismingiz uchun 14.tgs dan 117.tgs gacha barcha turli uslubdagi doiraviy va logo emojilarni 1 bosishda to'liq to'plam sifatida yarating!",
+        "btn_create_fullpack_logo": "To'liq 103 ta Logoni Yaratish",
+        "all_logos_title": "Barcha Logo Shablonlar",
+        "all_logos_desc": "Kerakli logoni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
+        "ph_search_logos": "Logolardan qidirish...",
+        "tab_grey_badge": "PREMIUM GREY PACK",
+        "tab_grey_title": "65 ta Grey 3D Emoji Shablonlar",
+        "tab_grey_desc": "Kumushrang, metallik va nozik 3D uslubdagi yangi shablonlar to'plami. Tanlangan yoki to'liq 65 ta emojini 1 bosishda yarating!",
+        "btn_create_fullpack_grey": "To'liq 65 ta Grey Emojini Yaratish",
+        "all_grey_title": "Barcha Grey Shablonlar",
+        "all_grey_desc": "Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
+        "ph_search_grey": "Grey shablonlardan qidirish...",
+        "tab_hq_badge": "HIGH QUALITY PACK",
+        "tab_hq_title": "80 ta High Quality 3D Emoji Shablonlar",
+        "tab_hq_desc": "Premium darajadagi eng so'nggi 3D harakatlanuvchi zamonaviy shablonlar to'plami. Barcha 80 ta emojini 1 bosishda to'liq yarating!",
+        "btn_create_fullpack_hq": "To'liq 80 ta High Quality Emojini Yaratish",
+        "all_hq_title": "Barcha High Quality Shablonlar",
+        "all_hq_desc": "Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
+        "ph_search_hq": "HQ shablonlardan qidirish...",
+        "btn_main_action": "Tanlangan Emojini Yaratish",
+        "selected_count": "ta tanlandi",
+        "btn_action_create": "Yaratish",
+        "btn_action_add": "Qo'shish",
+        "action_btn_multiple": "Tanlangan Emojilarni {action} ({count} ta • {price})",
+        "action_btn_single": "Tanlangan #{num} Emojini {action} ({price})",
+        "rating_badge": "PESHQADAMLAR",
+        "rating_title": "Foydalanuvchilar Reytingi",
+        "rating_subtitle": "Eng faol do'st taklif qilganlar va eng ko'p emoji yaratuvchilar",
+        "rating_tab_ref": "Do'stlar taklifi",
+        "rating_tab_creator": "Emoji ustalari",
+        "my_rank_label": "Sizning o'rningiz:",
+        "rank_badge_active": "Faol",
+        "rank_place_1": "1-O'rin",
+        "rank_place_2": "2-O'rin",
+        "rank_place_3": "3-O'rin",
+        "top_list_title": "Yetakchilar ro'yxati (4 - 20)",
+        "no_other_users": "Hozircha boshqa ishtirokchilar yo'q",
+        "unit_packs": "ta to'plam",
+        "unit_refs": "ta do'st",
+        "user_default_name": "Foydalanuvchi",
+        "bonus_card_title": "Kunlik Bonus: +3 ⭐ Stars",
+        "bonus_card_desc": "Har 24 soatda bepul Stars sovg'asini oling!",
+        "btn_claim_now": "Olish (3 ⭐)",
+        "bonus_ready": "Bonus tayyor! 3 Stars sovg'angizni oling!",
+        "bonus_next_wait": "Keyingi bonusgacha:",
+        "bonus_claimed": "+3 ⭐ Stars hisobingizga qo'shildi!",
+        "balance_sub": "Joriy Stars Balansingiz",
+        "btn_profile_topup": "To'ldirish",
+        "price_note": "1 ta emoji yaratish narxi:",
+        "ref_title": "Do'stlarni Taklif Qilish",
+        "ref_desc_prefix": "Har bir yangi do'st uchun bepul",
+        "btn_copy": "Nusxalash",
+        "btn_share_ref": "Do'stlarga Ulashish",
+        "stat_invited": "Taklif qilingan do'stlar",
+        "stat_earned": "Jami ishlangan Stars",
+        "history_title": "Yaratilgan To'plamlar Tarixi",
+        "your_packs_title": "Sizning To'plamlaringiz",
+        "packs_empty_title": "Hali yaratilgan to'plamlar yo'q",
+        "packs_empty_desc": "Studiyaga o'ting va birinchi eksklyuziv emoji to'plamingizni yarating!",
+        "btn_goto_studio": "Studiyaga o'tish",
+        "official_channel": "➤ Rasmiy Kanalimiz",
+        "channel_desc": "Yangiliklar, tanlovlar va promokodlar",
+        "help_pricing": "Yordam & Narxlar",
+        "help_desc": "Qanday ishlatish va barcha qoidalar",
+        "lang_settings_title": "Muloqot tili (Language)",
+        "modal_tpl_title": "Emoji Tafsiloti",
+        "modal_text_label": "Matn:",
+        "modal_font_label": "Shrift:",
+        "modal_format_label": "Format:",
+        "btn_generate_single": "Shu Emojini Yaratish",
+        "btn_add_to_pack_modal": "Mavjud To'plamga Qo'shish",
+        "progress_title": "Emoji Tayyorlanmoqda...",
+        "progress_desc": "Iltimos, kuting, animatsiya render qilinmoqda",
+        "success_title": "Muvaffaqiyatli Tayyorlandi!",
+        "success_desc": "Sizning Premium animatsiyali emoji to'plamingiz Telegramda yaratildi.",
+        "pack_link_label": "Emoji Pack Havolasi:",
+        "btn_open_pack": "Telegramga Qo'shish",
+        "btn_share_pack": "Do'stlarga Ulashish",
+        "balance_modal_title": "Balansingiz yetarli emas!",
+        "balance_modal_desc": "Tanlangan emojilarni yaratish uchun balansingizda yetarli Stars mavjud emas.",
+        "calc_curr_bal": "Sizning balansingiz:",
+        "calc_needed_bal": "Kerakli miqdor:",
+        "calc_diff_bal": "Yetishmayotgan:",
+        "btn_topup_wallet": "Stars Sotib Olish",
+        "btn_referral_invite": "Do'stlarni taklif qilish (Bepul +1 ⭐)",
+        "btn_back": "Orqaga",
+        "pay_choice_title": "To'lov Usulini Tanlang",
+        "pay_choice_desc": "Tanlangan emojilar uchun to'lovni tasdiqlang.",
+        "pay_choice_total": "Jami narx:",
+        "pay_choice_wallet_bal": "Hamyon balansingiz:",
+        "pay_choice_stars_title": "Telegram Stars orqali to'lash",
+        "pay_choice_stars_sub": "Botga to'g'ridan-to'g'ri XTR hisob yuborish",
+        "pay_choice_wallet_title": "Hamyondan to'lash",
+        "pay_choice_wallet_sub": "Mavjud Stars balansidan yechish",
+        "btn_cancel": "Bekor qilish",
+        "invoice_sent_title": "Hisob Botga Yuborildi!",
+        "invoice_sent_desc": "Telegram chatiga @GnEmojiBot botiga to'lov hisob-fakturasi yuborildi. Chatga o'tib to'lovni tasdiqlang. To'lov qilingach, bot to'plamingizni avtomatik yaratib beradi!",
+        "btn_goto_bot": "Telegram Botga O'tish",
+        "footer_copyright": "Mualliflik Huquqi Himoyalangan",
+        "footer_all_rights": "© 2026 GN Studio. Barcha huquqlar himoyalangan.",
+        "footer_desc": "Maxsus Telegram Mini App litsenziyasi ostida taqdim etiladi. Sayt va kodlardan ruxsatsiz nusxa ko'chirish qat'iyan man etiladi.",
+        "toast_enter_name": "Iltimos, ism yoki so'z kiriting!",
+        "toast_upload_svg": "Iltimos, .svg vektor faylini yuklang!",
+        "toast_choose_existing": "Iltimos, qo'shish uchun mavjud to'plamni tanlang!",
+        "toast_sending_invoice": "Botga hisob yuborilmoqda...",
+        "toast_no_packs_yet": "Sizda hali paketlar yo'q. Avval to'liq to'plam yarating!",
+        "toast_copied_ref": "Taklif havolangiz nusxalandi! Do'stlaringizga yuboring",
+        "toast_color_reset": "Tanlangan qism rangi standart holatga qaytarildi",
+        "toast_stars_success": "Stars to'lovi qabul qilindi!",
+        "toast_packs_refreshed": "To'plamlar yangilandi",
+        "toast_svg_only": "Faqat .svg formatidagi vektor fayllar qabul qilinadi! (PNG, JPG qo'llab-quvvatlanmaydi)",
+        "toast_svg_invalid": "Yaroqsiz SVG fayl! <svg> tegi topilmadi.",
+        "toast_svg_loaded": "Vektor SVG muvaffaqiyatli yuklandi",
+        "toast_svg_removed": "SVG olib tashlandi",
+        "toast_error": "Xatolik yuz berdi. Qaytadan urinib ko'ring."
     },
-    ru: {
-        nav_studio: "Студия",
-        nav_rating: "Рейтинг",
-        nav_profile: "Профиль",
-        rating_badge: "ЛИДЕРЫ",
-        rating_title: "Рейтинг пользователей",
-        rating_subtitle: "Лучшие по приглашениям друзей и созданию эмодзи",
-        rating_tab_ref: "Приглашения",
-        rating_tab_creator: "Мастера эмодзи",
-        my_rank_label: "Ваше место:",
-        top_list_title: "Список лидеров (4 - 20)",
-        bonus_card_title: "Ежедневный бонус: +3 ⭐ Stars",
-        bonus_card_desc: "Получайте бесплатные Stars каждые 24 часа!",
-        btn_claim_now: "Забрать (3 ⭐)",
-        lang_settings_title: "Язык интерфейса (Language)",
-        bonus_ready: "Бонус готов! Заберите свои 3 Stars!",
-        bonus_next_wait: "До следующего бонуса:",
-        bonus_claimed: "+3 ⭐ Stars начислено на ваш баланс!"
+    "ru": {
+        "guard_badge": "ТОЛЬКО ДЛЯ ПРИЛОЖЕНИЯ TELEGRAM",
+        "guard_title": "Открывается только через Telegram",
+        "guard_desc": "Мини-приложение GnEmoji Studio защищено для безопасного использования и автоматического создания эмодзи-паков только через официальный Telegram.",
+        "guard_feat_1": "180+ Анимированных эмодзи Telegram",
+        "guard_feat_2": "Текстовые, логотипные и 3D стили",
+        "guard_feat_3": "Защищено официальным Telegram Stars и API",
+        "guard_btn_open": "Открыть в Telegram боте",
+        "guard_copy": "© 2026 GN Studio • Все права защищены",
+        "loader_status": "Загрузка шаблонов...",
+        "nav_studio": "Студия",
+        "nav_rating": "Рейтинг",
+        "nav_profile": "Профиль",
+        "mode_text": "Текст",
+        "mode_svg": "Вектор SVG",
+        "label_name_input": "Введите имя или текст",
+        "ph_name_input": "Например: AZIZBEK",
+        "font_selector_label": "Шрифт:",
+        "font_stapel_sub": "Геометрический",
+        "font_inter_sub": "Классический",
+        "font_grobold_sub": "Современный",
+        "font_montserrat_sub": "Премиальный",
+        "font_bebas_sub": "Высокий & Дерзкий",
+        "font_rubik_sub": "Мягкий & Округлый",
+        "font_poppins_sub": "Гладкий",
+        "font_impact_sub": "Массивный & Жирный",
+        "label_svg_file": "SVG Векторный файл (.svg)",
+        "dropzone_main": "Выберите SVG файл",
+        "dropzone_sub": "Только векторные .svg файлы (PNG/JPG не принимаются)",
+        "svg_active_status": "✓ SVG активен и готов",
+        "btn_change_svg": "Заменить",
+        "label_svg_pack": "Название пака (для ссылки)",
+        "ph_svg_pack": "Например: my_cool_pack",
+        "size_label": "Размер (Масштаб)",
+        "color_customizer_title": "Настройка цветов",
+        "badge_outer": "Внешний",
+        "badge_inner": "Внутренний",
+        "badge_text": "Текст",
+        "target_outer": "Внешняя граница",
+        "target_inner": "Внутренняя часть",
+        "target_text": "Цвет текста",
+        "btn_choose_color": "Выбрать",
+        "btn_reset_color": "Сбросить",
+        "dest_label": "Тип пака:",
+        "dest_new": "Новый пак",
+        "dest_existing": "В существующий",
+        "ph_select_existing": "Загрузка...",
+        "live_preview_badge": "Живое превью",
+        "preview_info_text": "Текст:",
+        "preview_info_font": "Шрифт:",
+        "tab_name": "Name",
+        "tab_logo": "Logo",
+        "tab_grey": "Grey",
+        "tab_hq": "HQ",
+        "tab_name_badge": "13 Тикетов 100x100",
+        "tab_name_title": "Тикет эмодзи",
+        "tab_name_desc": "Выберите одну или несколько анимаций тикетов от 1.tgs до 13.tgs",
+        "ph_search_tickets": "Поиск тикетов...",
+        "btn_select_all": "Выбрать все",
+        "btn_deselect_all": "Снять выбор",
+        "tab_logo_badge": "ПРЕМИУМ ЛОГО ПАК",
+        "tab_logo_title": "Коллекция из 103 шаблонов логотипов",
+        "tab_logo_desc": "Создайте полный пак из всех стилей от 14.tgs до 117.tgs в 1 клик для вашего имени!",
+        "btn_create_fullpack_logo": "Создать полный пак (103 лого)",
+        "all_logos_title": "Все шаблоны логотипов",
+        "all_logos_desc": "Выберите нужные логотипы или отметьте несколько для своего пака",
+        "ph_search_logos": "Поиск логотипов...",
+        "tab_grey_badge": "ПРЕМИУМ СЕРЫЙ ПАК",
+        "tab_grey_title": "65 Серых 3D шаблонов эмодзи",
+        "tab_grey_desc": "Стильные серебристые, металлические и 3D эмодзи. Создайте пак из 65 эмодзи в 1 клик!",
+        "btn_create_fullpack_grey": "Создать полный пак (65 Grey)",
+        "all_grey_title": "Все серые шаблоны",
+        "all_grey_desc": "Выберите нужные шаблоны или отметьте несколько для своего пака",
+        "ph_search_grey": "Поиск шаблонов Grey...",
+        "tab_hq_badge": "HIGH QUALITY ПАК",
+        "tab_hq_title": "80 High Quality 3D шаблонов",
+        "tab_hq_desc": "Коллекция новейших 3D анимированных эмодзи высшего качества. Создайте 80 эмодзи в 1 клик!",
+        "btn_create_fullpack_hq": "Создать полный пак (80 HQ)",
+        "all_hq_title": "Все шаблоны High Quality",
+        "all_hq_desc": "Выберите шаблоны или отметьте несколько для своего пака",
+        "ph_search_hq": "Поиск шаблонов HQ...",
+        "btn_main_action": "Создать выбранные эмодзи",
+        "selected_count": "выбрано",
+        "btn_action_create": "Создать",
+        "btn_action_add": "Добавить",
+        "action_btn_multiple": "Выбранные эмодзи: {action} ({count} шт. • {price})",
+        "action_btn_single": "Выбранный #{num} эмодзи: {action} ({price})",
+        "rating_badge": "ЛИДЕРЫ",
+        "rating_title": "Рейтинг пользователей",
+        "rating_subtitle": "Самые активные по приглашениям друзей и созданию эмодзи",
+        "rating_tab_ref": "Приглашения",
+        "rating_tab_creator": "Мастера эмодзи",
+        "my_rank_label": "Ваше место:",
+        "rank_badge_active": "Активен",
+        "rank_place_1": "1-е Место",
+        "rank_place_2": "2-е Место",
+        "rank_place_3": "3-е Место",
+        "top_list_title": "Список лидеров (4 - 20)",
+        "no_other_users": "Пока нет других участников",
+        "unit_packs": "паков",
+        "unit_refs": "чел",
+        "user_default_name": "Пользователь",
+        "bonus_card_title": "Ежедневный бонус: +3 ⭐ Stars",
+        "bonus_card_desc": "Получайте бесплатные Stars каждые 24 часа!",
+        "btn_claim_now": "Забрать (3 ⭐)",
+        "bonus_ready": "Бонус готов! Заберите свои 3 Stars!",
+        "bonus_next_wait": "До следующего бонуса:",
+        "bonus_claimed": "+3 ⭐ Stars начислено на ваш баланс!",
+        "balance_sub": "Текущий баланс Stars",
+        "btn_profile_topup": "Пополнить",
+        "price_note": "Стоимость создания 1 эмодзи:",
+        "ref_title": "Пригласить друзей",
+        "ref_desc_prefix": "За каждого нового друга бесплатно",
+        "btn_copy": "Копировать",
+        "btn_share_ref": "Поделиться",
+        "stat_invited": "Приглашено друзей",
+        "stat_earned": "Всего заработано Stars",
+        "history_title": "История созданных паков",
+        "your_packs_title": "Ваши паки",
+        "packs_empty_title": "Пока нет созданных паков",
+        "packs_empty_desc": "Перейдите в студию и создайте свой первый эксклюзивный пак эмодзи!",
+        "btn_goto_studio": "В студию",
+        "official_channel": "➤ Наш официальный канал",
+        "channel_desc": "Новости, розыгрыши и промокоды",
+        "help_pricing": "Помощь и цены",
+        "help_desc": "Как использовать и все правила",
+        "lang_settings_title": "Язык интерфейса (Language)",
+        "modal_tpl_title": "Детали эмодзи",
+        "modal_text_label": "Текст:",
+        "modal_font_label": "Шрифт:",
+        "modal_format_label": "Формат:",
+        "btn_generate_single": "Создать этот эмодзи",
+        "btn_add_to_pack_modal": "Добавить в существующий пак",
+        "progress_title": "Создание эмодзи...",
+        "progress_desc": "Пожалуйста, подождите, идет рендеринг анимации",
+        "success_title": "Успешно создано!",
+        "success_desc": "Ваш премиальный анимированный пак эмодзи создан в Telegram.",
+        "pack_link_label": "Ссылка на пак эмодзи:",
+        "btn_open_pack": "Добавить в Telegram",
+        "btn_share_pack": "Поделиться паком",
+        "balance_modal_title": "Недостаточно баланса!",
+        "balance_modal_desc": "Для создания выбранных эмодзи на вашем балансе недостаточно Stars.",
+        "calc_curr_bal": "Ваш баланс:",
+        "calc_needed_bal": "Требуется:",
+        "calc_diff_bal": "Не хватает:",
+        "btn_topup_wallet": "Купить Stars",
+        "btn_referral_invite": "Пригласить друзей (Бесплатно +1 ⭐)",
+        "btn_back": "Назад",
+        "pay_choice_title": "Выберите способ оплаты",
+        "pay_choice_desc": "Подтвердите оплату выбранных эмодзи.",
+        "pay_choice_total": "Итого:",
+        "pay_choice_wallet_bal": "Баланс кошелька:",
+        "pay_choice_stars_title": "Оплата через Telegram Stars",
+        "pay_choice_stars_sub": "Отправить инвойс XTR напрямую в бота",
+        "pay_choice_wallet_title": "Оплата с баланса",
+        "pay_choice_wallet_sub": "Списать со счета в приложении",
+        "btn_cancel": "Отмена",
+        "invoice_sent_title": "Счет отправлен боту!",
+        "invoice_sent_desc": "В чат с ботом @GnEmojiBot выставлен счет. Перейдите в чат и оплатите его. После оплаты пак будет создан автоматически!",
+        "btn_goto_bot": "Перейти к боту",
+        "footer_copyright": "Авторские права защищены",
+        "footer_all_rights": "© 2026 GN Studio. Все права защищены.",
+        "footer_desc": "Предоставляется по эксклюзивной лицензии Telegram Mini App. Несанкционированное копирование строго запрещено.",
+        "toast_enter_name": "Пожалуйста, введите имя или текст!",
+        "toast_upload_svg": "Пожалуйста, загрузите векторный .svg файл!",
+        "toast_choose_existing": "Пожалуйста, выберите пак для добавления!",
+        "toast_sending_invoice": "Отправка счета боту...",
+        "toast_no_packs_yet": "У вас пока нет паков. Сначала создайте пак!",
+        "toast_copied_ref": "Реферальная ссылка скопирована! Отправьте друзьям",
+        "toast_color_reset": "Цвет сброшен на исходный",
+        "toast_stars_success": "Оплата Stars принята!",
+        "toast_packs_refreshed": "Паки обновлены",
+        "toast_svg_only": "Принимаются только векторные файлы формата .svg! (PNG, JPG не поддерживаются)",
+        "toast_svg_invalid": "Некорректный SVG! Тег <svg> не найден.",
+        "toast_svg_loaded": "Векторный SVG успешно загружен",
+        "toast_svg_removed": "SVG удален",
+        "toast_error": "Произошла ошибка. Попробуйте снова."
     },
-    en: {
-        nav_studio: "Studio",
-        nav_rating: "Rating",
-        nav_profile: "Profile",
-        rating_badge: "LEADERBOARD",
-        rating_title: "User Leaderboard",
-        rating_subtitle: "Top users who invited friends and created emoji packs",
-        rating_tab_ref: "Referrals",
-        rating_tab_creator: "Emoji Creators",
-        my_rank_label: "Your Rank:",
-        top_list_title: "Top Leaders (4 - 20)",
-        bonus_card_title: "Daily Bonus: +3 ⭐ Stars",
-        bonus_card_desc: "Claim free Stars every 24 hours!",
-        btn_claim_now: "Claim (3 ⭐)",
-        lang_settings_title: "Interface Language",
-        bonus_ready: "Bonus ready! Claim your 3 Stars gift!",
-        bonus_next_wait: "Next bonus in:",
-        bonus_claimed: "+3 ⭐ Stars added to your balance!"
+    "en": {
+        "guard_badge": "TELEGRAM EXCLUSIVE APP",
+        "guard_title": "Opens only via Telegram",
+        "guard_desc": "GnEmoji Studio mini app is protected for secure usage and automatic custom emoji pack generation only through official Telegram.",
+        "guard_feat_1": "180+ Telegram Animated Emojis",
+        "guard_feat_2": "Text, Logo & 3D Metallic Styles",
+        "guard_feat_3": "Protected via official Telegram Stars & API",
+        "guard_btn_open": "Open in Telegram Bot",
+        "guard_copy": "© 2026 GN Studio • All rights reserved",
+        "loader_status": "Loading templates...",
+        "nav_studio": "Studio",
+        "nav_rating": "Rating",
+        "nav_profile": "Profile",
+        "mode_text": "Text",
+        "mode_svg": "SVG Vector",
+        "label_name_input": "Enter Name or Text",
+        "ph_name_input": "Example: AZIZBEK",
+        "font_selector_label": "Font style:",
+        "font_stapel_sub": "Geometric",
+        "font_inter_sub": "Classic",
+        "font_grobold_sub": "Modern",
+        "font_montserrat_sub": "Luxury",
+        "font_bebas_sub": "Tall & Bold",
+        "font_rubik_sub": "Soft & Rounded",
+        "font_poppins_sub": "Smooth",
+        "font_impact_sub": "Bold & Heavy",
+        "label_svg_file": "SVG Vector File (.svg)",
+        "dropzone_main": "Select SVG file",
+        "dropzone_sub": "Only .svg vector files (PNG/JPG not accepted)",
+        "svg_active_status": "✓ SVG active & ready",
+        "btn_change_svg": "Replace",
+        "label_svg_pack": "Pack name (for link)",
+        "ph_svg_pack": "Example: my_cool_pack",
+        "size_label": "Size (Scale)",
+        "color_customizer_title": "Color Customizer",
+        "badge_outer": "Outer",
+        "badge_inner": "Inner",
+        "badge_text": "Text",
+        "target_outer": "Outer border",
+        "target_inner": "Inner layer",
+        "target_text": "Text color",
+        "btn_choose_color": "Choose",
+        "btn_reset_color": "Reset",
+        "dest_label": "Destination:",
+        "dest_new": "New pack",
+        "dest_existing": "Add to existing",
+        "ph_select_existing": "Loading...",
+        "live_preview_badge": "Live Preview",
+        "preview_info_text": "Text:",
+        "preview_info_font": "Font:",
+        "tab_name": "Name",
+        "tab_logo": "Logo",
+        "tab_grey": "Grey",
+        "tab_hq": "HQ",
+        "tab_name_badge": "13 100x100 Tickets",
+        "tab_name_title": "Ticket Emojis",
+        "tab_name_desc": "Choose one or multiple ticket animations from 1.tgs to 13.tgs",
+        "ph_search_tickets": "Search tickets...",
+        "btn_select_all": "Select all",
+        "btn_deselect_all": "Deselect all",
+        "tab_logo_badge": "PREMIUM LOGO PACK",
+        "tab_logo_title": "103 Logo Templates Collection",
+        "tab_logo_desc": "Generate all circular and logo styles from 14.tgs to 117.tgs in 1 click for your name!",
+        "btn_create_fullpack_logo": "Create Full Pack (103 Logos)",
+        "all_logos_title": "All Logo Templates",
+        "all_logos_desc": "Select your desired logos or choose several to build a custom pack",
+        "ph_search_logos": "Search logos...",
+        "tab_grey_badge": "PREMIUM GREY PACK",
+        "tab_grey_title": "65 Grey 3D Emoji Templates",
+        "tab_grey_desc": "Sleek silver, metallic, and 3D styles. Generate all 65 emojis in 1 click!",
+        "btn_create_fullpack_grey": "Create Full Pack (65 Grey)",
+        "all_grey_title": "All Grey Templates",
+        "all_grey_desc": "Select templates or choose multiple to create a custom pack",
+        "ph_search_grey": "Search Grey templates...",
+        "tab_hq_badge": "HIGH QUALITY PACK",
+        "tab_hq_title": "80 High Quality 3D Templates",
+        "tab_hq_desc": "Top-tier collection of animated 3D emojis. Generate all 80 emojis in 1 click!",
+        "btn_create_fullpack_hq": "Create Full Pack (80 HQ)",
+        "all_hq_title": "All High Quality Templates",
+        "all_hq_desc": "Select templates or choose multiple to build a custom pack",
+        "ph_search_hq": "Search HQ templates...",
+        "btn_main_action": "Create Selected Emojis",
+        "selected_count": "selected",
+        "btn_action_create": "Create",
+        "btn_action_add": "Add",
+        "action_btn_multiple": "Selected Emojis: {action} ({count} • {price})",
+        "action_btn_single": "Selected #{num} Emoji: {action} ({price})",
+        "rating_badge": "LEADERBOARD",
+        "rating_title": "User Leaderboard",
+        "rating_subtitle": "Top referrers and most active emoji creators",
+        "rating_tab_ref": "Referrals",
+        "rating_tab_creator": "Emoji Creators",
+        "my_rank_label": "Your Rank:",
+        "rank_badge_active": "Active",
+        "rank_place_1": "1st Place",
+        "rank_place_2": "2nd Place",
+        "rank_place_3": "3rd Place",
+        "top_list_title": "Top Leaders (4 - 20)",
+        "no_other_users": "No other participants yet",
+        "unit_packs": "packs",
+        "unit_refs": "friends",
+        "user_default_name": "User",
+        "bonus_card_title": "Daily Bonus: +3 ⭐ Stars",
+        "bonus_card_desc": "Claim free Stars every 24 hours!",
+        "btn_claim_now": "Claim (3 ⭐)",
+        "bonus_ready": "Bonus ready! Claim your 3 Stars gift!",
+        "bonus_next_wait": "Next bonus in:",
+        "bonus_claimed": "+3 ⭐ Stars added to your balance!",
+        "balance_sub": "Current Stars Balance",
+        "btn_profile_topup": "Top Up",
+        "price_note": "Cost to create 1 emoji:",
+        "ref_title": "Invite Friends",
+        "ref_desc_prefix": "Free for each invited friend",
+        "btn_copy": "Copy",
+        "btn_share_ref": "Share",
+        "stat_invited": "Friends Invited",
+        "stat_earned": "Total Stars Earned",
+        "history_title": "Created Packs History",
+        "your_packs_title": "Your Packs",
+        "packs_empty_title": "No packs created yet",
+        "packs_empty_desc": "Go to Studio and create your first exclusive emoji pack!",
+        "btn_goto_studio": "Go to Studio",
+        "official_channel": "➤ Official Channel",
+        "channel_desc": "News, giveaways and promo codes",
+        "help_pricing": "Help & Pricing",
+        "help_desc": "How to use and all rules",
+        "lang_settings_title": "Interface Language",
+        "modal_tpl_title": "Emoji Details",
+        "modal_text_label": "Text:",
+        "modal_font_label": "Font:",
+        "modal_format_label": "Format:",
+        "btn_generate_single": "Create This Emoji",
+        "btn_add_to_pack_modal": "Add to Existing Pack",
+        "progress_title": "Preparing Emojis...",
+        "progress_desc": "Please wait, animation is being rendered",
+        "success_title": "Successfully Created!",
+        "success_desc": "Your premium animated emoji pack has been created in Telegram.",
+        "pack_link_label": "Emoji Pack Link:",
+        "btn_open_pack": "Add to Telegram",
+        "btn_share_pack": "Share Pack",
+        "balance_modal_title": "Insufficient Balance!",
+        "balance_modal_desc": "You don't have enough Stars to create the selected emojis.",
+        "calc_curr_bal": "Your balance:",
+        "calc_needed_bal": "Required:",
+        "calc_diff_bal": "Missing:",
+        "btn_topup_wallet": "Buy Stars",
+        "btn_referral_invite": "Invite Friends (Free +1 ⭐)",
+        "btn_back": "Back",
+        "pay_choice_title": "Choose Payment Method",
+        "pay_choice_desc": "Confirm payment for selected emojis.",
+        "pay_choice_total": "Total price:",
+        "pay_choice_wallet_bal": "Wallet balance:",
+        "pay_choice_stars_title": "Pay with Telegram Stars",
+        "pay_choice_stars_sub": "Send direct XTR invoice to bot",
+        "pay_choice_wallet_title": "Pay from Wallet Balance",
+        "pay_choice_wallet_sub": "Deduct from in-app Stars balance",
+        "btn_cancel": "Cancel",
+        "invoice_sent_title": "Invoice Sent to Bot!",
+        "invoice_sent_desc": "An invoice was sent to @GnEmojiBot in Telegram. Open the chat and confirm payment. Your pack will be generated automatically upon payment!",
+        "btn_goto_bot": "Go to Telegram Bot",
+        "footer_copyright": "Copyright Protected",
+        "footer_all_rights": "© 2026 GN Studio. All rights reserved.",
+        "footer_desc": "Provided under exclusive Telegram Mini App license. Unauthorized copying is strictly prohibited.",
+        "toast_enter_name": "Please enter a name or text!",
+        "toast_upload_svg": "Please upload an .svg vector file!",
+        "toast_choose_existing": "Please select an existing pack to add to!",
+        "toast_sending_invoice": "Sending invoice to bot...",
+        "toast_no_packs_yet": "You don't have any packs yet. Create a full pack first!",
+        "toast_copied_ref": "Referral link copied! Share with friends",
+        "toast_color_reset": "Color reset to default",
+        "toast_stars_success": "Stars payment received!",
+        "toast_packs_refreshed": "Packs refreshed",
+        "toast_svg_only": "Only .svg vector files are accepted! (PNG, JPG not supported)",
+        "toast_svg_invalid": "Invalid SVG! Tag <svg> not found.",
+        "toast_svg_loaded": "Vector SVG successfully loaded",
+        "toast_svg_removed": "SVG removed",
+        "toast_error": "An error occurred. Please try again."
     }
 };
 
@@ -1428,7 +1949,9 @@ function applyLanguage(lang) {
     if (!i18n[lang]) lang = 'uz';
     state.lang = lang;
     try { localStorage.setItem('gn_lang', lang); } catch (_) {}
+    document.documentElement.lang = lang;
 
+    // 1. Text elements with data-i18n
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (i18n[lang] && i18n[lang][key]) {
@@ -1436,6 +1959,15 @@ function applyLanguage(lang) {
         }
     });
 
+    // 2. Input and search placeholder elements with data-i18n-ph
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.getAttribute('data-i18n-ph');
+        if (i18n[lang] && i18n[lang][key]) {
+            el.setAttribute('placeholder', i18n[lang][key]);
+        }
+    });
+
+    // 3. Language switcher buttons active state
     document.querySelectorAll('.lang-switch-btn').forEach(b => {
         if (b.dataset.lang === lang) {
             b.classList.add('active');
@@ -1444,7 +1976,22 @@ function applyLanguage(lang) {
         }
     });
 
-    // Sync to backend database
+    // 4. Update dynamic selection toolbar and action button immediately
+    if (typeof updateSelectionStatus === 'function') {
+        updateSelectionStatus();
+    }
+
+    // 5. Update Existing packs dropdown
+    if (typeof renderExistingPacksDropdown === 'function') {
+        renderExistingPacksDropdown();
+    }
+
+    // 6. Update Leaderboard if loaded
+    if (state.lastLeaderboardData && typeof renderLeaderboardUI === 'function') {
+        renderLeaderboardUI(state.lastLeaderboardData, state.ratingTab || 'ref');
+    }
+
+    // 7. Sync to backend database
     const uid = state.user?.id || 1323217434;
     apiFetch('set_language', {
         method: 'POST',
@@ -1540,21 +2087,25 @@ async function loadLeaderboard(tabType = 'referral') {
 }
 
 function renderLeaderboardUI(data, tabType) {
+    state.lastLeaderboardData = data;
+    const curLang = state.lang || 'uz';
+    const dict = (typeof i18n !== 'undefined' && i18n[curLang]) ? i18n[curLang] : {};
+
     const list = tabType === 'creator' ? (data.creators || []) : (data.referrals || []);
     const rankInfo = data.user_rank || {};
     const myRank = tabType === 'creator' ? rankInfo.creator_rank : rankInfo.referral_rank;
     const myScore = tabType === 'creator' ? rankInfo.total_packs : rankInfo.referral_count;
-    const unit = tabType === 'creator' ? (state.lang === 'ru' ? 'паков' : state.lang === 'en' ? 'packs' : 'ta to\'plam') : (state.lang === 'ru' ? 'чел' : state.lang === 'en' ? 'refs' : 'ta do\'st');
+    const unit = tabType === 'creator' ? (dict.unit_packs || "ta to'plam") : (dict.unit_refs || "ta do'st");
 
     // My rank
     if (dom.myRankNum) dom.myRankNum.textContent = myRank > 0 ? `#${myRank}` : '#--';
     if (dom.myRankVal) dom.myRankVal.textContent = `${myScore || 0} ${unit}`;
     if (dom.myRankBadge) {
-        if (myRank === 1) dom.myRankBadge.textContent = "🥇 1-O'rin";
-        else if (myRank === 2) dom.myRankBadge.textContent = "🥈 2-O'rin";
-        else if (myRank === 3) dom.myRankBadge.textContent = "🥉 3-O'rin";
-        else if (myRank > 0 && myRank <= 10) dom.myRankBadge.textContent = "🔥 TOP 10";
-        else dom.myRankBadge.textContent = "🏆 Faol";
+        if (myRank === 1) dom.myRankBadge.textContent = dict.rank_place_1 || "1-O'rin";
+        else if (myRank === 2) dom.myRankBadge.textContent = dict.rank_place_2 || "2-O'rin";
+        else if (myRank === 3) dom.myRankBadge.textContent = dict.rank_place_3 || "3-O'rin";
+        else if (myRank > 0 && myRank <= 10) dom.myRankBadge.textContent = "TOP 10";
+        else dom.myRankBadge.textContent = dict.rank_badge_active || "Faol";
     }
 
     // Top 3 Podium
@@ -1591,7 +2142,7 @@ function renderLeaderboardUI(data, tabType) {
         dom.leaderboardList.innerHTML = '';
         const rest = list.slice(3, 20);
         if (rest.length === 0) {
-            dom.leaderboardList.innerHTML = `<div style="text-align:center;color:#64748b;font-size:13px;padding:16px;">Hozircha boshqa ishtirokchilar yo'q</div>`;
+            dom.leaderboardList.innerHTML = `<div style="text-align:center;color:#64748b;font-size:13px;padding:16px;">${dict.no_other_users || "Hozircha boshqa ishtirokchilar yo'q"}</div>`;
         } else {
             rest.forEach((u, idx) => {
                 const rankNum = idx + 4;
@@ -2131,64 +2682,66 @@ function updateSelectionStatus() {
     else if (state.activeTab === 'hq') activeSet = state.selectedHQ;
     
     const totalSelected = state.selectedTickets.size + state.selectedLogos.size + state.selectedGrey.size + state.selectedHQ.size;
-    
+    const curLang = state.lang || 'uz';
+    const dict = (typeof i18n !== 'undefined' && i18n[curLang]) ? i18n[curLang] : {};
+
     // Ticket tab toolbar
     if (dom.ticketSelectionCount) {
-        dom.ticketSelectionCount.textContent = `${state.selectedTickets.size} ta tanlandi`;
+        dom.ticketSelectionCount.textContent = `${state.selectedTickets.size} ${dict.selected_count || "ta tanlandi"}`;
     }
     if (dom.txtSelectAllTickets) {
         if (state.selectedTickets.size === TICKET_TEMPLATES.length && TICKET_TEMPLATES.length > 0) {
-            dom.txtSelectAllTickets.textContent = "Tanlovni bekor qilish";
+            dom.txtSelectAllTickets.textContent = dict.btn_deselect_all || "Tanlovni bekor qilish";
             dom.btnSelectAllTickets?.classList.add('active-all');
         } else {
-            dom.txtSelectAllTickets.textContent = "Hammasini belgilash";
+            dom.txtSelectAllTickets.textContent = dict.btn_select_all || "Hammasini belgilash";
             dom.btnSelectAllTickets?.classList.remove('active-all');
         }
     }
     
     // Logo tab toolbar
     if (dom.logoSelectionCount) {
-        dom.logoSelectionCount.textContent = `${state.selectedLogos.size} ta tanlandi`;
+        dom.logoSelectionCount.textContent = `${state.selectedLogos.size} ${dict.selected_count || "ta tanlandi"}`;
     }
     if (dom.txtSelectAllLogos) {
         if (state.selectedLogos.size === LOGO_TEMPLATES.length && LOGO_TEMPLATES.length > 0) {
-            dom.txtSelectAllLogos.textContent = "Tanlovni bekor qilish";
+            dom.txtSelectAllLogos.textContent = dict.btn_deselect_all || "Tanlovni bekor qilish";
             dom.btnSelectAllLogos?.classList.add('active-all');
         } else {
-            dom.txtSelectAllLogos.textContent = "Hammasini belgilash";
+            dom.txtSelectAllLogos.textContent = dict.btn_select_all || "Hammasini belgilash";
             dom.btnSelectAllLogos?.classList.remove('active-all');
         }
     }
 
     // Grey tab toolbar
     if (dom.greySelectionCount) {
-        dom.greySelectionCount.textContent = `${state.selectedGrey.size} ta tanlandi`;
+        dom.greySelectionCount.textContent = `${state.selectedGrey.size} ${dict.selected_count || "ta tanlandi"}`;
     }
     if (dom.txtSelectAllGrey) {
         if (state.selectedGrey.size === GREY_TEMPLATES.length && GREY_TEMPLATES.length > 0) {
-            dom.txtSelectAllGrey.textContent = "Tanlovni bekor qilish";
+            dom.txtSelectAllGrey.textContent = dict.btn_deselect_all || "Tanlovni bekor qilish";
             dom.btnSelectAllGrey?.classList.add('active-all');
         } else {
-            dom.txtSelectAllGrey.textContent = "Hammasini belgilash";
+            dom.txtSelectAllGrey.textContent = dict.btn_select_all || "Hammasini belgilash";
             dom.btnSelectAllGrey?.classList.remove('active-all');
         }
     }
 
     // High Quality tab toolbar
     if (dom.hqSelectionCount) {
-        dom.hqSelectionCount.textContent = `${state.selectedHQ.size} ta tanlandi`;
+        dom.hqSelectionCount.textContent = `${state.selectedHQ.size} ${dict.selected_count || "ta tanlandi"}`;
     }
     if (dom.txtSelectAllHQ) {
         if (state.selectedHQ.size === HQ_TEMPLATES.length && HQ_TEMPLATES.length > 0) {
-            dom.txtSelectAllHQ.textContent = "Tanlovni bekor qilish";
+            dom.txtSelectAllHQ.textContent = dict.btn_deselect_all || "Tanlovni bekor qilish";
             dom.btnSelectAllHQ?.classList.add('active-all');
         } else {
-            dom.txtSelectAllHQ.textContent = "Hammasini belgilash";
+            dom.txtSelectAllHQ.textContent = dict.btn_select_all || "Hammasini belgilash";
             dom.btnSelectAllHQ?.classList.remove('active-all');
         }
     }
     
-    // Price & Label Calculation — HAR DOIM STARS TO'LOV HISOB-KITOBLARI
+    // Price & Label Calculation
     const count = totalSelected > 0 ? totalSelected : 1;
     const unitPrice = state.emojiPrice || 6;
     const totalCost = count * unitPrice;
@@ -2196,22 +2749,27 @@ function updateSelectionStatus() {
     const priceBadge = `<span class="btn-stars-badge">${totalCost} <img src="images/image.png" class="btn-star-icon" alt="Stars"></span>`;
     
     const isExisting = state.destinationMode === 'existing';
-    const actionVerb = isExisting ? "Qo'shish" : "Yaratish";
+    const actionVerb = isExisting ? (dict.btn_action_add || "Qo'shish") : (dict.btn_action_create || "Yaratish");
     
     // Bottom Action Button Text
-    if (totalSelected > 1) {
-        dom.mainBtnText.innerHTML = `Tanlangan Emojilarni ${actionVerb} (${totalSelected} ta • ${priceBadge})`;
-    } else if (totalSelected === 1) {
-        const allSel = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ];
-        const singleFile = allSel[0];
-        const num = getTemplateNumber(singleFile);
-        dom.mainBtnText.innerHTML = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
-    } else {
-        const num = getTemplateNumber(state.selectedTemplate);
-        dom.mainBtnText.innerHTML = `Tanlangan #${num} Emojini ${actionVerb} (${priceBadge})`;
+    if (dom.mainBtnText) {
+        if (totalSelected > 1) {
+            const tmpl = dict.action_btn_multiple || "Tanlangan Emojilarni {action} ({count} ta • {price})";
+            dom.mainBtnText.innerHTML = tmpl.replace('{action}', actionVerb).replace('{count}', totalSelected).replace('{price}', priceBadge);
+        } else if (totalSelected === 1) {
+            const allSel = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ];
+            const singleFile = allSel[0];
+            const num = getTemplateNumber(singleFile);
+            const tmpl = dict.action_btn_single || "Tanlangan #{num} Emojini {action} ({price})";
+            dom.mainBtnText.innerHTML = tmpl.replace('{num}', num).replace('{action}', actionVerb).replace('{price}', priceBadge);
+        } else {
+            const num = getTemplateNumber(state.selectedTemplate);
+            const tmpl = dict.action_btn_single || "Tanlangan #{num} Emojini {action} ({price})";
+            dom.mainBtnText.innerHTML = tmpl.replace('{num}', num).replace('{action}', actionVerb).replace('{price}', priceBadge);
+        }
     }
 
-    // Floating action bar visibility (Only appears on screen when emoji(s) are selected!)
+    // Floating action bar visibility
     const bar = dom.bottomActionBar || document.getElementById('bottom-action-bar');
     if (bar) {
         if (totalSelected > 0 && dom.viewStudio && !dom.viewStudio.classList.contains('hidden')) {
