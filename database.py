@@ -37,6 +37,10 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN balance INTEGER DEFAULT 0")
     if "referred_by" not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN referred_by INTEGER DEFAULT NULL")
+    if "language_code" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN language_code TEXT DEFAULT 'uz'")
+    if "last_daily_bonus" not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN last_daily_bonus TIMESTAMP DEFAULT NULL")
 
     # 2. User packs table
     cursor.execute("""
@@ -134,6 +138,15 @@ def init_db():
             used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(chek_id, user_id),
             FOREIGN KEY (chek_id) REFERENCES cheks (id) ON DELETE CASCADE
+        )
+    """)
+
+    # 10. Broadcast Exclusions table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS broadcast_exclusions (
+            user_id INTEGER PRIMARY KEY,
+            reason TEXT,
+            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -765,3 +778,302 @@ def claim_chek(code: str, user_id: int) -> Tuple[bool, int, str, Optional[Dict[s
         conn.rollback()
         conn.close()
         return False, 0, f"Xatolik yuz berdi: {e}", None
+
+
+# ==================== USER LANGUAGE (I18N) ====================
+
+def get_user_language(user_id: int) -> str:
+    """Returns the user's preferred language ('uz', 'ru', 'en'). Defaults to 'uz'."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT language_code FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row and row["language_code"]:
+        lang = str(row["language_code"]).strip().lower()
+        if lang in ("uz", "ru", "en"):
+            return lang
+    return "uz"
+
+
+def set_user_language(user_id: int, lang: str) -> bool:
+    """Updates the user's language preference."""
+    if lang not in ("uz", "ru", "en"):
+        lang = "uz"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO users (user_id, language_code) VALUES (?, ?)", (user_id, lang))
+    cursor.execute("UPDATE users SET language_code = ? WHERE user_id = ?", (lang, user_id))
+    conn.commit()
+    conn.close()
+    return True
+
+
+# ==================== KUNLIK BONUS (DAILY 3 STARS) ====================
+
+def claim_daily_bonus(user_id: int) -> Tuple[bool, str, int, Optional[int]]:
+    """
+    Claims 3 Stars daily bonus for user.
+    Cooldown: 24 hours (86400 seconds).
+    Returns (success, message, new_balance, remaining_seconds_if_fail)
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT balance, last_daily_bonus FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    if not row:
+        cursor.execute("INSERT OR IGNORE INTO users (user_id, balance) VALUES (?, 0)", (user_id,))
+        balance = 0
+        last_bonus = None
+    else:
+        balance = row["balance"] or 0
+        last_bonus = row["last_daily_bonus"]
+
+    now = datetime.utcnow()
+    COOLDOWN = 86400  # 24 hours
+
+    if last_bonus:
+        try:
+            clean_ts = str(last_bonus).replace("T", " ").split(".")[0]
+            last_dt = datetime.strptime(clean_ts, "%Y-%m-%d %H:%M:%S")
+            elapsed = (now - last_dt).total_seconds()
+            if elapsed < COOLDOWN:
+                remaining = int(COOLDOWN - elapsed)
+                conn.close()
+                return False, "Bugungi bonus allaqachon olingan!", balance, remaining
+        except Exception:
+            pass
+
+    bonus_amount = 3
+    new_balance = balance + bonus_amount
+    cursor.execute("""
+        UPDATE users 
+        SET balance = balance + ?, last_daily_bonus = CURRENT_TIMESTAMP 
+        WHERE user_id = ?
+    """, (bonus_amount, user_id))
+
+    cursor.execute("""
+        INSERT INTO transactions (user_id, amount, type, description)
+        VALUES (?, ?, 'daily_bonus', 'Kunlik bonus (+3 ⭐)')
+    """, (user_id, bonus_amount))
+
+    conn.commit()
+    conn.close()
+    return True, "Tabriklaymiz! +3 ⭐ Stars balansingizga muvaffaqiyatli qo'shildi!", new_balance, None
+
+
+def get_daily_bonus_status(user_id: int) -> Dict[str, Any]:
+    """Returns whether user can claim daily bonus and remaining seconds."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT last_daily_bonus, balance FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row or not row["last_daily_bonus"]:
+        return {"can_claim": True, "remaining_seconds": 0, "bonus_amount": 3}
+
+    now = datetime.utcnow()
+    last_bonus = row["last_daily_bonus"]
+    try:
+        clean_ts = str(last_bonus).replace("T", " ").split(".")[0]
+        last_dt = datetime.strptime(clean_ts, "%Y-%m-%d %H:%M:%S")
+        elapsed = (now - last_dt).total_seconds()
+        if elapsed < 86400:
+            return {"can_claim": False, "remaining_seconds": int(86400 - elapsed), "bonus_amount": 3}
+    except Exception:
+        pass
+    return {"can_claim": True, "remaining_seconds": 0, "bonus_amount": 3}
+
+
+# ==================== LEADERBOARD (REYTING) ====================
+
+def get_leaderboard_referrals(limit: int = 20) -> List[Dict[str, Any]]:
+    """Returns top users who invited the most referrals."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.user_id, u.username, u.first_name, COUNT(r.user_id) as score
+        FROM users u
+        JOIN users r ON r.referred_by = u.user_id
+        GROUP BY u.user_id
+        HAVING score > 0
+        ORDER BY score DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_leaderboard_creators(limit: int = 20) -> List[Dict[str, Any]]:
+    """Returns top users who created the most emoji packs."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT user_id, username, first_name, packs_created as score
+        FROM users
+        WHERE packs_created > 0
+        ORDER BY packs_created DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_user_leaderboard_rank(user_id: int) -> Dict[str, Any]:
+    """Returns a specific user's leaderboard standings and rank."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT user_id, username, first_name, balance, packs_created FROM users WHERE user_id = ?", (user_id,))
+    u_row = cursor.fetchone()
+    if not u_row:
+        conn.close()
+        return {"user_id": user_id, "ref_count": 0, "ref_rank": 0, "packs_created": 0, "creator_rank": 0}
+
+    # Count user referrals
+    cursor.execute("SELECT COUNT(*) as count FROM users WHERE referred_by = ?", (user_id,))
+    ref_count = cursor.fetchone()["count"]
+
+    # Rank in referrals
+    ref_rank = 0
+    if ref_count > 0:
+        cursor.execute("""
+            SELECT COUNT(*) + 1 as rank FROM (
+                SELECT COUNT(r.user_id) as cnt
+                FROM users u
+                JOIN users r ON r.referred_by = u.user_id
+                GROUP BY u.user_id
+                HAVING cnt > ?
+            )
+        """, (ref_count,))
+        rr = cursor.fetchone()
+        ref_rank = rr["rank"] if rr else 0
+
+    # Rank in creators
+    packs_created = u_row["packs_created"] or 0
+    creator_rank = 0
+    if packs_created > 0:
+        cursor.execute("SELECT COUNT(*) + 1 as rank FROM users WHERE packs_created > ?", (packs_created,))
+        cr = cursor.fetchone()
+        creator_rank = cr["rank"] if cr else 0
+
+    conn.close()
+    return {
+        "user_id": user_id,
+        "first_name": u_row["first_name"] or "",
+        "username": u_row["username"] or "",
+        "ref_count": ref_count,
+        "ref_rank": ref_rank,
+        "packs_created": packs_created,
+        "creator_rank": creator_rank
+    }
+
+
+# ==================== BROADCAST EXCLUSIONS (ISTISNOLAR) ====================
+
+def add_broadcast_exclusion(user_id: int, reason: Optional[str] = None) -> bool:
+    """Adds a user to the permanent broadcast exclusion list."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO broadcast_exclusions (user_id, reason, added_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+    """, (user_id, reason))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def remove_broadcast_exclusion(user_id: int) -> bool:
+    """Removes a user from the broadcast exclusion list."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM broadcast_exclusions WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_broadcast_exclusions() -> List[Dict[str, Any]]:
+    """Returns all users in the broadcast exclusion list."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT e.user_id, e.reason, e.added_at, u.username, u.first_name
+        FROM broadcast_exclusions e
+        LEFT JOIN users u ON u.user_id = e.user_id
+        ORDER BY e.added_at DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def is_user_excluded(user_id: int) -> bool:
+    """Checks if a user is excluded from broadcast."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id FROM broadcast_exclusions WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return bool(row)
+
+
+def get_broadcast_user_ids() -> List[int]:
+    """Returns all user IDs for broadcast, strictly excluding any in broadcast_exclusions."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT user_id FROM users
+        WHERE user_id NOT IN (SELECT user_id FROM broadcast_exclusions)
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [row["user_id"] for row in rows]
+
+
+# ==================== ADMIN: USER PACKS MANAGEMENT ====================
+
+def get_all_user_packs_admin(user_id: Optional[int] = None, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+    """Returns user packs joined with user info for admin inspection."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("""
+            SELECT p.id, p.user_id, p.pack_name, p.pack_title, p.created_at,
+                   u.username, u.first_name
+            FROM user_packs p
+            LEFT JOIN users u ON u.user_id = p.user_id
+            WHERE p.user_id = ?
+            ORDER BY p.created_at DESC
+            LIMIT ? OFFSET ?
+        """, (user_id, limit, offset))
+    else:
+        cursor.execute("""
+            SELECT p.id, p.user_id, p.pack_name, p.pack_title, p.created_at,
+                   u.username, u.first_name
+            FROM user_packs p
+            LEFT JOIN users u ON u.user_id = p.user_id
+            ORDER BY p.created_at DESC
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_user_packs_count_admin(user_id: Optional[int] = None) -> int:
+    """Returns total count of packs created (optionally filtered by user_id)."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("SELECT COUNT(*) as cnt FROM user_packs WHERE user_id = ?", (user_id,))
+    else:
+        cursor.execute("SELECT COUNT(*) as cnt FROM user_packs")
+    row = cursor.fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+

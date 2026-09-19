@@ -248,10 +248,28 @@ const dom = {
     
     // Main App Views & Bottom Navigation
     viewStudio: document.getElementById('view-studio'),
+    viewRating: document.getElementById('view-rating'),
     viewProfile: document.getElementById('view-profile'),
     bottomNav: document.getElementById('bottom-nav'),
     navBtnStudio: document.getElementById('nav-btn-studio'),
+    navBtnRating: document.getElementById('nav-btn-rating'),
     navBtnProfile: document.getElementById('nav-btn-profile'),
+
+    // Reyting / Leaderboard
+    tabRatingReferral: document.getElementById('tab-rating-referral'),
+    tabRatingCreator: document.getElementById('tab-rating-creator'),
+    myRankCard: document.getElementById('my-rank-card'),
+    myRankNum: document.getElementById('my-rank-num'),
+    myRankVal: document.getElementById('my-rank-val'),
+    myRankBadge: document.getElementById('my-rank-badge'),
+    podiumContainer: document.getElementById('podium-container'),
+    leaderboardList: document.getElementById('leaderboard-list'),
+
+    // Daily Bonus
+    dailyBonusCard: document.getElementById('daily-bonus-card'),
+    btnClaimDailyBonus: document.getElementById('btn-claim-daily-bonus'),
+    claimBtnText: document.getElementById('claim-btn-text'),
+    bonusDescText: document.getElementById('bonus-desc-text'),
     
     // Header
     userAvatar: document.getElementById('user-avatar'),
@@ -962,6 +980,11 @@ async function initApp() {
         // 5. Load user info, balance & existing packs
         const uid = state.user?.id || 1323217434;
         await loadUserInfo(uid);
+
+        // 6. Initialize Language & Daily Bonus
+        const savedLang = localStorage.getItem('gn_lang') || (state.user?.language_code === 'ru' ? 'ru' : state.user?.language_code === 'en' ? 'en' : 'uz');
+        applyLanguage(savedLang);
+        checkDailyBonusStatus();
         
         clearTimeout(safetyTimeout);
         clearInterval(progressTimer);
@@ -1316,20 +1339,134 @@ function updateProfileUI() {
     }
 }
 
+// ==================== MULTI-LANGUAGE (i18n) SYSTEM ====================
+state.lang = localStorage.getItem('gn_lang') || 'uz';
+
+const i18n = {
+    uz: {
+        nav_studio: "Studiya",
+        nav_rating: "Reyting",
+        nav_profile: "Profil",
+        rating_badge: "PESHQADAMLAR",
+        rating_title: "Foydalanuvchilar Reytingi",
+        rating_subtitle: "Eng faol do'st taklif qilganlar va eng ko'p emoji yaratuvchilar",
+        rating_tab_ref: "Do'stlar taklifi",
+        rating_tab_creator: "Emoji ustalari",
+        my_rank_label: "Sizning o'rningiz:",
+        top_list_title: "Yetakchilar ro'yxati (4 - 20)",
+        bonus_card_title: "Kunlik Bonus: +3 ⭐ Stars",
+        bonus_card_desc: "Har 24 soatda bepul Stars sovg'asini oling!",
+        btn_claim_now: "Olish (3 ⭐)",
+        lang_settings_title: "Muloqot tili (Language)",
+        bonus_ready: "Bonus tayyor! 3 Stars sovg'angizni oling!",
+        bonus_next_wait: "Keyingi bonusgacha:",
+        bonus_claimed: "+3 ⭐ Stars hisobingizga qo'shildi!"
+    },
+    ru: {
+        nav_studio: "Студия",
+        nav_rating: "Рейтинг",
+        nav_profile: "Профиль",
+        rating_badge: "ЛИДЕРЫ",
+        rating_title: "Рейтинг пользователей",
+        rating_subtitle: "Лучшие по приглашениям друзей и созданию эмодзи",
+        rating_tab_ref: "Приглашения",
+        rating_tab_creator: "Мастера эмодзи",
+        my_rank_label: "Ваше место:",
+        top_list_title: "Список лидеров (4 - 20)",
+        bonus_card_title: "Ежедневный бонус: +3 ⭐ Stars",
+        bonus_card_desc: "Получайте бесплатные Stars каждые 24 часа!",
+        btn_claim_now: "Забрать (3 ⭐)",
+        lang_settings_title: "Язык интерфейса (Language)",
+        bonus_ready: "Бонус готов! Заберите свои 3 Stars!",
+        bonus_next_wait: "До следующего бонуса:",
+        bonus_claimed: "+3 ⭐ Stars начислено на ваш баланс!"
+    },
+    en: {
+        nav_studio: "Studio",
+        nav_rating: "Rating",
+        nav_profile: "Profile",
+        rating_badge: "LEADERBOARD",
+        rating_title: "User Leaderboard",
+        rating_subtitle: "Top users who invited friends and created emoji packs",
+        rating_tab_ref: "Referrals",
+        rating_tab_creator: "Emoji Creators",
+        my_rank_label: "Your Rank:",
+        top_list_title: "Top Leaders (4 - 20)",
+        bonus_card_title: "Daily Bonus: +3 ⭐ Stars",
+        bonus_card_desc: "Claim free Stars every 24 hours!",
+        btn_claim_now: "Claim (3 ⭐)",
+        lang_settings_title: "Interface Language",
+        bonus_ready: "Bonus ready! Claim your 3 Stars gift!",
+        bonus_next_wait: "Next bonus in:",
+        bonus_claimed: "+3 ⭐ Stars added to your balance!"
+    }
+};
+
+function applyLanguage(lang) {
+    if (!i18n[lang]) lang = 'uz';
+    state.lang = lang;
+    try { localStorage.setItem('gn_lang', lang); } catch (_) {}
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang] && i18n[lang][key]) {
+            el.textContent = i18n[lang][key];
+        }
+    });
+
+    document.querySelectorAll('.lang-switch-btn').forEach(b => {
+        if (b.dataset.lang === lang) {
+            b.classList.add('active');
+        } else {
+            b.classList.remove('active');
+        }
+    });
+
+    // Sync to backend database
+    const uid = state.user?.id || 1323217434;
+    apiFetch('set_language', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: uid, language: lang })
+    }).catch(() => {});
+}
+
+// ==================== VIEW SWITCHER (3 TABS) ====================
 function switchMainView(viewName) {
-    if (viewName === 'profile') {
+    if (viewName === 'rating') {
         dom.viewStudio?.classList.add('hidden');
-        dom.viewProfile?.classList.remove('hidden');
+        dom.viewProfile?.classList.add('hidden');
+        dom.viewRating?.classList.remove('hidden');
+
         dom.navBtnStudio?.classList.remove('active');
+        dom.navBtnProfile?.classList.remove('active');
+        dom.navBtnRating?.classList.add('active');
+
+        dom.bottomActionBar?.classList.remove('visible');
+        loadLeaderboard(state.ratingTab || 'referral');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (viewName === 'profile') {
+        dom.viewStudio?.classList.add('hidden');
+        dom.viewRating?.classList.add('hidden');
+        dom.viewProfile?.classList.remove('hidden');
+
+        dom.navBtnStudio?.classList.remove('active');
+        dom.navBtnRating?.classList.remove('active');
         dom.navBtnProfile?.classList.add('active');
+
         dom.bottomActionBar?.classList.remove('visible');
         updateProfileUI();
+        checkDailyBonusStatus();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
+        dom.viewRating?.classList.add('hidden');
         dom.viewProfile?.classList.add('hidden');
         dom.viewStudio?.classList.remove('hidden');
+
+        dom.navBtnRating?.classList.remove('active');
         dom.navBtnProfile?.classList.remove('active');
         dom.navBtnStudio?.classList.add('active');
+
         updateSelectionStatus();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1337,6 +1474,184 @@ function switchMainView(viewName) {
         window.lucide.createIcons();
     }
 }
+
+// ==================== LEADERBOARD (REYTING) ====================
+state.ratingTab = 'referral';
+
+async function loadLeaderboard(tabType = 'referral') {
+    state.ratingTab = tabType;
+    const uid = state.user?.id || 1323217434;
+    try {
+        const res = await apiFetch(`leaderboard?user_id=${uid}`);
+        if (!res.ok) throw new Error("Leaderboard fetch error");
+        const data = await res.json();
+        renderLeaderboardUI(data, tabType);
+    } catch (e) {
+        console.warn("Leaderboard error:", e);
+    }
+}
+
+function renderLeaderboardUI(data, tabType) {
+    const list = tabType === 'creator' ? (data.creators || []) : (data.referrals || []);
+    const rankInfo = data.user_rank || {};
+    const myRank = tabType === 'creator' ? rankInfo.creator_rank : rankInfo.referral_rank;
+    const myScore = tabType === 'creator' ? rankInfo.total_packs : rankInfo.referral_count;
+    const unit = tabType === 'creator' ? (state.lang === 'ru' ? 'паков' : state.lang === 'en' ? 'packs' : 'ta to\'plam') : (state.lang === 'ru' ? 'чел' : state.lang === 'en' ? 'refs' : 'ta do\'st');
+
+    // My rank
+    if (dom.myRankNum) dom.myRankNum.textContent = myRank > 0 ? `#${myRank}` : '#--';
+    if (dom.myRankVal) dom.myRankVal.textContent = `${myScore || 0} ${unit}`;
+    if (dom.myRankBadge) {
+        if (myRank === 1) dom.myRankBadge.textContent = "🥇 1-O'rin";
+        else if (myRank === 2) dom.myRankBadge.textContent = "🥈 2-O'rin";
+        else if (myRank === 3) dom.myRankBadge.textContent = "🥉 3-O'rin";
+        else if (myRank > 0 && myRank <= 10) dom.myRankBadge.textContent = "🔥 TOP 10";
+        else dom.myRankBadge.textContent = "🏆 Faol";
+    }
+
+    // Top 3 Podium
+    const p1 = list[0];
+    const p2 = list[1];
+    const p3 = list[2];
+
+    const fillPodiumItem = (pNum, item) => {
+        const nameEl = document.getElementById(`podium-name-${pNum}`);
+        const scoreEl = document.getElementById(`podium-score-${pNum}`);
+        const avatarEl = document.getElementById(`podium-avatar-${pNum}`);
+        if (item) {
+            const displayName = item.first_name || (item.username ? `@${item.username}` : `User ${item.user_id}`);
+            if (nameEl) nameEl.textContent = displayName;
+            const scoreVal = tabType === 'creator' ? item.total_packs : item.referral_count;
+            if (scoreEl) scoreEl.textContent = `${scoreVal} ${unit}`;
+            if (avatarEl) {
+                const initials = (displayName[0] || `${pNum}`).toUpperCase();
+                avatarEl.textContent = initials;
+            }
+        } else {
+            if (nameEl) nameEl.textContent = "—";
+            if (scoreEl) scoreEl.textContent = `0 ${unit}`;
+            if (avatarEl) avatarEl.textContent = `${pNum}`;
+        }
+    };
+
+    fillPodiumItem(1, p1);
+    fillPodiumItem(2, p2);
+    fillPodiumItem(3, p3);
+
+    // 4 to 20 list
+    if (dom.leaderboardList) {
+        dom.leaderboardList.innerHTML = '';
+        const rest = list.slice(3, 20);
+        if (rest.length === 0) {
+            dom.leaderboardList.innerHTML = `<div style="text-align:center;color:#64748b;font-size:13px;padding:16px;">Hozircha boshqa ishtirokchilar yo'q</div>`;
+        } else {
+            rest.forEach((u, idx) => {
+                const rankNum = idx + 4;
+                const displayName = u.first_name || (u.username ? `@${u.username}` : `User ${u.user_id}`);
+                const scoreVal = tabType === 'creator' ? u.total_packs : u.referral_count;
+                const initials = (displayName[0] || `${rankNum}`).toUpperCase();
+
+                const row = document.createElement('div');
+                row.className = 'lb-row';
+                row.innerHTML = `
+                    <div class="lb-row-left">
+                        <span class="lb-rank">#${rankNum}</span>
+                        <div class="lb-avatar">${initials}</div>
+                        <span class="lb-name">${displayName}</span>
+                    </div>
+                    <span class="lb-score">${scoreVal} ${unit}</span>
+                `;
+                dom.leaderboardList.appendChild(row);
+            });
+        }
+    }
+}
+
+// ==================== DAILY BONUS (KUNLIK BONUS: +3 STARS) ====================
+let bonusCooldownTimer = null;
+
+async function checkDailyBonusStatus() {
+    const uid = state.user?.id || 1323217434;
+    try {
+        const res = await apiFetch(`daily_bonus/status?user_id=${uid}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        updateDailyBonusUI(data);
+    } catch (e) {
+        console.warn("Daily bonus status error:", e);
+    }
+}
+
+function updateDailyBonusUI(data) {
+    if (bonusCooldownTimer) {
+        clearInterval(bonusCooldownTimer);
+        bonusCooldownTimer = null;
+    }
+    const btn = dom.btnClaimDailyBonus;
+    const btnTxt = dom.claimBtnText;
+    const descTxt = dom.bonusDescText;
+    if (!btn || !btnTxt) return;
+
+    if (data.can_claim) {
+        btn.disabled = false;
+        btnTxt.textContent = i18n[state.lang]?.btn_claim_now || "Olish (3 ⭐)";
+        if (descTxt) descTxt.textContent = i18n[state.lang]?.bonus_ready || "Bonus tayyor! 3 Stars sovg'angizni oling!";
+    } else {
+        btn.disabled = true;
+        let remainingSec = data.remaining_seconds || 0;
+        const updateTimer = () => {
+            if (remainingSec <= 0) {
+                checkDailyBonusStatus();
+                return;
+            }
+            const hours = Math.floor(remainingSec / 3600);
+            const mins = Math.floor((remainingSec % 3600) / 60);
+            const secs = remainingSec % 60;
+            btnTxt.textContent = `${hours}s ${mins}m ${secs}s`;
+            if (descTxt) descTxt.textContent = `${i18n[state.lang]?.bonus_next_wait || "Keyingi bonusgacha:"} ${hours}s ${mins}m`;
+            remainingSec--;
+        };
+        updateTimer();
+        bonusCooldownTimer = setInterval(updateTimer, 1000);
+    }
+}
+
+async function claimDailyBonus() {
+    const uid = state.user?.id || 1323217434;
+    const btn = dom.btnClaimDailyBonus;
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    haptic('medium');
+
+    try {
+        const res = await apiFetch('daily_bonus/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: uid })
+        });
+        const data = await res.json();
+        if (data.success) {
+            haptic('success');
+            if (window.confetti) {
+                window.confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
+            }
+            state.userBalance = data.new_balance;
+            if (dom.userBalanceVal) dom.userBalanceVal.textContent = state.userBalance;
+            const profBal = document.getElementById('profile-stars-count');
+            if (profBal) profBal.textContent = state.userBalance;
+
+            showToast(i18n[state.lang]?.bonus_claimed || "+3 ⭐ Stars hisobingizga qo'shildi!", "🎁");
+            checkDailyBonusStatus();
+        } else {
+            showToast(data.message || "Xatolik yuz berdi", "⚠️");
+            checkDailyBonusStatus();
+        }
+    } catch (e) {
+        showToast("Internet aloqasi xatosi", "⚠️");
+        btn.disabled = false;
+    }
+}
+
 
 function getPreviewCacheKey(file, scale, text = null) {
     const tplNum = parseInt(getTemplateNumber(file));
@@ -1722,7 +2037,16 @@ async function updateLivePreview() {
         if (dom.previewFontDisplay) dom.previewFontDisplay.textContent = `🎨 Vektor (${Math.round(state.scale * 100)}%)`;
     } else {
         if (dom.previewTextDisplay) dom.previewTextDisplay.textContent = state.text ? state.text.trim().toUpperCase() : "—";
-        const fontNames = { stapel: 'Stapel', inter: 'Inter', grobold: 'Grobold' };
+        const fontNames = { 
+            stapel: 'Stapel', 
+            inter: 'Inter', 
+            grobold: 'Grobold',
+            montserrat: 'Montserrat',
+            bebas: 'Bebas',
+            rubik: 'Rubik',
+            poppins: 'Poppins',
+            impact: 'Impact'
+        };
         if (dom.previewFontDisplay) dom.previewFontDisplay.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
     }
     
@@ -2526,7 +2850,16 @@ async function openTemplateModal(filename, typeLabel = 'Emoji') {
     dom.modalTplTitle.textContent = `${typeLabel} #${num}`;
     dom.modalTextVal.textContent = state.text;
     
-    const fontNames = { stapel: 'Stapel', inter: 'Inter', grobold: 'Grobold' };
+    const fontNames = { 
+        stapel: 'Stapel', 
+        inter: 'Inter', 
+        grobold: 'Grobold',
+        montserrat: 'Montserrat',
+        bebas: 'Bebas',
+        rubik: 'Rubik',
+        poppins: 'Poppins',
+        impact: 'Impact'
+    };
     dom.modalFontVal.textContent = `${fontNames[state.font] || 'Stapel'} (${Math.round(state.scale * 100)}%)`;
     
     dom.modalLottiePlayer.innerHTML = '';
@@ -3348,6 +3681,11 @@ function setupEventListeners() {
         switchMainView('studio');
     });
 
+    dom.navBtnRating?.addEventListener('click', () => {
+        haptic('selection');
+        switchMainView('rating');
+    });
+
     dom.navBtnProfile?.addEventListener('click', () => {
         haptic('selection');
         switchMainView('profile');
@@ -3356,6 +3694,32 @@ function setupEventListeners() {
     dom.btnGotoStudio?.addEventListener('click', () => {
         haptic('selection');
         switchMainView('studio');
+    });
+
+    // Rating View Tabs (Referral vs Creator)
+    dom.tabRatingReferral?.addEventListener('click', () => {
+        haptic('selection');
+        dom.tabRatingReferral.classList.add('active');
+        dom.tabRatingCreator?.classList.remove('active');
+        loadLeaderboard('referral');
+    });
+
+    dom.tabRatingCreator?.addEventListener('click', () => {
+        haptic('selection');
+        dom.tabRatingCreator.classList.add('active');
+        dom.tabRatingReferral?.classList.remove('active');
+        loadLeaderboard('creator');
+    });
+
+    // Daily Bonus Claim Button
+    dom.btnClaimDailyBonus?.addEventListener('click', claimDailyBonus);
+
+    // Language Selector Buttons
+    document.querySelectorAll('.lang-switch-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            haptic('light');
+            applyLanguage(btn.dataset.lang);
+        });
     });
 
     // 1-Click Copy Referral Link

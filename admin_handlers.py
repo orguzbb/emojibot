@@ -40,11 +40,17 @@ from database import (
     create_promocode,
     get_all_promocodes,
     delete_promocode,
-    get_stats_summary,
     create_chek,
     get_all_cheks,
     get_chek_by_id,
-    delete_chek
+    delete_chek,
+    get_all_user_packs_admin,
+    get_user_packs_count_admin,
+    add_broadcast_exclusion,
+    remove_broadcast_exclusion,
+    get_broadcast_exclusions,
+    is_user_excluded,
+    get_broadcast_user_ids
 )
 
 logger = logging.getLogger(__name__)
@@ -79,6 +85,9 @@ class AdminStates(StatesGroup):
     waiting_for_chek_count = State()
     waiting_for_chek_channel = State()
 
+    # Broadcast exclusion state
+    waiting_for_exclude_user_id = State()
+
 
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
@@ -105,11 +114,15 @@ def get_admin_menu_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(text="👥 Foydalanuvchilar (ID & User)", callback_data="admin:users:0"),
-                InlineKeyboardButton(text="💳 User Balansini sozlash", callback_data="admin:user_balance")
+                InlineKeyboardButton(text="📦 User Packlari", callback_data="admin:user_packs:0")
             ],
             [
-                InlineKeyboardButton(text="📊 Bot statistikasi", callback_data="admin:stats"),
-                InlineKeyboardButton(text="📢 Xabar yuborish (/broadcast)", callback_data="admin:broadcast_start")
+                InlineKeyboardButton(text="💳 User Balansini sozlash", callback_data="admin:user_balance"),
+                InlineKeyboardButton(text="📊 Bot statistikasi", callback_data="admin:stats")
+            ],
+            [
+                InlineKeyboardButton(text="📢 Xabar yuborish (/broadcast)", callback_data="admin:broadcast_start"),
+                InlineKeyboardButton(text="🚫 Istisnolar ro'yxati", callback_data="admin:exclusions_list")
             ]
         ]
     )
@@ -1261,11 +1274,13 @@ async def execute_broadcast(callback: CallbackQuery, state: FSMContext, bot: Bot
     chat_id = data.get("from_chat_id")
     await state.clear()
 
-    user_ids = get_all_user_ids()
+    user_ids = get_broadcast_user_ids()
     total = len(user_ids)
+    all_users_count = get_users_count()
+    excluded_count = max(0, all_users_count - total)
 
     if total == 0:
-        await callback.message.edit_text("❌ Foydalanuvchilar topilmadi.", reply_markup=get_admin_menu_keyboard())
+        await callback.message.edit_text("❌ Yuborish uchun foydalanuvchilar topilmadi (barchasi istisno qilingan bo'lishi mumkin).", reply_markup=get_admin_menu_keyboard())
         return
 
     status_msg = await callback.message.edit_text(
@@ -1307,7 +1322,8 @@ async def execute_broadcast(callback: CallbackQuery, state: FSMContext, bot: Bot
 
     report_text = (
         f"📢 <b>Xabar yuborish yakunlandi!</b>\n\n"
-        f"👥 <b>Jami foydalanuvchilar:</b> {total}\n"
+        f"👥 <b>Yuborilganlar:</b> {total} ta\n"
+        f"🚫 <b>Istisnolar (chetlab o'tildi):</b> {excluded_count} ta\n"
         f"✅ <b>Yetkazildi:</b> {sent} ta\n"
         f"🚫 <b>Botni bloklagan:</b> {blocked} ta\n"
         f"⚠️ <b>Yetkazilmadi:</b> {failed} ta"
@@ -1665,3 +1681,142 @@ async def cb_admin_del_chek(callback: CallbackQuery):
     delete_chek(chek_id)
     await callback.answer("✅ Chek o'chirildi!", show_alert=True)
     await cb_admin_cheks_list(callback)
+
+
+# ==================== BROADCAST EXCLUSIONS (ISTISNOLAR) ====================
+
+@admin_router.callback_query(F.data == "admin:exclusions_list")
+async def cb_admin_exclusions_list(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+
+    exclusions = get_broadcast_exclusions()
+    lines = [f"🚫 <b>Broadcast Istisnolari Ro'yxati ({len(exclusions)} ta)</b>\n"]
+    lines.append("<i>Ushbu foydalanuvchilarga admin xabari (broadcast) HECH QACHON bormaydi.</i>\n")
+
+    keyboard = []
+    if not exclusions:
+        lines.append("<i>Hozircha hech qanday istisno qo'shilmagan.</i>")
+    else:
+        for idx, item in enumerate(exclusions[:15], start=1):
+            uid = item["user_id"]
+            uname = f"@{item['username']}" if item.get("username") else "yo'q"
+            fname = item.get("first_name") or "User"
+            lines.append(f"<b>{idx}. {fname}</b> (ID: <code>{uid}</code>, {uname})")
+            keyboard.append([InlineKeyboardButton(text=f"❌ {fname} ni istisnodan o'chirish", callback_data=f"admin:del_excl:{uid}")])
+
+    keyboard.append([InlineKeyboardButton(text="➕ Yangi Userni istisnoga qo'shish", callback_data="admin:add_exclusion")])
+    keyboard.append([InlineKeyboardButton(text="🔙 Admin Menyusi", callback_data="admin:main")])
+
+    await callback.message.edit_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard), parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+@admin_router.callback_query(F.data == "admin:add_exclusion")
+async def cb_admin_add_exclusion(callback: CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        return
+
+    await state.set_state(AdminStates.waiting_for_exclude_user_id)
+    text = (
+        "➕ <b>Foydalanuvchini broadcast istisnosiga qo'shish</b>\n\n"
+        "Iltimos, istisno qilinishi kerak bo'lgan foydalanuvchining <b>Telegram ID raqamini</b> kiriting:\n\n"
+        "<i>Bekor qilish uchun /cancel deb yozing.</i>"
+    )
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="🔙 Bekor qilish", callback_data="admin:exclusions_list")]]
+    )
+    await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+@admin_router.message(AdminStates.waiting_for_exclude_user_id)
+async def handle_exclude_user_id_input(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+
+    raw = message.text.strip()
+    if raw.lower() in ("/cancel", "cancel", "bekor"):
+        await state.clear()
+        await message.answer("❌ Bekor qilindi.", reply_markup=get_admin_menu_keyboard())
+        return
+
+    if not raw.isdigit():
+        await message.answer("⚠️ Iltimos, faqat musbat raqamli User ID kiriting:")
+        return
+
+    target_id = int(raw)
+    await state.clear()
+
+    add_broadcast_exclusion(target_id, reason="Admin qo'shdi")
+    await message.answer(
+        f"✅ <b>Foydalanuvchi ({target_id}) istisnolar ro'yxatiga muvaffaqiyatli qo'shildi!</b>\n\n"
+        f"Endi unga umumiy xabarlar (broadcast) bormaydi.",
+        reply_markup=get_admin_menu_keyboard(),
+        parse_mode=ParseMode.HTML
+    )
+
+
+@admin_router.callback_query(F.data.startswith("admin:del_excl:"))
+async def cb_admin_del_exclusion(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+
+    uid = int(callback.data.split(":")[2])
+    remove_broadcast_exclusion(uid)
+    await callback.answer(f"✅ User ({uid}) istisnodan chiqarildi!", show_alert=True)
+    await cb_admin_exclusions_list(callback)
+
+
+# ==================== ADMIN: USER PACKS LIST ====================
+
+@admin_router.callback_query(F.data.startswith("admin:user_packs:"))
+async def cb_admin_user_packs_list(callback: CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        return
+
+    page = int(callback.data.split(":")[2])
+    PER_PAGE = 6
+    total_packs = get_user_packs_count_admin()
+    total_pages = max(1, (total_packs + PER_PAGE - 1) // PER_PAGE)
+    page = max(0, min(page, total_pages - 1))
+
+    packs = get_all_user_packs_admin(limit=PER_PAGE, offset=page * PER_PAGE)
+
+    lines = [f"📦 <b>Foydalanuvchilar Yaratgan Emoji Paketlar</b> (Jami: <b>{total_packs} ta</b>, Sahifa: <b>{page + 1}/{total_pages}</b>)\n"]
+
+    keyboard = []
+    if not packs:
+        lines.append("<i>Hozircha hech qanday paket yaratilmagan.</i>")
+    else:
+        for idx, p in enumerate(packs, start=page * PER_PAGE + 1):
+            pname = p["pack_name"]
+            title = p.get("pack_title") or pname
+            uid = p["user_id"]
+            uname = f"@{p['username']}" if p.get("username") else "yo'q"
+            fname = p.get("first_name") or "Foydalanuvchi"
+            link = f"https://t.me/addemoji/{pname}"
+            created = p["created_at"][:16] if p.get("created_at") else ""
+
+            lines.append(
+                f"<b>{idx}. <a href=\"{link}\">{title}</a></b>\n"
+                f"   👤 Yaratuvchi: <b>{fname}</b> (<code>{uid}</code>, {uname})\n"
+                f"   🔗 Havola: <a href=\"{link}\">{pname}</a>\n"
+                f"   📅 Vaqti: <i>{created}</i>\n"
+            )
+            keyboard.append([InlineKeyboardButton(text=f"➕ {title} ni ochish", url=link)])
+
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="◀️ Oldingi", callback_data=f"admin:user_packs:{page - 1}"))
+    nav_buttons.append(InlineKeyboardButton(text=f"📄 {page + 1}/{total_pages}", callback_data="ignore"))
+    if page < total_pages - 1:
+        nav_buttons.append(InlineKeyboardButton(text="Keyingi ▶️", callback_data=f"admin:user_packs:{page + 1}"))
+
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+    keyboard.append([InlineKeyboardButton(text="🔙 Admin Menyusi", callback_data="admin:main")])
+
+    await callback.message.edit_text("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard), parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    await callback.answer()
+

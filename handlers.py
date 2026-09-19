@@ -57,8 +57,13 @@ from database import (
     delete_pending_order,
     get_chek,
     has_user_claimed_chek,
-    claim_chek
+    claim_chek,
+    get_user_language,
+    set_user_language,
+    claim_daily_bonus,
+    get_daily_bonus_status
 )
+from locales import t, LANGUAGES
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -81,6 +86,31 @@ FONTS_MAP = {
         "name": "Grobold",
         "file": "Grobold.ttf",
         "desc": "Qalin & Zamonaviy"
+    },
+    "montserrat": {
+        "name": "Montserrat",
+        "file": "montserrat.ttf",
+        "desc": "Premium & Hashamatli"
+    },
+    "bebas": {
+        "name": "Bebas Neue",
+        "file": "bebas.ttf",
+        "desc": "Tik & Kuchli"
+    },
+    "rubik": {
+        "name": "Rubik",
+        "file": "rubik.ttf",
+        "desc": "Yumshoq & Qalin"
+    },
+    "poppins": {
+        "name": "Poppins",
+        "file": "poppins.ttf",
+        "desc": "Zamonaviy & Silliq"
+    },
+    "impact": {
+        "name": "Impact",
+        "file": "impact.ttf",
+        "desc": "Katta & Ta'sirli"
     },
     "svg": {
         "name": "SVG Vektor",
@@ -187,27 +217,42 @@ async def create_unique_custom_emoji_set(
 
 
 def get_main_menu_markup(user_id: int) -> InlineKeyboardMarkup:
+    lang = get_user_language(user_id)
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✎︎ Konstruktorni ochish",
+                    text=f"📱 {t('btn_open_miniapp', lang)}",
                     web_app=WebAppInfo(url=WEBAPP_URL)
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="🗪 Yordam",
-                    callback_data="cmd_help_cb"
+                    text=f"🎁 {t('btn_daily_bonus', lang)}",
+                    callback_data="menu_daily_bonus"
                 ),
                 InlineKeyboardButton(
-                    text="≡ Ma'lumot",
-                    callback_data="cmd_info_cb"
+                    text=f"💳 {t('btn_wallet', lang)}",
+                    callback_data="menu_wallet"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="➤ Kanal",
+                    text=f"👥 {t('btn_referral', lang)}",
+                    callback_data="menu_ref"
+                ),
+                InlineKeyboardButton(
+                    text=f"📦 {t('btn_my_packs', lang)}",
+                    callback_data="menu_packs"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"🌐 {t('btn_language', lang)}",
+                    callback_data="menu_language"
+                ),
+                InlineKeyboardButton(
+                    text="📢 Kanal",
                     url=CHANNEL_URL
                 )
             ]
@@ -223,6 +268,17 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
     user = message.from_user
     args = message.text.split()
     ref_id = None
+
+    # Detect user language if new
+    current_lang = get_user_language(user.id)
+    if not current_lang:
+        tg_lang = (user.language_code or "").lower()
+        if tg_lang.startswith("ru"):
+            set_user_language(user.id, "ru")
+        elif tg_lang.startswith("en"):
+            set_user_language(user.id, "en")
+        else:
+            set_user_language(user.id, "uz")
 
     if len(args) > 1:
         param = args[1].strip()
@@ -252,6 +308,8 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
         referred_by=ref_id
     )
 
+    lang = get_user_language(user.id)
+
     if awarded_ref:
         ref_bonus = get_referral_bonus()
         new_ref_bal = add_user_balance(
@@ -261,6 +319,7 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
             description=f"Yangi do'st taklif qilindi: {user.first_name or user.id}"
         )
         try:
+            ref_lang = get_user_language(awarded_ref)
             await bot.send_message(
                 chat_id=awarded_ref,
                 text=(
@@ -274,35 +333,141 @@ async def cmd_start(message: Message, bot: Bot, state: FSMContext):
         except Exception as e:
             logger.warning(f"Referrer xabarnoma xatosi {awarded_ref}: {e}")
 
-    # Format user full name
-    if user.last_name:
-        full_name = f"{user.first_name} {user.last_name}".strip()
-    else:
-        full_name = user.first_name or "Foydalanuvchi"
+    full_name = f"{user.first_name} {user.last_name}".strip() if user.last_name else (user.first_name or "Foydalanuvchi")
+    welcome_text = t("start_greeting", lang, name=full_name)
 
-    welcome_text = (
-        f"Salom, {full_name}!\n\n"
-        "Bu yerda siz emoji yasashingiz mumkin ."
-    )
-
-    await message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id))
+    await message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
 
 
 @router.callback_query(F.data == "menu_main")
 async def cb_menu_main(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     user = callback.from_user
-    if user.last_name:
-        full_name = f"{user.first_name} {user.last_name}".strip()
-    else:
-        full_name = user.first_name or "Foydalanuvchi"
+    lang = get_user_language(user.id)
+    full_name = f"{user.first_name} {user.last_name}".strip() if user.last_name else (user.first_name or "Foydalanuvchi")
 
-    text = (
-        f"Salom, {full_name}!\n\n"
-        "Bu yerda siz emoji yasashingiz mumkin ."
-    )
-    await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id))
+    text = t("start_greeting", lang, name=full_name)
+    await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id), parse_mode=ParseMode.HTML)
     await callback.answer()
+
+
+# ==================== LANGUAGE SELECTOR (UZ / RU / EN) ====================
+
+@router.message(Command("lang"))
+@router.message(Command("language"))
+@router.callback_query(F.data == "menu_language")
+async def handle_language_menu(event: Union[Message, CallbackQuery]):
+    user_id = event.from_user.id
+    lang = get_user_language(user_id)
+    text = t("lang_prompt", lang)
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🇺🇿 O'zbekcha" + (" ✅" if lang == "uz" else ""), callback_data="set_lang:uz"),
+                InlineKeyboardButton(text="🇷🇺 Русский" + (" ✅" if lang == "ru" else ""), callback_data="set_lang:ru"),
+                InlineKeyboardButton(text="🇬🇧 English" + (" ✅" if lang == "en" else ""), callback_data="set_lang:en")
+            ],
+            [
+                InlineKeyboardButton(text=t("btn_back", lang), callback_data="menu_main")
+            ]
+        ]
+    )
+    if isinstance(event, CallbackQuery):
+        await event.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        await event.answer()
+    else:
+        await event.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+@router.callback_query(F.data.startswith("set_lang:"))
+async def handle_set_language(callback: CallbackQuery):
+    new_lang = callback.data.split(":", 1)[1]
+    user_id = callback.from_user.id
+    set_user_language(user_id, new_lang)
+    confirm_text = t("lang_changed", new_lang)
+    await callback.answer(confirm_text, show_alert=False)
+
+    full_name = f"{callback.from_user.first_name} {callback.from_user.last_name}".strip() if callback.from_user.last_name else (callback.from_user.first_name or "Foydalanuvchi")
+    welcome_text = t("start_greeting", new_lang, name=full_name)
+    await callback.message.edit_text(welcome_text, reply_markup=get_main_menu_markup(user_id), parse_mode=ParseMode.HTML)
+
+
+# ==================== KUNLIK BONUS (DAILY 3 STARS) ====================
+
+@router.callback_query(F.data == "menu_daily_bonus")
+@router.message(Command("bonus"))
+@router.message(Command("daily"))
+async def handle_daily_bonus(event: Union[Message, CallbackQuery]):
+    user_id = event.from_user.id
+    lang = get_user_language(user_id)
+    success, msg, bal, rem = claim_daily_bonus(user_id)
+
+    if success:
+        text = t("daily_bonus_success", lang, stars=3, balance=bal)
+        if isinstance(event, CallbackQuery):
+            await event.answer("🎉 +3 Stars!", show_alert=False)
+    else:
+        hours = (rem or 0) // 3600
+        minutes = ((rem or 0) % 3600) // 60
+        text = t("daily_bonus_cooldown", lang, hours=hours, minutes=minutes, balance=bal)
+        if isinstance(event, CallbackQuery):
+            await event.answer(f"⏳ {hours}s {minutes}d", show_alert=False)
+
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=f"📱 {t('btn_open_miniapp', lang)}", web_app=WebAppInfo(url=WEBAPP_URL))
+            ],
+            [
+                InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="menu_main")
+            ]
+        ]
+    )
+
+    if isinstance(event, CallbackQuery):
+        await event.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+    else:
+        await event.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+# ==================== REFERRAL MENU ====================
+
+@router.callback_query(F.data == "menu_ref")
+@router.message(Command("ref"))
+@router.message(Command("referral"))
+async def handle_referral_menu(event: Union[Message, CallbackQuery]):
+    user_id = event.from_user.id
+    lang = get_user_language(user_id)
+    stats = get_referral_stats(user_id)
+    ref_bonus = get_referral_bonus()
+
+    text = t(
+        "referral_info",
+        lang,
+        bonus=ref_bonus,
+        bot_username=BOT_USERNAME,
+        user_id=user_id,
+        total_refs=stats["total_referrals"],
+        earned=stats["total_earned"]
+    )
+
+    share_url = f"https://t.me/share/url?url=https://t.me/{BOT_USERNAME}?start={user_id}&text=GnEmoji+orqali+shaxsiy+animatsiyali+Telegram+emojilaringizni+yarating!"
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🚀 Do'stlarga ulashish", url=share_url)
+            ],
+            [
+                InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="menu_main")
+            ]
+        ]
+    )
+
+    if isinstance(event, CallbackQuery):
+        await event.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+        await event.answer()
+    else:
+        await event.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
 # ==================== WALLET & BALANCE (HAMYON) ====================
@@ -347,6 +512,60 @@ async def handle_wallet_menu(event: Union[Message, CallbackQuery], state: FSMCon
         await event.answer()
     else:
         await event.answer(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+# ==================== USER PACKS LIST ====================
+
+@router.callback_query(F.data == "menu_packs")
+async def handle_my_packs_menu(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    lang = get_user_language(user_id)
+    packs = get_user_packs(user_id)
+    if not packs:
+        text = (
+            "📦 <b>Sizda hali yaratilgan emoji to'plamlari yo'q.</b>\n\n"
+            "Konstruktorga o'ting va o'zingizning birinchi to'plamingizni yarating!"
+        )
+        markup = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text=f"📱 {t('btn_open_miniapp', lang)}", web_app=WebAppInfo(url=WEBAPP_URL))],
+                [InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="menu_main")]
+            ]
+        )
+    else:
+        lines = [f"📦 <b>Sizning emoji to'plamlaringiz ({len(packs)} ta):</b>\n"]
+        kb = []
+        for p in packs[:10]:
+            title = p.get("pack_title") or p["pack_name"]
+            link = f"https://t.me/addemoji/{p['pack_name']}"
+            lines.append(f"• <a href=\"{link}\">{title}</a>")
+            kb.append([InlineKeyboardButton(text=f"➕ {title}", url=link)])
+        kb.append([InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="menu_main")])
+        markup = InlineKeyboardMarkup(inline_keyboard=kb)
+        text = "\n".join(lines)
+
+    await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "menu_create")
+async def handle_create_menu(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    lang = get_user_language(user_id)
+    text = (
+        "✨ <b>Shaxsiy Emoji Yaratish</b>\n\n"
+        "Barcha 260+ animatsiyalarni jonli prevyuda ko'rish, rangini sozlash va o'z ismingiz bilan "
+        "tayyorlash uchun quyidagi tugma orqali <b>Mini App Konstruktorini</b> oching:"
+    )
+    markup = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=f"📱 {t('btn_open_miniapp', lang)}", web_app=WebAppInfo(url=WEBAPP_URL))],
+            [InlineKeyboardButton(text=t("btn_main_menu", lang), callback_data="menu_main")]
+        ]
+    )
+    await callback.message.edit_text(text, reply_markup=markup, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
 
 
 # ==================== TOPUP MENU & STARS INVOICE ====================

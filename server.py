@@ -60,9 +60,17 @@ from database import (
     get_referral_stats,
     save_pending_order,
     get_pending_order,
-    delete_pending_order
+    delete_pending_order,
+    claim_daily_bonus,
+    get_daily_bonus_status,
+    get_leaderboard_referrals,
+    get_leaderboard_creators,
+    get_user_leaderboard_rank,
+    get_user_language,
+    set_user_language
 )
 from handlers import FONTS_MAP, DEFAULT_EMOJIS, to_name_slug, create_unique_custom_emoji_set
+
 
 # Initialize SQLite database tables including pending_orders
 init_db()
@@ -98,7 +106,12 @@ app.mount("/static", StaticFiles(directory=str(WEBAPP_DIR)), name="static")
 FONTS_MAP = {
     "stapel": {"name": "Stapel", "file": "stapel.ttf"},
     "inter": {"name": "Inter", "file": "inter.ttf"},
-    "grobold": {"name": "Grobold", "file": "grobold.ttf"}
+    "grobold": {"name": "Grobold", "file": "Grobold.ttf"},
+    "montserrat": {"name": "Montserrat", "file": "montserrat.ttf"},
+    "bebas": {"name": "Bebas Neue", "file": "bebas.ttf"},
+    "rubik": {"name": "Rubik", "file": "rubik.ttf"},
+    "poppins": {"name": "Poppins", "file": "poppins.ttf"},
+    "impact": {"name": "Impact", "file": "impact.ttf"}
 }
 
 _bot_instance: Optional[Bot] = None
@@ -996,3 +1009,81 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
     except Exception as e:
         logger.error(f"Add to pack error: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Paketga qo'shishda xatolik: {str(e)}")
+
+
+# ==================== LEADERBOARD API ====================
+
+@app.get("/api/leaderboard")
+async def api_get_leaderboard(user_id: Optional[int] = None):
+    try:
+        top_refs = get_leaderboard_referrals(limit=20)
+        top_creators = get_leaderboard_creators(limit=20)
+        user_rank = get_user_leaderboard_rank(user_id) if user_id else None
+        return {
+            "ok": True,
+            "user_rank": user_rank,
+            "top_referrals": top_refs,
+            "referrals": top_refs,
+            "top_creators": top_creators,
+            "creators": top_creators
+        }
+    except Exception as e:
+        logger.error(f"Leaderboard error: {e}", exc_info=True)
+        return {
+            "ok": False, 
+            "error": str(e), 
+            "top_referrals": [], 
+            "referrals": [],
+            "top_creators": [],
+            "creators": []
+        }
+
+
+# ==================== DAILY BONUS API ====================
+
+class DailyBonusClaimRequest(BaseModel):
+    user_id: int
+
+
+@app.get("/api/daily_bonus/status")
+async def api_get_daily_bonus_status(user_id: int):
+    try:
+        st = get_daily_bonus_status(user_id)
+        return {"ok": True, **st}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@app.post("/api/daily_bonus/claim")
+async def api_claim_daily_bonus(req: DailyBonusClaimRequest):
+    try:
+        success, msg, bal, rem = claim_daily_bonus(req.user_id)
+        return {
+            "ok": success,
+            "success": success,
+            "message": msg,
+            "balance": bal,
+            "new_balance": bal,
+            "remaining_seconds": rem or 0,
+            "bonus_amount": 3
+        }
+    except Exception as e:
+        logger.error(f"Claim daily bonus error: {e}", exc_info=True)
+        return {"ok": False, "success": False, "message": str(e), "remaining_seconds": 0}
+
+
+# ==================== LANGUAGE SETTING API ====================
+
+class SetLanguageRequest(BaseModel):
+    user_id: int
+    language: str
+
+
+@app.post("/api/set_language")
+async def api_set_language(req: SetLanguageRequest):
+    try:
+        set_user_language(req.user_id, req.language)
+        return {"ok": True, "success": True, "language": req.language}
+    except Exception as e:
+        return {"ok": False, "success": False, "error": str(e)}
+

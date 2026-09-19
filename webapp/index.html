@@ -22,6 +22,11 @@
     <meta http-equiv="Expires" content="0">
     <title>GnEmoji Studio — Telegram Mini App (© 2026 GN Studio)</title>
 
+    <!-- Google Fonts for Typography & Live Emojis -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@700;800;900&family=Poppins:wght@700;800&family=Rubik:wght@700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+
     <!-- 1. Telegram WebApp SDK (MUST be loaded first so Telegram WebApp API is available) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -344,18 +349,43 @@
                         <div class="font-pills" id="font-pills">
                             <button type="button" class="font-pill active" data-font="stapel">
                                 <span class="pill-dot"></span>
-                                <span class="pill-title">Stapel</span>
-                                <span class="pill-sub">Qalin & Geometrik</span>
+                                <span class="pill-title font-stapel">Stapel</span>
+                                <span class="pill-sub">Geometrik</span>
                             </button>
                             <button type="button" class="font-pill" data-font="inter">
                                 <span class="pill-dot"></span>
-                                <span class="pill-title">Inter</span>
-                                <span class="pill-sub">Klassik & Toza</span>
+                                <span class="pill-title font-inter">Inter</span>
+                                <span class="pill-sub">Klassik</span>
                             </button>
                             <button type="button" class="font-pill" data-font="grobold">
                                 <span class="pill-dot"></span>
-                                <span class="pill-title">Grobold</span>
+                                <span class="pill-title font-grobold">Grobold</span>
                                 <span class="pill-sub">Zamonaviy</span>
+                            </button>
+                            <button type="button" class="font-pill" data-font="montserrat">
+                                <span class="pill-dot"></span>
+                                <span class="pill-title font-montserrat">Montserrat</span>
+                                <span class="pill-sub">Hashamatli</span>
+                            </button>
+                            <button type="button" class="font-pill" data-font="bebas">
+                                <span class="pill-dot"></span>
+                                <span class="pill-title font-bebas">Bebas</span>
+                                <span class="pill-sub">Tik & Kuchli</span>
+                            </button>
+                            <button type="button" class="font-pill" data-font="rubik">
+                                <span class="pill-dot"></span>
+                                <span class="pill-title font-rubik">Rubik</span>
+                                <span class="pill-sub">Yumshoq</span>
+                            </button>
+                            <button type="button" class="font-pill" data-font="poppins">
+                                <span class="pill-dot"></span>
+                                <span class="pill-title font-poppins">Poppins</span>
+                                <span class="pill-sub">Silliq</span>
+                            </button>
+                            <button type="button" class="font-pill" data-font="impact">
+                                <span class="pill-dot"></span>
+                                <span class="pill-title font-impact">Impact</span>
+                                <span class="pill-sub">Katta & Qalin</span>
                             </button>
                         </div>
                     </div>
@@ -862,7 +892,84 @@
 
         </div> <!-- /#view-studio -->
 
-        <!-- ==================== VIEW 2: PROFIL & REFERAL ==================== -->
+        <!-- ==================== VIEW 2: REYTING (LEADERBOARD) ==================== -->
+        <div id="view-rating" class="app-view hidden">
+            <div class="rating-page-wrap">
+                <!-- Header -->
+                <div class="rating-header-card">
+                    <div class="rating-badge-glow">
+                        <i data-lucide="trophy" style="width:18px;height:18px;color:#f59e0b;"></i>
+                        <span data-i18n="rating_badge">PESHQADAMLAR</span>
+                    </div>
+                    <h2 class="rating-title" data-i18n="rating_title">Foydalanuvchilar Reytingi</h2>
+                    <p class="rating-subtitle" data-i18n="rating_subtitle">Eng faol do'st taklif qilganlar va eng ko'p emoji yaratuvchilar</p>
+
+                    <!-- Toggle Tabs: Referrals vs Creators -->
+                    <div class="rating-toggle-pill">
+                        <button type="button" class="rating-tab-btn active" id="tab-rating-referral" data-type="referral">
+                            <i data-lucide="users" style="width:16px;height:16px;"></i>
+                            <span data-i18n="rating_tab_ref">Do'stlar taklifi</span>
+                        </button>
+                        <button type="button" class="rating-tab-btn" id="tab-rating-creator" data-type="creator">
+                            <i data-lucide="sparkles" style="width:16px;height:16px;"></i>
+                            <span data-i18n="rating_tab_creator">Emoji ustalari</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- My Rank Card -->
+                <div class="my-rank-card" id="my-rank-card">
+                    <div class="my-rank-left">
+                        <div class="my-rank-num" id="my-rank-num">#--</div>
+                        <div class="my-rank-details">
+                            <span class="my-rank-label" data-i18n="my_rank_label">Sizning o'rningiz:</span>
+                            <strong class="my-rank-val" id="my-rank-val">0 ta</strong>
+                        </div>
+                    </div>
+                    <div class="my-rank-right">
+                        <span class="my-rank-badge" id="my-rank-badge">🏆 Faol</span>
+                    </div>
+                </div>
+
+                <!-- Top 3 Podium -->
+                <div class="podium-container" id="podium-container">
+                    <!-- 2nd place -->
+                    <div class="podium-item podium-second" id="podium-2">
+                        <div class="podium-crown">🥈</div>
+                        <div class="podium-avatar" id="podium-avatar-2">2</div>
+                        <span class="podium-name" id="podium-name-2">Yuklanmoqda...</span>
+                        <span class="podium-score" id="podium-score-2">0</span>
+                        <div class="podium-pillar pillar-2"><span>2</span></div>
+                    </div>
+                    <!-- 1st place -->
+                    <div class="podium-item podium-first" id="podium-1">
+                        <div class="podium-crown">👑 🥇</div>
+                        <div class="podium-avatar" id="podium-avatar-1">1</div>
+                        <span class="podium-name" id="podium-name-1">Yuklanmoqda...</span>
+                        <span class="podium-score" id="podium-score-1">0</span>
+                        <div class="podium-pillar pillar-1"><span>1</span></div>
+                    </div>
+                    <!-- 3rd place -->
+                    <div class="podium-item podium-third" id="podium-3">
+                        <div class="podium-crown">🥉</div>
+                        <div class="podium-avatar" id="podium-avatar-3">3</div>
+                        <span class="podium-name" id="podium-name-3">Yuklanmoqda...</span>
+                        <span class="podium-score" id="podium-score-3">0</span>
+                        <div class="podium-pillar pillar-3"><span>3</span></div>
+                    </div>
+                </div>
+
+                <!-- Top 4 to 20 List -->
+                <div class="leaderboard-list-wrap">
+                    <h3 class="leaderboard-list-title" data-i18n="top_list_title">Yetakchilar ro'yxati (4 - 20)</h3>
+                    <div class="leaderboard-list" id="leaderboard-list">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div> <!-- /#view-rating -->
+
+        <!-- ==================== VIEW 3: PROFIL & REFERAL ==================== -->
         <div id="view-profile" class="app-view hidden">
             <div class="profile-page-wrap">
 
@@ -887,6 +994,24 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Daily Bonus 3 Stars Card -->
+                <div class="daily-bonus-card" id="daily-bonus-card">
+                    <div class="bonus-card-glow"></div>
+                    <div class="bonus-card-content">
+                        <div class="bonus-icon-box">
+                            <span class="bonus-icon">🎁</span>
+                        </div>
+                        <div class="bonus-info">
+                            <h4 class="bonus-title" data-i18n="bonus_card_title">Kunlik Bonus: +3 ⭐ Stars</h4>
+                            <p class="bonus-desc" id="bonus-desc-text" data-i18n="bonus_card_desc">Har 24 soatda bepul Stars sovg'asini oling!</p>
+                        </div>
+                        <button type="button" class="btn-claim-bonus" id="btn-claim-daily-bonus">
+                            <span id="claim-btn-text" data-i18n="btn_claim_now">Olish (3 ⭐)</span>
+                        </button>
+                    </div>
+                </div>
+
 
                 <!-- 2. Balance & Top-Up Card -->
                 <div class="profile-balance-card">
@@ -1024,7 +1149,28 @@
                 </div>
 
                 <!-- Footer inside profile view -->
-                <footer class="app-footer">
+                <!-- Language Selector Card -->
+                <div class="profile-card profile-settings-card">
+                    <div class="profile-card-header">
+                        <span class="profile-card-title">
+                            <i data-lucide="globe" style="width:18px;height:18px;color:#a855f7;"></i>
+                            <span data-i18n="lang_settings_title">Muloqot tili (Language)</span>
+                        </span>
+                    </div>
+                    <div class="lang-switch-row">
+                        <button type="button" class="lang-switch-btn active" data-lang="uz">
+                            <span>🇺🇿</span> O'zbekcha
+                        </button>
+                        <button type="button" class="lang-switch-btn" data-lang="ru">
+                            <span>🇷🇺</span> Русский
+                        </button>
+                        <button type="button" class="lang-switch-btn" data-lang="en">
+                            <span>🇬🇧</span> English
+                        </button>
+                    </div>
+                </div>
+
+                <footer class="profile-footer">
                     <div class="footer-badge-shield">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -1066,7 +1212,15 @@
                 <div class="nav-icon-wrap">
                     <i data-lucide="palette" class="lucide-nav-icon" style="width:22px;height:22px;"></i>
                 </div>
-                <span class="nav-label">Studiya</span>
+                <span class="nav-label" data-i18n="nav_studio">Studiya</span>
+                <span class="nav-active-pill"></span>
+            </button>
+
+            <button type="button" class="bottom-nav-item" id="nav-btn-rating" data-view="rating">
+                <div class="nav-icon-wrap">
+                    <i data-lucide="trophy" class="lucide-nav-icon" style="width:22px;height:22px;"></i>
+                </div>
+                <span class="nav-label" data-i18n="nav_rating">Reyting</span>
                 <span class="nav-active-pill"></span>
             </button>
 
@@ -1074,7 +1228,7 @@
                 <div class="nav-icon-wrap">
                     <i data-lucide="user" class="lucide-nav-icon" style="width:22px;height:22px;"></i>
                 </div>
-                <span class="nav-label">Profil</span>
+                <span class="nav-label" data-i18n="nav_profile">Profil</span>
                 <span class="nav-active-pill"></span>
             </button>
         </nav>
