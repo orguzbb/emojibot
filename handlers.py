@@ -15,7 +15,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Optional, List, Union
 
-from aiogram import Bot, Router, F
+from aiogram import Bot, Router, F, BaseMiddleware
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -28,12 +28,13 @@ from aiogram.types import (
     BufferedInputFile,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    WebAppInfo
+    WebAppInfo,
+    TelegramObject
 )
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramRetryAfter
 
-from config import BOT_USERNAME, TEMPLATES_DIR, FONTS_DIR, WEBAPP_URL, CHANNEL_URL
+from config import BOT_USERNAME, TEMPLATES_DIR, FONTS_DIR, WEBAPP_URL, CHANNEL_URL, CHANNEL_ID, ADMIN_IDS
 from lottie_processor import (
     process_tgs_template,
     validate_and_clean_svg,
@@ -67,6 +68,93 @@ from locales import t, LANGUAGES
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+async def check_channel_subscription(bot: Bot, user_id: int) -> bool:
+    """Verifies if the user is subscribed to the mandatory channel"""
+    if user_id in ADMIN_IDS:
+        return True
+    try:
+        m = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        return m.status in ("creator", "administrator", "member", "restricted")
+    except Exception as e:
+        logger.warning(f"Kanal obunasini tekshirish xatosi ({user_id}): {e}")
+        return False
+
+
+def get_subscription_markup(lang: str = "uz", start_param: Optional[str] = None) -> InlineKeyboardMarkup:
+    """Builds inline keyboard with channel join button and check subscription button"""
+    cb_data = f"sub_check:{start_param}" if start_param else "sub_check"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("btn_join_channel", lang),
+                    url=CHANNEL_URL
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=t("btn_check_sub", lang),
+                    callback_data=cb_data
+                )
+            ]
+        ]
+    )
+
+
+class SubscriptionMiddleware(BaseMiddleware):
+    """Aiogram middleware to enforce mandatory channel subscription on all incoming updates"""
+    async def __call__(
+        self,
+        handler,
+        event: TelegramObject,
+        data: dict
+    ):
+        bot: Optional[Bot] = data.get("bot")
+        user = data.get("event_from_user")
+        if not user or not bot:
+            return await handler(event, data)
+
+        user_id = user.id
+        if user_id in ADMIN_IDS:
+            return await handler(event, data)
+
+        # Allow subscription verification callback and check activation callbacks
+        if isinstance(event, CallbackQuery):
+            if event.data and (event.data.startswith("sub_check") or event.data.startswith("verify_chek")):
+                return await handler(event, data)
+
+        is_sub = await check_channel_subscription(bot, user_id)
+        if is_sub:
+            return await handler(event, data)
+
+        # User is NOT subscribed
+        lang = get_user_language(user_id) or "uz"
+        sub_text = t("sub_required", lang, channel_url=CHANNEL_URL)
+
+        start_param = None
+        if isinstance(event, Message) and event.text and event.text.startswith("/start"):
+            parts = event.text.split(maxsplit=1)
+            if len(parts) > 1:
+                start_param = parts[1].strip()
+
+        markup = get_subscription_markup(lang, start_param)
+
+        if isinstance(event, Message):
+            await event.answer(sub_text, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        elif isinstance(event, CallbackQuery):
+            await event.answer(t("sub_not_yet", lang), show_alert=True)
+            try:
+                await event.message.edit_text(sub_text, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+            except Exception:
+                await event.message.answer(sub_text, reply_markup=markup, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+        return
+
+
+router.message.middleware(SubscriptionMiddleware())
+router.callback_query.middleware(SubscriptionMiddleware())
+
 
 DEFAULT_EMOJIS = ["⭐", "🔥", "⚡", "✨", "💎", "👑", "🚀", "❤️", "🌟", "💫", "🎯", "🍀", "🏆", "🌟"]
 ACTIVE_USERS = set()
@@ -339,6 +427,47 @@ async def cb_menu_main(callback: CallbackQuery, state: FSMContext):
     )
     await callback.message.edit_text(text, reply_markup=get_main_menu_markup(user.id))
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("sub_check"))
+async def cb_subscription_check(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    """Handles check subscription button click and verifies channel membership"""
+    user = callback.from_user
+    lang = get_user_language(user.id) or "uz"
+
+    is_sub = await check_channel_subscription(bot, user.id)
+    if not is_sub:
+        await callback.answer(t("sub_not_yet", lang), show_alert=True)
+        return
+
+    await callback.answer(t("sub_verified", lang))
+
+    data_parts = callback.data.split(":", 1)
+    if len(data_parts) > 1 and data_parts[1]:
+        param = data_parts[1].strip()
+        if param.startswith("chek_"):
+            chek_code = param[5:].strip()
+            add_or_update_user(user.id, username=user.username, first_name=user.first_name)
+            await process_chek_activation(callback, bot, chek_code)
+            return
+        digits = re.findall(r'\d+', param)
+        if digits:
+            try:
+                candidate_id = int(digits[0])
+                if candidate_id != user.id:
+                    add_or_update_user(user.id, username=user.username, first_name=user.first_name, referred_by=candidate_id)
+            except Exception:
+                pass
+
+    full_name = f"{user.first_name} {user.last_name}".strip() if user.last_name else (user.first_name or "Foydalanuvchi")
+    welcome_text = (
+        f"Salom, {full_name}!\n\n"
+        "Bu yerda siz emoji yasashingiz mumkin ."
+    )
+    try:
+        await callback.message.edit_text(welcome_text, reply_markup=get_main_menu_markup(user.id))
+    except Exception:
+        await callback.message.answer(welcome_text, reply_markup=get_main_menu_markup(user.id))
 
 
 # ==================== LANGUAGE SELECTOR (UZ / RU / EN) ====================

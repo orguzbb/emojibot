@@ -283,6 +283,43 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "uz": "✅ A'zo bo'ldim (Tekshirish)",
         "ru": "✅ Я подписался (Проверить)",
         "en": "✅ Joined (Verify)"
+    },
+    "sub_required": {
+        "uz": (
+            "⚠️ <b>Botdan to'liq foydalanish uchun rasmiy kanalimizga a'zo bo'ling!</b>\n\n"
+            "📢 <b>Kanal:</b> <a href=\"{channel_url}\">gnemoji news</a>\n\n"
+            "<i>Kanalga obuna bo'lgach, pastdagi <b>«✅ Obunani tekshirish»</b> tugmasini bosing:</i>"
+        ),
+        "ru": (
+            "⚠️ <b>Для использования бота подпишитесь на наш официальный канал!</b>\n\n"
+            "📢 <b>Канал:</b> <a href=\"{channel_url}\">gnemoji news</a>\n\n"
+            "<i>После подписки нажмите кнопку <b>«✅ Проверить подписку»</b> ниже:</i>"
+        ),
+        "en": (
+            "⚠️ <b>To use this bot, please subscribe to our official channel!</b>\n\n"
+            "📢 <b>Channel:</b> <a href=\"{channel_url}\">gnemoji news</a>\n\n"
+            "<i>After subscribing, tap the <b>«✅ Check Subscription»</b> button below:</i>"
+        )
+    },
+    "btn_join_channel": {
+        "uz": "📢 Kanalga a'zo bo'lish",
+        "ru": "📢 Подписаться на канал",
+        "en": "📢 Join Channel"
+    },
+    "btn_check_sub": {
+        "uz": "✅ Obunani tekshirish",
+        "ru": "✅ Проверить подписку",
+        "en": "✅ Check Subscription"
+    },
+    "sub_not_yet": {
+        "uz": "❌ Siz hali kanalga a'zo bo'lmadingiz! Iltimos, avval kanalga obuna bo'ling.",
+        "ru": "❌ Вы еще не подписались на канал! Пожалуйста, сначала подпишитесь на канал.",
+        "en": "❌ You have not joined the channel yet! Please subscribe to the channel first."
+    },
+    "sub_verified": {
+        "uz": "🎉 Rahmat! Obuna tasdiqlandi. Endi botdan to'liq foydalanishingiz mumkin.",
+        "ru": "🎉 Спасибо! Подписка подтверждена. Теперь вы можете пользоваться ботом.",
+        "en": "🎉 Thank you! Subscription verified. You can now use the bot."
     }
 }
 

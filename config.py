@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-BOT_TOKEN = "8957385356:AAFIs0qqwF5lBwbzOu5zxjN5Cdh7tigtIWA"
+BOT_TOKEN = "8957385356:AAH5v46aF_dWJhXQU5zCAWFSPG4XpQQdhYk"
 BOT_USERNAME = "GnEmojiBot"
 
 ADMIN_IDS = [1323217434]
@@ -16,5 +16,6 @@ SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 8000
 
 CHANNEL_ID = -1003900982155
-CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/c/3900982155/1")
+CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/gnemoji")
+CHANNEL_USERNAME = "gnemoji"
 

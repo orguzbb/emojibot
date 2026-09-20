@@ -43,7 +43,10 @@ from config import (
     DEFAULT_FONT_PATH,
     WEBAPP_URL,
     SERVER_HOST,
-    SERVER_PORT
+    SERVER_PORT,
+    CHANNEL_ID,
+    CHANNEL_URL,
+    CHANNEL_USERNAME
 )
 from lottie_processor import process_tgs_template
 from database import (
@@ -130,6 +133,19 @@ def get_bot() -> Bot:
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         )
     return _bot_instance
+
+
+async def check_channel_subscription(user_id: int) -> bool:
+    """Checks if user is subscribed to the mandatory Telegram channel"""
+    if user_id in ADMIN_IDS:
+        return True
+    try:
+        bot = get_bot()
+        m = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        return m.status in ("creator", "administrator", "member", "restricted")
+    except Exception as e:
+        logger.warning(f"Server kanal obunasi tekshirish xatosi ({user_id}): {e}")
+        return False
 
 
 _TEMPLATE_BYTES_CACHE = {}
@@ -332,6 +348,7 @@ async def get_user_info_endpoint(user_id: int = Query(1323217434), ref: Optional
     packs = get_user_packs(user_id)
     ref_stats = get_referral_stats(user_id)
     is_admin = user_id in ADMIN_IDS
+    is_subscribed = await check_channel_subscription(user_id)
 
     return {
         "user_id": user_id,
@@ -340,7 +357,9 @@ async def get_user_info_endpoint(user_id: int = Query(1323217434), ref: Optional
         "packs": packs,
         "referral_stats": ref_stats,
         "referral_bonus": get_referral_bonus(),
-        "is_admin": is_admin
+        "is_admin": is_admin,
+        "is_subscribed": is_subscribed,
+        "channel_url": CHANNEL_URL
     }
 
 
@@ -648,6 +667,15 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
         req = GenerateRequest()
     if not req.user_id:
         req.user_id = 1323217434
+
+    if req.user_id not in ADMIN_IDS:
+        is_sub = await check_channel_subscription(req.user_id)
+        if not is_sub:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Botdan foydalanish uchun rasmiy kanalimizga a'zo bo'ling: {CHANNEL_URL}"
+            )
+
     is_svg_mode = (req.input_type == "svg" or bool(req.svg_data)) and bool(req.svg_data)
     if is_svg_mode or req.input_type == "svg":
         clean_text = req.text.strip().upper()[:16] if (req.text and req.text.strip().upper() != "SVG") else ""
