@@ -151,22 +151,27 @@ const RANDOM_NAMES = [
     "RAYHONA", "IBROHIM", "JAVOHIR", "SHERZOD", "BOBUR"
 ];
 
-// The 25 Ism Emojis (1.tgs to 13.tgs Ticket + 263.tgs to 274.tgs Abu Pack)
+// The 24 Ism Emojis (1.tgs to 13.tgs Ticket + 263.tgs to 274.tgs, excluding 266)
 const TICKET_TEMPLATES = [];
 for (let i = 1; i <= 13; i++) {
     TICKET_TEMPLATES.push({
         id: `${i}`,
         file: `${i}.tgs`,
+        displayNum: i,
         name: `Ticket #${i}`,
-        tag: "Ism Ticket"
+        tag: "Ism Emoji"
     });
 }
+let ticketCounter = 14;
 for (let i = 263; i <= 274; i++) {
+    if (i === 266) continue; // Abu #4 (266) removed as requested
+    const dNum = ticketCounter++;
     TICKET_TEMPLATES.push({
         id: `${i}`,
         file: `${i}.tgs`,
-        name: `Abu #${i - 262}`,
-        tag: "Ism Abu"
+        displayNum: dNum,
+        name: `Ticket #${dNum}`,
+        tag: "Ism Emoji"
     });
 }
 
@@ -204,13 +209,17 @@ for (let i = 183; i <= 262; i++) {
     });
 }
 
-// The 198 Another Emojis (275.tgs to 472.tgs)
+// The 197 Another Emojis (275.tgs to 472.tgs, excluding 330 / Another #56)
 const ANOTHER_TEMPLATES = [];
+let anotherCounter = 1;
 for (let i = 275; i <= 472; i++) {
+    if (i === 330) continue; // Another #56 (330) removed as requested
+    const dNum = anotherCounter++;
     ANOTHER_TEMPLATES.push({
         id: `${i}`,
         file: `${i}.tgs`,
-        name: `Another #${i - 274}`,
+        displayNum: dNum,
+        name: `Another #${dNum}`,
         tag: "Another Emoji"
     });
 }
@@ -1518,10 +1527,10 @@ const i18n = {
         "tab_grey": "Grey",
         "tab_hq": "HQ",
         "tab_another": "Another",
-        "tab_name_badge": "25 ta Ism Emoji (13 Ticket + 12 Abu)",
-        "tab_name_title": "Ism Emojilar (Ticket & Abu)",
-        "tab_name_desc": "1-13 Ticket va 12 ta maxsus Abu (263-274) animatsiyalaridan tanlang",
-        "ph_search_tickets": "Ism yoki Abu emoji qidirish...",
+        "tab_name_badge": "24 ta Ism Emoji",
+        "tab_name_title": "Ism Emojilar",
+        "tab_name_desc": "1-24 gacha maxsus animatsiyalardan birini yoki bir nechtasini tanlang",
+        "ph_search_tickets": "Ism emoji qidirish (1-24)...",
         "btn_select_all": "Hammasini belgilash",
         "btn_deselect_all": "Tanlovni bekor qilish",
         "tab_logo_badge": "PREMIUM LOGO PACK",
@@ -1704,10 +1713,10 @@ const i18n = {
         "tab_grey": "Grey",
         "tab_hq": "HQ",
         "tab_another": "Another",
-        "tab_name_badge": "25 Именных эмодзи (13 Ticket + 12 Abu)",
-        "tab_name_title": "Именные эмодзи (Ticket & Abu)",
-        "tab_name_desc": "1-13 Ticket и 12 специальных Abu анимаций (263-274)",
-        "ph_search_tickets": "Поиск именных или Abu эмодзи...",
+        "tab_name_badge": "24 Именных эмодзи",
+        "tab_name_title": "Именные эмодзи",
+        "tab_name_desc": "Выберите из 1-24 именных анимаций",
+        "ph_search_tickets": "Поиск именных эмодзи (1-24)...",
         "btn_select_all": "Выбрать все",
         "btn_deselect_all": "Снять выбор",
         "tab_logo_badge": "ПРЕМИУМ ЛОГО ПАК",
@@ -1890,10 +1899,10 @@ const i18n = {
         "tab_grey": "Grey",
         "tab_hq": "HQ",
         "tab_another": "Another",
-        "tab_name_badge": "25 Name Emojis (13 Ticket + 12 Abu)",
-        "tab_name_title": "Name Emojis (Ticket & Abu)",
-        "tab_name_desc": "1-13 Ticket and 12 special Abu animations (263-274)",
-        "ph_search_tickets": "Search name or Abu emojis...",
+        "tab_name_badge": "24 Name Emojis",
+        "tab_name_title": "Name Emojis",
+        "tab_name_desc": "Choose from 1-24 special name animations",
+        "ph_search_tickets": "Search name emojis (1-24)...",
         "btn_select_all": "Select all",
         "btn_deselect_all": "Deselect all",
         "tab_logo_badge": "PREMIUM LOGO PACK",
@@ -2711,9 +2720,13 @@ async function updateLivePreview() {
     if (num <= 13) {
         tag = `Ticket #${num}`;
     } else if (num >= 263 && num <= 274) {
-        tag = `Abu #${num - 262}`;
+        const found = TICKET_TEMPLATES.find(t => parseInt(t.id) === num);
+        const dNum = found ? found.displayNum : (num < 266 ? num - 263 + 14 : num - 264 + 14);
+        tag = `Ticket #${dNum}`;
     } else if (num >= 275 && num <= 472) {
-        tag = `Another #${num - 274}`;
+        const found = ANOTHER_TEMPLATES.find(t => parseInt(t.id) === num);
+        const dNum = found ? found.displayNum : (num < 330 ? num - 274 : num - 275);
+        tag = `Another #${dNum}`;
     } else if (num >= 183 && num <= 262) {
         tag = `High Quality #${num - 182}`;
     } else if (num >= 118 && num <= 182) {
@@ -2980,7 +2993,7 @@ function updateSelectedCardsPreview() {
     });
 }
 
-// Render the 25 Ism Emojis in Name Tab (13 Ticket + 12 Abu)
+// Render the 24 Ism Emojis in Name Tab
 async function renderTicketsGrid(filterText = '') {
     Object.values(state.ticketPlayers).forEach(p => {
         try { p.destroy(); } catch (e) {}
@@ -2996,15 +3009,17 @@ async function renderTicketsGrid(filterText = '') {
             t.name.toLowerCase().includes(query) || 
             t.file.toLowerCase().includes(query) ||
             t.id.includes(query) ||
-            (parseInt(t.id) >= 263 && `abu #${parseInt(t.id) - 262}`.toLowerCase().includes(query)) ||
-            (parseInt(t.id) >= 263 && `${parseInt(t.id) - 262}` === query)
+            `${t.displayNum}` === query ||
+            `#${t.displayNum}` === query ||
+            `ticket #${t.displayNum}`.toLowerCase().includes(query) ||
+            `ism #${t.displayNum}`.toLowerCase().includes(query)
         );
     }
     
     if (filtered.length === 0) {
         dom.templatesGrid.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-dim);">
-                Ism yoki Abu shabloni topilmadi 🔍
+                Ism shabloni topilmadi 🔍
             </div>
         `;
         return;
@@ -3017,10 +3032,8 @@ async function renderTicketsGrid(filterText = '') {
         card.className = `tpl-card ${isSelected ? 'selected' : ''}`;
         card.dataset.file = tpl.file;
         
-        const badgeLabel = parseInt(num) >= 263 ? `Abu #${parseInt(num) - 262}` : `#${num}`;
-        const badgeStyle = parseInt(num) >= 263 ? 'style="background: rgba(6, 182, 212, 0.2); border-color: rgba(6, 182, 212, 0.5); color: #22d3ee;"' : '';
         card.innerHTML = `
-            <span class="tpl-badge" ${badgeStyle}>${badgeLabel}</span>
+            <span class="tpl-badge">#${tpl.displayNum}</span>
             <div class="tpl-check-badge">✓</div>
             <div class="tpl-lottie-thumb" id="thumb-ticket-${num}">
                 <div class="thumb-loader"></div>
@@ -3478,8 +3491,9 @@ async function renderAnotherGrid(filterText = '') {
             t.name.toLowerCase().includes(query) || 
             t.file.toLowerCase().includes(query) ||
             t.id.includes(query) ||
-            `another #${parseInt(t.id) - 274}`.toLowerCase().includes(query) ||
-            `${parseInt(t.id) - 274}` === query
+            `another #${t.displayNum}`.toLowerCase().includes(query) ||
+            `${t.displayNum}` === query ||
+            `#${t.displayNum}` === query
         );
     }
     
@@ -3494,7 +3508,7 @@ async function renderAnotherGrid(filterText = '') {
     
     filtered.forEach((tpl) => {
         const num = tpl.id;
-        const displayIdx = parseInt(num) - 274;
+        const displayIdx = tpl.displayNum;
         const isSelected = state.selectedAnother.has(tpl.file);
         const card = document.createElement('div');
         card.className = `tpl-card ${isSelected ? 'selected' : ''}`;
@@ -3507,7 +3521,7 @@ async function renderAnotherGrid(filterText = '') {
                 <div class="thumb-loader"></div>
             </div>
             <div class="tpl-meta">
-                <div class="tpl-title">Another #${displayIdx}</div>
+                <div class="tpl-title">${tpl.name}</div>
                 <div class="tpl-tag-label">${tpl.tag}</div>
             </div>
         `;
@@ -4000,15 +4014,25 @@ async function executeGeneration(pendingAction) {
     } else if (rawMode === 'all_hq') {
         showProgressModal("High Quality Pack Tayyorlanmoqda...", "Barcha 80 ta High Quality shablon qayta ishlanmoqda...", 10);
     } else if (rawMode === 'all_another') {
-        showProgressModal("Another Special Pack Tayyorlanmoqda...", "Barcha 198 ta Another shablon qayta ishlanmoqda...", 10);
+        showProgressModal("Another Special Pack Tayyorlanmoqda...", "Barcha 197 ta Another shablon qayta ishlanmoqda...", 10);
     } else if (mode === "single") {
         const num = parseInt(getTemplateNumber(selectedFiles[0]));
         let tag = `Logo #${num}`;
-        if (num <= 13) tag = `100x100 #${num}`;
-        else if (num >= 263 && num <= 274) tag = `100x100 #${num - 263 + 14}`;
-        else if (num >= 275 && num <= 472) tag = `Another #${num - 274}`;
-        else if (num >= 183 && num <= 262) tag = `High Quality #${num - 182}`;
-        else if (num >= 118 && num <= 182) tag = `Grey #${num - 117}`;
+        if (num <= 13) {
+            tag = `Ticket #${num}`;
+        } else if (num >= 263 && num <= 274) {
+            const found = TICKET_TEMPLATES.find(t => parseInt(t.id) === num);
+            const dNum = found ? found.displayNum : (num < 266 ? num - 263 + 14 : num - 264 + 14);
+            tag = `Ticket #${dNum}`;
+        } else if (num >= 275 && num <= 472) {
+            const found = ANOTHER_TEMPLATES.find(t => parseInt(t.id) === num);
+            const dNum = found ? found.displayNum : (num < 330 ? num - 274 : num - 275);
+            tag = `Another #${dNum}`;
+        } else if (num >= 183 && num <= 262) {
+            tag = `High Quality #${num - 182}`;
+        } else if (num >= 118 && num <= 182) {
+            tag = `Grey #${num - 117}`;
+        }
         showProgressModal(`${tag} Tayyorlanmoqda...`, "Animatsiya qayta ishlanmoqda...", 20);
     } else {
         showProgressModal(`Maxsus Emoji Pack (${selectedFiles.length} ta)...`, "Tanlangan emojilar paketga jamlanmoqda...", 15);

@@ -717,7 +717,7 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
         tgs_name = req.template_id if req.template_id and req.template_id.endswith(".tgs") else f"{req.template_id or '1'}.tgs"
         target_files = [p / tgs_name] if (p / tgs_name).exists() else [next(p.glob('*.tgs'))]
     elif req.mode in ("all_ticket", "all_name", "all_100x100"):
-        ticket_nums = list(range(1, 14)) + list(range(263, 275))
+        ticket_nums = [i for i in (list(range(1, 14)) + list(range(263, 275))) if i != 266]
         target_files = [p / f"{i}.tgs" for i in ticket_nums if (p / f"{i}.tgs").exists()]
     elif req.mode in ("all_logo", "logo"):
         target_files = [p / f"{i}.tgs" for i in range(14, 118) if (p / f"{i}.tgs").exists()]
@@ -726,7 +726,7 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
     elif req.mode in ("all_hq", "all_high_quality", "hq", "high_quality"):
         target_files = [p / f"{i}.tgs" for i in range(183, 263) if (p / f"{i}.tgs").exists()]
     elif req.mode in ("all_another", "another"):
-        target_files = [p / f"{i}.tgs" for i in range(275, 473) if (p / f"{i}.tgs").exists()]
+        target_files = [p / f"{i}.tgs" for i in range(275, 473) if i != 330 and (p / f"{i}.tgs").exists()]
     else:
         # Full Mega Pack (all templates)
         target_files = sorted(p.glob("*.tgs"), key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name))

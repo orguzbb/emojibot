@@ -1136,7 +1136,7 @@
                         <line x1="7" y1="7" x2="7.01" y2="7"></line>
                     </svg>
                     <span class="tab-text" data-i18n="tab_name">Ism</span>
-                    <span class="tab-counter" id="tab-counter-name">25</span>
+                    <span class="tab-counter" id="tab-counter-name">24</span>
                 </button>
                 <button type="button" class="nav-tab" id="tab-btn-logo" data-tab="logo" onclick="window.switchTab('logo')">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1166,27 +1166,27 @@
                         <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
                     <span class="tab-text" data-i18n="tab_another">Another</span>
-                    <span class="tab-counter" id="tab-counter-another">198</span>
+                    <span class="tab-counter" id="tab-counter-another">197</span>
                 </button>
             </div>
         </div>
 
-        <!-- ==================== TAB 1: NAME (ISM & ABU EMOJILAR 1-25) ==================== -->
+        <!-- ==================== TAB 1: NAME (ISM EMOJILAR 1-24) ==================== -->
         <main id="tab-content-name" class="tab-content active">
             <div class="section-intro">
                 <div class="intro-texts">
                     <div class="title-with-badge">
-                        <h2 class="section-title" data-i18n="tab_name_title">Ism Emojilar (Ticket & Abu)</h2>
-                        <span class="badge-pill-cyan" data-i18n="tab_name_badge">25 ta Ism Emoji (13 Ticket + 12 Abu)</span>
+                        <h2 class="section-title" data-i18n="tab_name_title">Ism Emojilar</h2>
+                        <span class="badge-pill-cyan" data-i18n="tab_name_badge">24 ta Ism Emoji</span>
                     </div>
-                    <p class="section-desc" data-i18n="tab_name_desc">1-13 Ticket va 12 ta maxsus Abu (263-274) animatsiyalaridan birini yoki bir nechtasini tanlang</p>
+                    <p class="section-desc" data-i18n="tab_name_desc">1-24 gacha maxsus animatsiyalardan birini yoki bir nechtasini tanlang</p>
                 </div>
                 <div class="search-bar">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="template-search" placeholder="Ism yoki Abu emoji raqamini qidirish (1-25)..." data-i18n-ph="ph_search_tickets">
+                    <input type="text" id="template-search" placeholder="Ism emoji raqamini qidirish (1-24)..." data-i18n-ph="ph_search_tickets">
                 </div>
                 <div class="grid-toolbar">
                     <button type="button" class="btn-select-all" id="btn-select-all-tickets">
@@ -2182,15 +2182,15 @@
 
         // Load app.js, ticket_templates.js and abu_templates.js in parallel so UI and previews activate instantly
         var sApp = document.createElement('script');
-        sApp.src = 'app.js?v=7.3.3';
+        sApp.src = 'app.js?v=7.3.4';
         document.body.appendChild(sApp);
 
         var sAbu = document.createElement('script');
-        sAbu.src = 'abu_templates.js?v=7.3.3';
+        sAbu.src = 'abu_templates.js?v=7.3.4';
         document.body.appendChild(sAbu);
 
         var sTemplates = document.createElement('script');
-        sTemplates.src = 'ticket_templates.js?v=7.3.3';
+        sTemplates.src = 'ticket_templates.js?v=7.3.4';
         document.body.appendChild(sTemplates);
     })();
     </script>
