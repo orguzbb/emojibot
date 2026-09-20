@@ -38,9 +38,9 @@ async def run_bot():
         dp.include_router(router)
 
         try:
-            # Delete webhook if any, keep pending updates
+            # Delete webhook if any, clear any conflict updates
             try:
-                await bot.delete_webhook(drop_pending_updates=False)
+                await bot.delete_webhook(drop_pending_updates=True)
             except Exception as w_err:
                 logger.warning(f"delete_webhook notice: {w_err}")
             
