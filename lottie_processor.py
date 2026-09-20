@@ -703,7 +703,14 @@ def generate_text_shapes(text: str, font_path: str, target_layer: dict, scale_fa
                 "hd": False
             })
 
-        if info.get("stroke_w") and isinstance(info["stroke_w"], dict) and info["stroke_w"].get("k", 0) > 0:
+        stroke_val = info["stroke_w"].get("k", 0) if isinstance(info.get("stroke_w"), dict) else 0
+        has_stroke = False
+        if isinstance(stroke_val, (int, float)) and stroke_val > 0:
+            has_stroke = True
+        elif isinstance(stroke_val, list) and len(stroke_val) > 0:
+            has_stroke = True
+
+        if info.get("stroke_w") and has_stroke:
             items.append({
                 "ty": "st",
                 "nm": "Stroke",
@@ -1165,8 +1172,10 @@ def is_text_container(item):
     """
     Checks if a shape group is a text container:
     1. Has multiple child groups named after single characters ('A', 'B', 'K', 'X', etc.)
-    2. Or is explicitly named 'TextGroup', 'NAME', 'Letters', 'caption', 'word'
+    2. Or is explicitly named 'TextGroup', 'NAME', 'Letters', 'caption', 'word', 'label'
     3. Or has child shape paths named 'Logo path' or child groups named 'Svg Group'
+    4. Or has 3-8 child groups containing vector shapes (e.g. Another pack unnamed letters)
+    5. Or has 3-8 child vector shapes with fill/stroke (e.g. Another pack direct glyphs)
     """
     if not isinstance(item, dict):
         return False, []
@@ -1183,9 +1192,9 @@ def is_text_container(item):
     if len(letter_indices) >= 2:
         return True, ('letters', letter_indices)
     
-    # Check 2: group named TextGroup, NAME, Letters, etc.
+    # Check 2: group named TextGroup, NAME, Letters, Label, caption, word
     nm = str(item.get('nm', '')).lower()
-    if any(k in nm for k in ['textgroup', 'name', 'letters', 'caption', 'word']):
+    if any(k in nm for k in ['textgroup', 'name', 'letters', 'caption', 'word', 'label']):
         return True, ('text_group', list(range(len(children))))
         
     # Check 3: child shape paths named 'Logo path' or child groups named 'Svg Group'
@@ -1198,6 +1207,26 @@ def is_text_container(item):
     ]
     if len(logo_paths) >= 1:
         return True, ('logo_paths', logo_paths)
+
+    # Check 4: Another pack text groups (3 to 8 sub-groups each with vector shapes)
+    if len(children) >= 3:
+        sub_groups = []
+        for i, s in enumerate(children):
+            if isinstance(s, dict) and s.get('ty') == 'gr':
+                s_items = s.get('it', [])
+                if any(x.get('ty') == 'sh' for x in s_items):
+                    sub_groups.append(i)
+        if 3 <= len(sub_groups) <= 8:
+            return True, ('another_letter_groups', sub_groups)
+            
+        sub_shapes = [
+            i for i, s in enumerate(children)
+            if isinstance(s, dict) and s.get('ty') == 'sh'
+        ]
+        if 3 <= len(sub_shapes) <= 8:
+            has_fill_or_stroke = any(isinstance(s, dict) and s.get('ty') in ('fl', 'st', 'gf') for s in children)
+            if has_fill_or_stroke:
+                return True, ('another_letter_shapes', sub_shapes)
         
     return False, []
 
@@ -1239,7 +1268,7 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
     for item in shapes_list:
         if isinstance(item, dict):
             is_text, text_type = is_text_container(item)
-            if is_text and text_type[0] in ('text_group', 'logo_paths'):
+            if is_text:
                 target_group = {'shapes': [item]}
                 if is_svg:
                     new_shapes = generate_svg_shapes(svg_content, target_group, scale_factor=scale)
