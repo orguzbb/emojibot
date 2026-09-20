@@ -30,6 +30,25 @@
     <!-- 1. Telegram WebApp SDK (MUST be loaded first so Telegram WebApp API is available) -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
+    <!-- Instant Tab Switching Helper (Guarantees zero-delay tab switching even during asset load) -->
+    <script>
+    window.switchTab = function(tab) {
+        if (typeof window.__realSwitchTab === 'function') {
+            window.__realSwitchTab(tab);
+        } else {
+            window.__pendingTab = tab;
+            try {
+                document.querySelectorAll('.nav-tab').forEach(function(b) {
+                    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+                });
+                document.querySelectorAll('.tab-content').forEach(function(m) {
+                    m.classList.toggle('active', m.id === ('tab-content-' + tab));
+                });
+            } catch (_) {}
+        }
+    };
+    </script>
+
     <!-- ==================== CRITICAL INSTANT SECURITY & TELEGRAM FULLSCREEN SHIELD ==================== -->
     <script>
     (function() {
@@ -1108,39 +1127,39 @@
             </div>
         </section>
 
-        <!-- Main Navigation Tabs (Name vs Logo vs Grey vs High Quality) -->
+        <!-- Main Navigation Tabs (Name vs Logo vs Grey vs High Quality vs Another) -->
         <div class="nav-tabs-wrapper">
             <div class="nav-tabs">
-                <button type="button" class="nav-tab active" id="tab-btn-name" data-tab="name">
+                <button type="button" class="nav-tab active" id="tab-btn-name" data-tab="name" onclick="window.switchTab('name')">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                         <line x1="7" y1="7" x2="7.01" y2="7"></line>
                     </svg>
-                    <span class="tab-text" data-i18n="tab_name">100x100</span>
+                    <span class="tab-text" data-i18n="tab_name">Ism</span>
                     <span class="tab-counter" id="tab-counter-name">25</span>
                 </button>
-                <button type="button" class="nav-tab" id="tab-btn-logo" data-tab="logo">
+                <button type="button" class="nav-tab" id="tab-btn-logo" data-tab="logo" onclick="window.switchTab('logo')">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path>
                     </svg>
                     <span class="tab-text" data-i18n="tab_logo">Logo</span>
                     <span class="tab-counter" id="tab-counter-logo">100</span>
                 </button>
-                <button type="button" class="nav-tab" id="tab-btn-grey" data-tab="grey">
+                <button type="button" class="nav-tab" id="tab-btn-grey" data-tab="grey" onclick="window.switchTab('grey')">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
                     </svg>
                     <span class="tab-text" data-i18n="tab_grey">Grey</span>
                     <span class="tab-counter" id="tab-counter-grey">65</span>
                 </button>
-                <button type="button" class="nav-tab" id="tab-btn-hq" data-tab="hq">
+                <button type="button" class="nav-tab" id="tab-btn-hq" data-tab="hq" onclick="window.switchTab('hq')">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
                     </svg>
                     <span class="tab-text" data-i18n="tab_hq">HQ</span>
                     <span class="tab-counter" id="tab-counter-hq">80</span>
                 </button>
-                <button type="button" class="nav-tab" id="tab-btn-another" data-tab="another">
+                <button type="button" class="nav-tab" id="tab-btn-another" data-tab="another" onclick="window.switchTab('another')">
                     <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -1152,22 +1171,22 @@
             </div>
         </div>
 
-        <!-- ==================== TAB 1: NAME (100x100 EMOJILAR 1-25) ==================== -->
+        <!-- ==================== TAB 1: NAME (ISM & ABU EMOJILAR 1-25) ==================== -->
         <main id="tab-content-name" class="tab-content active">
             <div class="section-intro">
                 <div class="intro-texts">
                     <div class="title-with-badge">
-                        <h2 class="section-title" data-i18n="tab_name_title">100x100 Emojilar</h2>
-                        <span class="badge-pill-cyan" data-i18n="tab_name_badge">25 ta 100x100 Emoji</span>
+                        <h2 class="section-title" data-i18n="tab_name_title">Ism Emojilar (Ticket & Abu)</h2>
+                        <span class="badge-pill-cyan" data-i18n="tab_name_badge">25 ta Ism Emoji (13 Ticket + 12 Abu)</span>
                     </div>
-                    <p class="section-desc" data-i18n="tab_name_desc">Maxsus 100x100 o'lchamdagi premium animatsiyalardan birini yoki bir nechtasini tanlang</p>
+                    <p class="section-desc" data-i18n="tab_name_desc">1-13 Ticket va 12 ta maxsus Abu (263-274) animatsiyalaridan birini yoki bir nechtasini tanlang</p>
                 </div>
                 <div class="search-bar">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" id="template-search" placeholder="100x100 emoji raqamini qidirish (1-25)..." data-i18n-ph="ph_search_tickets">
+                    <input type="text" id="template-search" placeholder="Ism yoki Abu emoji raqamini qidirish (1-25)..." data-i18n-ph="ph_search_tickets">
                 </div>
                 <div class="grid-toolbar">
                     <button type="button" class="btn-select-all" id="btn-select-all-tickets">
@@ -2161,19 +2180,18 @@
             return;
         }
 
-        var s1 = document.createElement('script');
-        s1.src = 'ticket_templates.js?v=7.3.0';
-        s1.onload = function() {
-            var s2 = document.createElement('script');
-            s2.src = 'app.js?v=7.3.0';
-            document.body.appendChild(s2);
-        };
-        s1.onerror = function() {
-            var s2 = document.createElement('script');
-            s2.src = 'app.js?v=7.3.0';
-            document.body.appendChild(s2);
-        };
-        document.body.appendChild(s1);
+        // Load app.js, ticket_templates.js and abu_templates.js in parallel so UI and previews activate instantly
+        var sApp = document.createElement('script');
+        sApp.src = 'app.js?v=7.3.3';
+        document.body.appendChild(sApp);
+
+        var sAbu = document.createElement('script');
+        sAbu.src = 'abu_templates.js?v=7.3.3';
+        document.body.appendChild(sAbu);
+
+        var sTemplates = document.createElement('script');
+        sTemplates.src = 'ticket_templates.js?v=7.3.3';
+        document.body.appendChild(sTemplates);
     })();
     </script>
 </body>

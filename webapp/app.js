@@ -151,22 +151,22 @@ const RANDOM_NAMES = [
     "RAYHONA", "IBROHIM", "JAVOHIR", "SHERZOD", "BOBUR"
 ];
 
-// The 25 Ticket Emojis (1.tgs to 13.tgs + 263.tgs to 274.tgs from Abu Pack)
+// The 25 Ism Emojis (1.tgs to 13.tgs Ticket + 263.tgs to 274.tgs Abu Pack)
 const TICKET_TEMPLATES = [];
 for (let i = 1; i <= 13; i++) {
     TICKET_TEMPLATES.push({
         id: `${i}`,
         file: `${i}.tgs`,
-        name: `100x100 #${i}`,
-        tag: "100x100 Ticket"
+        name: `Ticket #${i}`,
+        tag: "Ism Ticket"
     });
 }
 for (let i = 263; i <= 274; i++) {
     TICKET_TEMPLATES.push({
         id: `${i}`,
         file: `${i}.tgs`,
-        name: `100x100 #${i - 263 + 14}`,
-        tag: "100x100 Abu"
+        name: `Abu #${i - 262}`,
+        tag: "Ism Abu"
     });
 }
 
@@ -738,6 +738,13 @@ function getPreRenderedTemplateData(filename, font, scale = 1.0) {
             return scale === 1.0 ? raw : applyScaleToLottieJSON(raw, scale);
         }
     }
+    // Fallback: check Abu templates cache for 263-274
+    if (window.ABU_TEMPLATE_DATA && window.ABU_TEMPLATE_DATA[font]) {
+        const raw = window.ABU_TEMPLATE_DATA[font][filename];
+        if (raw) {
+            return scale === 1.0 ? raw : applyScaleToLottieJSON(raw, scale);
+        }
+    }
     return null;
 }
 
@@ -1083,6 +1090,11 @@ async function initApp() {
             if (window.lucide && window.lucide.createIcons) {
                 window.lucide.createIcons();
             }
+            if (window.__pendingTab) {
+                const pTab = window.__pendingTab;
+                delete window.__pendingTab;
+                switchTab(pTab);
+            }
         }, 150);
         
     } catch (err) {
@@ -1091,6 +1103,11 @@ async function initApp() {
         clearInterval(progressTimer);
         dom.loadingScreen?.classList.add('fade-out');
         dom.appContainer?.classList.remove('hidden');
+        if (window.__pendingTab) {
+            const pTab = window.__pendingTab;
+            delete window.__pendingTab;
+            switchTab(pTab);
+        }
     }
 }
 
@@ -1496,15 +1513,15 @@ const i18n = {
         "live_preview_badge": "Jonli Prevyu",
         "preview_info_text": "Matn:",
         "preview_info_font": "Shrift:",
-        "tab_name": "100x100",
+        "tab_name": "Ism",
         "tab_logo": "Logo",
         "tab_grey": "Grey",
         "tab_hq": "HQ",
         "tab_another": "Another",
-        "tab_name_badge": "25 ta 100x100 Emoji",
-        "tab_name_title": "100x100 Emojilar",
-        "tab_name_desc": "1.tgs dan 13.tgs va 263.tgs dan 274.tgs gacha bo'lgan 100x100 animatsiyalaridan tanlang",
-        "ph_search_tickets": "100x100 emoji qidirish...",
+        "tab_name_badge": "25 ta Ism Emoji (13 Ticket + 12 Abu)",
+        "tab_name_title": "Ism Emojilar (Ticket & Abu)",
+        "tab_name_desc": "1-13 Ticket va 12 ta maxsus Abu (263-274) animatsiyalaridan tanlang",
+        "ph_search_tickets": "Ism yoki Abu emoji qidirish...",
         "btn_select_all": "Hammasini belgilash",
         "btn_deselect_all": "Tanlovni bekor qilish",
         "tab_logo_badge": "PREMIUM LOGO PACK",
@@ -1682,15 +1699,15 @@ const i18n = {
         "live_preview_badge": "Живое превью",
         "preview_info_text": "Текст:",
         "preview_info_font": "Шрифт:",
-        "tab_name": "100x100",
+        "tab_name": "Имя",
         "tab_logo": "Logo",
         "tab_grey": "Grey",
         "tab_hq": "HQ",
         "tab_another": "Another",
-        "tab_name_badge": "25 эмодзи 100x100",
-        "tab_name_title": "100x100 Эмодзи",
-        "tab_name_desc": "Выберите одну или несколько анимаций от 1.tgs до 13.tgs и от 263.tgs до 274.tgs",
-        "ph_search_tickets": "Поиск 100x100...",
+        "tab_name_badge": "25 Именных эмодзи (13 Ticket + 12 Abu)",
+        "tab_name_title": "Именные эмодзи (Ticket & Abu)",
+        "tab_name_desc": "1-13 Ticket и 12 специальных Abu анимаций (263-274)",
+        "ph_search_tickets": "Поиск именных или Abu эмодзи...",
         "btn_select_all": "Выбрать все",
         "btn_deselect_all": "Снять выбор",
         "tab_logo_badge": "ПРЕМИУМ ЛОГО ПАК",
@@ -1868,15 +1885,15 @@ const i18n = {
         "live_preview_badge": "Live Preview",
         "preview_info_text": "Text:",
         "preview_info_font": "Font:",
-        "tab_name": "100x100",
+        "tab_name": "Name",
         "tab_logo": "Logo",
         "tab_grey": "Grey",
         "tab_hq": "HQ",
         "tab_another": "Another",
-        "tab_name_badge": "25 100x100 Emojis",
-        "tab_name_title": "100x100 Emojis",
-        "tab_name_desc": "Choose one or multiple animations from 1.tgs to 13.tgs and 263.tgs to 274.tgs",
-        "ph_search_tickets": "Search 100x100...",
+        "tab_name_badge": "25 Name Emojis (13 Ticket + 12 Abu)",
+        "tab_name_title": "Name Emojis (Ticket & Abu)",
+        "tab_name_desc": "1-13 Ticket and 12 special Abu animations (263-274)",
+        "ph_search_tickets": "Search name or Abu emojis...",
         "btn_select_all": "Select all",
         "btn_deselect_all": "Deselect all",
         "tab_logo_badge": "PREMIUM LOGO PACK",
@@ -2490,42 +2507,58 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
 
 function switchTab(tabKey) {
     state.activeTab = tabKey;
-    dom.tabBtnName?.classList.toggle('active', tabKey === 'name');
-    dom.tabBtnLogo?.classList.toggle('active', tabKey === 'logo');
-    dom.tabBtnGrey?.classList.toggle('active', tabKey === 'grey');
-    dom.tabBtnHQ?.classList.toggle('active', tabKey === 'hq');
-    dom.tabBtnAnother?.classList.toggle('active', tabKey === 'another');
-    
-    dom.tabContentName?.classList.toggle('active', tabKey === 'name');
-    dom.tabContentLogo?.classList.toggle('active', tabKey === 'logo');
-    dom.tabContentGrey?.classList.toggle('active', tabKey === 'grey');
-    dom.tabContentHQ?.classList.toggle('active', tabKey === 'hq');
-    dom.tabContentAnother?.classList.toggle('active', tabKey === 'another');
-    
-    if (tabKey === 'name') {
-        if (state.inputType !== 'svg') {
-            state.selectedTemplate = Array.from(state.selectedTickets)[0] || "1.tgs";
-        }
-    } else if (tabKey === 'logo') {
-        state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
-        renderLogosGrid(dom.logoSearch?.value || '');
-    } else if (tabKey === 'grey') {
-        state.selectedTemplate = Array.from(state.selectedGrey)[0] || "118.tgs";
-        state.activeColorTarget = 'text';
-        renderGreyGrid(dom.greySearch?.value || '');
-    } else if (tabKey === 'hq') {
-        state.selectedTemplate = Array.from(state.selectedHQ)[0] || "183.tgs";
-        state.activeColorTarget = 'text';
-        renderHQGrid(dom.hqSearch?.value || '');
-    } else if (tabKey === 'another') {
-        state.selectedTemplate = Array.from(state.selectedAnother)[0] || "275.tgs";
-        state.activeColorTarget = 'text';
-        renderAnotherGrid(dom.anotherSearch?.value || '');
+    try {
+        dom.tabBtnName?.classList.toggle('active', tabKey === 'name');
+        dom.tabBtnLogo?.classList.toggle('active', tabKey === 'logo');
+        dom.tabBtnGrey?.classList.toggle('active', tabKey === 'grey');
+        dom.tabBtnHQ?.classList.toggle('active', tabKey === 'hq');
+        dom.tabBtnAnother?.classList.toggle('active', tabKey === 'another');
+        
+        dom.tabContentName?.classList.toggle('active', tabKey === 'name');
+        dom.tabContentLogo?.classList.toggle('active', tabKey === 'logo');
+        dom.tabContentGrey?.classList.toggle('active', tabKey === 'grey');
+        dom.tabContentHQ?.classList.toggle('active', tabKey === 'hq');
+        dom.tabContentAnother?.classList.toggle('active', tabKey === 'another');
+    } catch (err) {
+        console.warn("switchTab class toggle error:", err);
     }
-    syncColorControlsUI();
-    updateLivePreview();
-    updateSelectionStatus();
+    
+    try {
+        if (tabKey === 'name') {
+            if (state.inputType !== 'svg') {
+                state.selectedTemplate = Array.from(state.selectedTickets)[0] || "1.tgs";
+            }
+            renderTicketsGrid(dom.templateSearch?.value || '');
+        } else if (tabKey === 'logo') {
+            state.selectedTemplate = Array.from(state.selectedLogos)[0] || "14.tgs";
+            renderLogosGrid(dom.logoSearch?.value || '');
+        } else if (tabKey === 'grey') {
+            state.selectedTemplate = Array.from(state.selectedGrey)[0] || "118.tgs";
+            state.activeColorTarget = 'text';
+            renderGreyGrid(dom.greySearch?.value || '');
+        } else if (tabKey === 'hq') {
+            state.selectedTemplate = Array.from(state.selectedHQ)[0] || "183.tgs";
+            state.activeColorTarget = 'text';
+            renderHQGrid(dom.hqSearch?.value || '');
+        } else if (tabKey === 'another') {
+            state.selectedTemplate = Array.from(state.selectedAnother)[0] || "275.tgs";
+            state.activeColorTarget = 'text';
+            renderAnotherGrid(dom.anotherSearch?.value || '');
+        }
+    } catch (err) {
+        console.warn("switchTab grid render error:", err);
+    }
+
+    try {
+        syncColorControlsUI();
+        updateLivePreview();
+        updateSelectionStatus();
+    } catch (err) {
+        console.warn("switchTab UI update error:", err);
+    }
 }
+window.switchTab = switchTab;
+window.__realSwitchTab = switchTab;
 
 const debouncedFullUpdate = debounce(() => {
     if (state.activeTab === 'name') {
@@ -2676,9 +2709,9 @@ async function updateLivePreview() {
     const num = parseInt(getTemplateNumber(state.selectedTemplate));
     let tag = `Logo #${num}`;
     if (num <= 13) {
-        tag = `100x100 #${num}`;
+        tag = `Ticket #${num}`;
     } else if (num >= 263 && num <= 274) {
-        tag = `100x100 #${num - 263 + 14}`;
+        tag = `Abu #${num - 262}`;
     } else if (num >= 275 && num <= 472) {
         tag = `Another #${num - 274}`;
     } else if (num >= 183 && num <= 262) {
@@ -2947,12 +2980,13 @@ function updateSelectedCardsPreview() {
     });
 }
 
-// Render the 13 Ticket Emojis in Name Tab (1.tgs to 13.tgs)
+// Render the 25 Ism Emojis in Name Tab (13 Ticket + 12 Abu)
 async function renderTicketsGrid(filterText = '') {
     Object.values(state.ticketPlayers).forEach(p => {
         try { p.destroy(); } catch (e) {}
     });
     state.ticketPlayers = {};
+    if (!dom.templatesGrid) return;
     dom.templatesGrid.innerHTML = '';
     
     let filtered = TICKET_TEMPLATES;
@@ -2961,14 +2995,16 @@ async function renderTicketsGrid(filterText = '') {
         filtered = TICKET_TEMPLATES.filter(t => 
             t.name.toLowerCase().includes(query) || 
             t.file.toLowerCase().includes(query) ||
-            t.id.includes(query)
+            t.id.includes(query) ||
+            (parseInt(t.id) >= 263 && `abu #${parseInt(t.id) - 262}`.toLowerCase().includes(query)) ||
+            (parseInt(t.id) >= 263 && `${parseInt(t.id) - 262}` === query)
         );
     }
     
     if (filtered.length === 0) {
         dom.templatesGrid.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-dim);">
-                Ticket shabloni topilmadi 🔍
+                Ism yoki Abu shabloni topilmadi 🔍
             </div>
         `;
         return;
@@ -2981,10 +3017,14 @@ async function renderTicketsGrid(filterText = '') {
         card.className = `tpl-card ${isSelected ? 'selected' : ''}`;
         card.dataset.file = tpl.file;
         
+        const badgeLabel = parseInt(num) >= 263 ? `Abu #${parseInt(num) - 262}` : `#${num}`;
+        const badgeStyle = parseInt(num) >= 263 ? 'style="background: rgba(6, 182, 212, 0.2); border-color: rgba(6, 182, 212, 0.5); color: #22d3ee;"' : '';
         card.innerHTML = `
-            <span class="tpl-badge">#${num}</span>
+            <span class="tpl-badge" ${badgeStyle}>${badgeLabel}</span>
             <div class="tpl-check-badge">✓</div>
-            <div class="tpl-lottie-thumb" id="thumb-ticket-${num}"></div>
+            <div class="tpl-lottie-thumb" id="thumb-ticket-${num}">
+                <div class="thumb-loader"></div>
+            </div>
             <div class="tpl-meta">
                 <div class="tpl-title">${tpl.name}</div>
                 <div class="tpl-tag-label">${tpl.tag}</div>

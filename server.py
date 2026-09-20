@@ -273,6 +273,11 @@ async def serve_ticket_templates():
     return FileResponse(WEBAPP_DIR / "ticket_templates.js", media_type="application/javascript")
 
 
+@app.get("/abu_templates.js")
+async def serve_abu_templates():
+    return FileResponse(WEBAPP_DIR / "abu_templates.js", media_type="application/javascript")
+
+
 # ==================== REST API ENDPOINTS ====================
 
 @app.get("/api/info")
