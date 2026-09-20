@@ -287,10 +287,11 @@ async def get_info():
     return {
         "bot_username": BOT_USERNAME,
         "total_templates": total_templates,
-        "ticket_templates_count": 13,
-        "logo_templates_count": 104,
+        "ticket_templates_count": 25,
+        "logo_templates_count": 100,
         "grey_templates_count": 65,
         "high_quality_templates_count": 80,
+        "another_templates_count": 198,
         "emoji_price": emoji_price,
         "referral_bonus": referral_bonus,
         "fonts": [
@@ -464,14 +465,22 @@ async def get_templates_list():
             cat = "ticket"
             nm = f"Ticket #{num}"
         elif num <= 117:
+            if num in (81, 84, 91, 103):
+                continue
             cat = "logo"
             nm = f"Logo #{num - 13}"
         elif num <= 182:
             cat = "grey"
             nm = f"Grey #{num - 117}"
-        else:
+        elif num <= 262:
             cat = "high_quality"
             nm = f"High Quality #{num - 182}"
+        elif num <= 274:
+            cat = "ticket"
+            nm = f"100x100 #{num - 262 + 13}"
+        else:
+            cat = "another"
+            nm = f"Another #{num - 274}"
         items.append({
             "id": f.stem,
             "filename": f.name,
@@ -517,7 +526,8 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
         except Exception:
             pass
         is_grey = 118 <= tpl_num <= 182
-        is_hq = tpl_num >= 183
+        is_hq = 183 <= tpl_num <= 262
+        is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
         effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
@@ -528,9 +538,9 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
-            badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
-            badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
-            text_color=req.text_color if (is_logo or is_grey or is_hq) else None
+            badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq or is_another) else None),
+            badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq or is_another) else None),
+            text_color=req.text_color if (is_logo or is_grey or is_hq or is_another) else None
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         return JSONResponse(content=lottie_json)
@@ -573,7 +583,8 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
             except Exception:
                 pass
             is_grey = 118 <= tpl_num <= 182
-            is_hq = tpl_num >= 183
+            is_hq = 183 <= tpl_num <= 262
+            is_another = 275 <= tpl_num <= 472
             is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
             proc_bytes = process_tgs_template(
@@ -583,9 +594,9 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 text_scale=req.scale or 1.0,
                 svg_data=req.svg_data,
                 input_type=req.input_type or ("svg" if is_svg_mode else "text"),
-                badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
-                badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
-                text_color=req.text_color if (is_logo or is_grey or is_hq) else None
+                badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq or is_another) else None),
+                badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq or is_another) else None),
+                text_color=req.text_color if (is_logo or is_grey or is_hq or is_another) else None
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
             filename = tpl_id if tpl_id.endswith(".tgs") else f"{tpl_id}.tgs"
@@ -700,14 +711,17 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
     elif req.mode == "single":
         tgs_name = req.template_id if req.template_id and req.template_id.endswith(".tgs") else f"{req.template_id or '1'}.tgs"
         target_files = [p / tgs_name] if (p / tgs_name).exists() else [next(p.glob('*.tgs'))]
-    elif req.mode in ("all_ticket", "all_name"):
-        target_files = [p / f"{i}.tgs" for i in range(1, 14) if (p / f"{i}.tgs").exists()]
+    elif req.mode in ("all_ticket", "all_name", "all_100x100"):
+        ticket_nums = list(range(1, 14)) + list(range(263, 275))
+        target_files = [p / f"{i}.tgs" for i in ticket_nums if (p / f"{i}.tgs").exists()]
     elif req.mode in ("all_logo", "logo"):
         target_files = [p / f"{i}.tgs" for i in range(14, 118) if (p / f"{i}.tgs").exists()]
     elif req.mode in ("all_grey", "grey"):
         target_files = [p / f"{i}.tgs" for i in range(118, 183) if (p / f"{i}.tgs").exists()]
     elif req.mode in ("all_hq", "all_high_quality", "hq", "high_quality"):
         target_files = [p / f"{i}.tgs" for i in range(183, 263) if (p / f"{i}.tgs").exists()]
+    elif req.mode in ("all_another", "another"):
+        target_files = [p / f"{i}.tgs" for i in range(275, 473) if (p / f"{i}.tgs").exists()]
     else:
         # Full Mega Pack (all templates)
         target_files = sorted(p.glob("*.tgs"), key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name))
@@ -853,9 +867,13 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
 
     # Branch B: Create a brand new sticker set
     is_any_hq = any(183 <= int(''.join(filter(str.isdigit, f.name)) or 0) <= 262 for f in target_files)
+    is_any_another = any(275 <= int(''.join(filter(str.isdigit, f.name)) or 0) <= 472 for f in target_files)
     if is_svg_mode:
         raw_slug = to_name_slug(clean_text) if (clean_text and clean_text != "SVG") else "svg"
         pack_title = f"{clean_text} Vector Emojis" if (clean_text and clean_text != "SVG") else "SVG Vector Emojis"
+    elif is_any_another or req.mode in ("all_another", "another"):
+        raw_slug = f"{to_name_slug(clean_text)}_another"
+        pack_title = f"{clean_text} Another Emojis" if req.mode != "single" else f"{clean_text} Another ({font_info['name']})"
     elif is_any_hq or req.mode in ("all_hq", "all_high_quality", "hq", "high_quality"):
         raw_slug = f"{to_name_slug(clean_text)}_hq"
         pack_title = f"{clean_text} HQ Emojis" if req.mode != "single" else f"{clean_text} HQ ({font_info['name']})"
