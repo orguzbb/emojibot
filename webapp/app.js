@@ -3551,21 +3551,12 @@ async function renderAnotherGrid(filterText = '') {
     
     // Load first 12 Another emojis immediately via batch preview
     const initialBatch = filtered.slice(0, 12).map(t => t.file);
-    const selBatch = initialBatch.filter(f => state.selectedAnother.has(f));
-    const unselBatch = initialBatch.filter(f => !state.selectedAnother.has(f));
-
-    let batchSel = {};
-    if (selBatch.length > 0 && state.text) {
-        batchSel = await fetchBatchPreviews(selBatch, state.text, state.font, state.scale);
-    }
-    const batchUnsel = await fetchBatchPreviews(unselBatch, "", state.font, state.scale);
-
     try {
+        const batchData = await fetchBatchPreviews(initialBatch, "", state.font, 1.0);
         initialBatch.forEach(file => {
             const num = getTemplateNumber(file);
             const container = document.getElementById(`thumb-another-${num}`);
-            const isSel = state.selectedAnother.has(file);
-            const data = isSel ? batchSel[file] : batchUnsel[file];
+            const data = batchData[file];
             if (container && data && !state.anotherPlayers[file]) {
                 container.innerHTML = '';
                 const player = safeLoadLottieAnimation({
@@ -3589,20 +3580,9 @@ async function renderAnotherGrid(filterText = '') {
     async function processAnotherBatchQueue() {
         if (pendingQueue.length === 0) return;
         const currentBatch = pendingQueue.splice(0, 14);
-        const selB = currentBatch.filter(f => state.selectedAnother.has(f));
-        const unselB = currentBatch.filter(f => !state.selectedAnother.has(f));
-
-        const promises = [];
-        if (selB.length > 0 && state.text) {
-            promises.push(fetchBatchPreviews(selB, state.text, state.font, state.scale));
-        }
-        if (unselB.length > 0) {
-            promises.push(fetchBatchPreviews(unselB, "", state.font, state.scale));
-        }
 
         try {
-            const results = await Promise.all(promises);
-            const merged = Object.assign({}, ...results);
+            const merged = await fetchBatchPreviews(currentBatch, "", state.font, 1.0);
             currentBatch.forEach(file => {
                 const num = getTemplateNumber(file);
                 const container = document.getElementById(`thumb-another-${num}`);

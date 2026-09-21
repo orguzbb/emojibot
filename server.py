@@ -564,6 +564,11 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
         is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
+        if is_another:
+            lottie_json = json.loads(gzip.decompress(raw_bytes).decode("utf-8"))
+            _set_preview_cache(cache_key, lottie_json)
+            return JSONResponse(content=lottie_json)
+
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
             text=clean_text,
@@ -571,9 +576,9 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             text_scale=req.scale or 1.0,
             svg_data=req.svg_data if is_svg_mode else None,
             input_type=effective_input_type,
-            badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq or is_another) else None),
-            badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq or is_another) else None),
-            text_color=req.text_color if (is_logo or is_grey or is_hq or is_another) else None
+            badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
+            badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
+            text_color=req.text_color if (is_logo or is_grey or is_hq) else None
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
         _set_preview_cache(cache_key, lottie_json)
@@ -640,6 +645,15 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
             is_another = 275 <= tpl_num <= 472
             is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
+            if is_another:
+                try:
+                    lottie_json = json.loads(gzip.decompress(raw_bytes).decode("utf-8"))
+                    _set_preview_cache(cache_key, lottie_json)
+                    results[filename] = lottie_json
+                except Exception as e:
+                    logger.warning(f"Batch preview another template error {tpl_id}: {e}")
+                continue
+
             proc_bytes = process_tgs_template(
                 template_bytes=raw_bytes,
                 text=clean_text,
@@ -647,9 +661,9 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 text_scale=req.scale or 1.0,
                 svg_data=req.svg_data,
                 input_type=effective_input_type,
-                badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq or is_another) else None),
-                badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq or is_another) else None),
-                text_color=req.text_color if (is_logo or is_grey or is_hq or is_another) else None
+                badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
+                badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
+                text_color=req.text_color if (is_logo or is_grey or is_hq) else None
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
             _set_preview_cache(cache_key, lottie_json)
@@ -818,20 +832,24 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
         except Exception:
             pass
         is_grey = 118 <= tpl_num <= 182
-        is_hq = tpl_num >= 183
+        is_hq = 183 <= tpl_num <= 262
+        is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
-        proc_bytes = process_tgs_template(
-            template_bytes=raw_bytes,
-            text=clean_text,
-            font_path=str(font_file_path),
-            text_scale=req.scale or 1.0,
-            svg_data=req.svg_data if is_svg_mode else None,
-            input_type=effective_input_type,
-            badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
-            badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
-            text_color=req.text_color if (is_logo or is_grey or is_hq) else None
-        )
+        if is_another:
+            proc_bytes = raw_bytes
+        else:
+            proc_bytes = process_tgs_template(
+                template_bytes=raw_bytes,
+                text=clean_text,
+                font_path=str(font_file_path),
+                text_scale=req.scale or 1.0,
+                svg_data=req.svg_data if is_svg_mode else None,
+                input_type=effective_input_type,
+                badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
+                badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
+                text_color=req.text_color if (is_logo or is_grey or is_hq) else None
+            )
 
         emoji_char = DEFAULT_EMOJIS[idx % len(DEFAULT_EMOJIS)]
         input_stickers.append(
@@ -1072,20 +1090,24 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
         except Exception:
             pass
         is_grey = 118 <= tpl_num <= 182
-        is_hq = tpl_num >= 183
+        is_hq = 183 <= tpl_num <= 262
+        is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
-        proc_bytes = process_tgs_template(
-            template_bytes=raw_bytes,
-            text=clean_text,
-            font_path=str(font_file_path),
-            text_scale=req.scale or 1.0,
-            svg_data=req.svg_data if is_svg_mode else None,
-            input_type=effective_input_type,
-            badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
-            badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
-            text_color=req.text_color if (is_logo or is_grey or is_hq) else None
-        )
+        if is_another:
+            proc_bytes = raw_bytes
+        else:
+            proc_bytes = process_tgs_template(
+                template_bytes=raw_bytes,
+                text=clean_text,
+                font_path=str(font_file_path),
+                text_scale=req.scale or 1.0,
+                svg_data=req.svg_data if is_svg_mode else None,
+                input_type=effective_input_type,
+                badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq) else None),
+                badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq) else None),
+                text_color=req.text_color if (is_logo or is_grey or is_hq) else None
+            )
 
         sticker_item = InputSticker(
             sticker=BufferedInputFile(proc_bytes, filename=f"emoji_add.tgs"),
