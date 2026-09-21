@@ -209,11 +209,11 @@ for (let i = 183; i <= 262; i++) {
     });
 }
 
-// The 197 Another Emojis (275.tgs to 472.tgs, excluding 330 / Another #56)
+// The 196 Another Emojis (275.tgs to 472.tgs, excluding 280 / 18+ and 330 / Another #56)
 const ANOTHER_TEMPLATES = [];
 let anotherCounter = 1;
 for (let i = 275; i <= 472; i++) {
-    if (i === 330) continue; // Another #56 (330) removed as requested
+    if (i === 280 || i === 330) continue; // 280 (18+) and 330 removed
     const dNum = anotherCounter++;
     ANOTHER_TEMPLATES.push({
         id: `${i}`,
@@ -1555,12 +1555,12 @@ const i18n = {
         "all_hq_desc": "Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
         "ph_search_hq": "HQ shablonlardan qidirish...",
         "tab_another_badge": "ANOTHER SPECIAL PACK",
-        "tab_another_title": "198 ta Another Emoji Shablonlar",
-        "tab_another_desc": "Yangi eksklyuziv matnli va 3D harakatlanuvchi shablonlar to'plami. Barcha 198 ta emojini 1 bosishda to'liq yarating!",
-        "btn_create_fullpack_another": "To'liq 198 ta Another Emojini Yaratish",
+        "tab_another_title": "196 ta Another Emoji Shablonlar",
+        "tab_another_desc": "Yangi eksklyuziv matnli va 3D harakatlanuvchi shablonlar to'plami. Barcha 196 ta emojini 1 bosishda to'liq yarating!",
+        "btn_create_fullpack_another": "To'liq 196 ta Another Emojini Yaratish",
         "all_another_title": "Barcha Another Shablonlar",
         "all_another_desc": "Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
-        "ph_search_another": "Another emoji raqamini qidirish (1-198)...",
+        "ph_search_another": "Another emoji raqamini qidirish (1-196)...",
         "another_maintenance_badge": "Vaqtincha to'xtatilgan",
         "another_maintenance_title": "Ta'mirlash ishlari olib borilmoqda",
         "another_maintenance_desc": "Ushbu \"Another\" bo'limida sozlash va takomillashtirish ishlari ketmoqda. Tez orada to'liq ishga tushiriladi! Hozircha boshqa bo'limlardagi yuzlab shablonlardan bemalol foydalanishingiz mumkin.",
@@ -1746,12 +1746,12 @@ const i18n = {
         "all_hq_desc": "Выберите шаблоны или отметьте несколько для своего пака",
         "ph_search_hq": "Поиск шаблонов HQ...",
         "tab_another_badge": "ANOTHER СПЕЦИАЛЬНЫЙ ПАК",
-        "tab_another_title": "198 шаблонов Another эмодзи",
-        "tab_another_desc": "Новая коллекция текстовых и 3D анимированных стикеров Another. Создайте все 198 эмодзи в 1 клик!",
-        "btn_create_fullpack_another": "Создать полный пак (198 Another)",
+        "tab_another_title": "196 шаблонов Another эмодзи",
+        "tab_another_desc": "Новая коллекция текстовых и 3D анимированных стикеров Another. Создайте все 196 эмодзи в 1 клик!",
+        "btn_create_fullpack_another": "Создать полный пак (196 Another)",
         "all_another_title": "Все шаблоны Another",
         "all_another_desc": "Выберите нужные шаблоны или отметьте несколько для своего пака",
-        "ph_search_another": "Поиск шаблонов Another (1-198)...",
+        "ph_search_another": "Поиск шаблонов Another (1-196)...",
         "another_maintenance_badge": "Временно приостановлено",
         "another_maintenance_title": "Ведутся технические работы",
         "another_maintenance_desc": "В этом разделе ведутся работы по настройке. Скоро всё заработает! Пока вы можете использовать сотни шаблонов из других разделов.",
@@ -1937,12 +1937,12 @@ const i18n = {
         "all_hq_desc": "Select templates or choose multiple to build a custom pack",
         "ph_search_hq": "Search HQ templates...",
         "tab_another_badge": "ANOTHER SPECIAL PACK",
-        "tab_another_title": "198 Another Emoji Templates",
-        "tab_another_desc": "New exclusive text and 3D animated Another pack. Generate all 198 emojis in 1 click!",
-        "btn_create_fullpack_another": "Create Full Pack (198 Another)",
+        "tab_another_title": "196 Another Emoji Templates",
+        "tab_another_desc": "New exclusive text and 3D animated Another pack. Generate all 196 emojis in 1 click!",
+        "btn_create_fullpack_another": "Create Full Pack (196 Another)",
         "all_another_title": "All Another Templates",
         "all_another_desc": "Select templates or choose multiple to build a custom pack",
-        "ph_search_another": "Search Another templates (1-198)...",
+        "ph_search_another": "Search Another templates (1-196)...",
         "another_maintenance_badge": "Temporarily Paused",
         "another_maintenance_title": "Maintenance in Progress",
         "another_maintenance_desc": "This section is currently under maintenance and improvement. It will be back soon! Meanwhile, feel free to use hundreds of templates from other sections.",
@@ -4061,7 +4061,7 @@ async function executeGeneration(pendingAction) {
     } else if (rawMode === 'all_hq') {
         showProgressModal("High Quality Pack Tayyorlanmoqda...", "Barcha 80 ta High Quality shablon qayta ishlanmoqda...", 10);
     } else if (rawMode === 'all_another') {
-        showProgressModal("Another Special Pack Tayyorlanmoqda...", "Barcha 197 ta Another shablon qayta ishlanmoqda...", 10);
+        showProgressModal("Another Special Pack Tayyorlanmoqda...", "Barcha 196 ta Another shablon qayta ishlanmoqda...", 10);
     } else if (mode === "single") {
         const num = parseInt(getTemplateNumber(selectedFiles[0]));
         let tag = `Logo #${num}`;
