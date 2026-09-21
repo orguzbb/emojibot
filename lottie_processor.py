@@ -513,112 +513,7 @@ def validate_and_clean_svg(raw_svg: Union[str, bytes]) -> str:
     return raw_svg
 
 
-def get_text_local_bounds(item: dict) -> dict:
-    """
-    Computes precise bounding box, center, width, height, and fill/stroke
-    of text letter groups in the local coordinate frame of `item`.
-    Does NOT include `item`'s own transform, because `item`'s own transform
-    is applied to the newly inserted shapes by Lottie at runtime.
-    """
-    all_xs = []
-    all_ys = []
-    sample_fill = {"a": 0, "k": [1, 1, 1, 1]}
-    sample_stroke = {"a": 0, "k": [0, 0, 0, 0]}
-    sample_stroke_w = {"a": 0, "k": 0}
-
-    def collect_child(child, cur_ox=0.0, cur_oy=0.0, cur_sx=1.0, cur_sy=1.0):
-        nonlocal sample_fill, sample_stroke, sample_stroke_w
-        if not isinstance(child, dict):
-            return
-
-        sub_items = child.get('it', [])
-        this_ox, this_oy = 0.0, 0.0
-        this_sx, this_sy = 1.0, 1.0
-
-        for sub in sub_items:
-            if isinstance(sub, dict) and sub.get('ty') == 'tr':
-                pos = sub.get('p', {}).get('k', [0, 0])
-                if isinstance(pos, list) and len(pos) >= 2 and isinstance(pos[0], (int, float)):
-                    p_x, p_y = float(pos[0]), float(pos[1])
-                else:
-                    p_x, p_y = 0.0, 0.0
-
-                scl = sub.get('s', {}).get('k', [100, 100])
-                if isinstance(scl, list) and len(scl) >= 2 and isinstance(scl[0], (int, float)):
-                    s_x, s_y = float(scl[0]) / 100.0, float(scl[1]) / 100.0
-                else:
-                    s_x, s_y = 1.0, 1.0
-
-                anc = sub.get('a', {}).get('k', [0, 0])
-                if isinstance(anc, list) and len(anc) >= 2 and isinstance(anc[0], (int, float)):
-                    a_x, a_y = float(anc[0]), float(anc[1])
-                else:
-                    a_x, a_y = 0.0, 0.0
-
-                this_sx, this_sy = s_x, s_y
-                this_ox = p_x - a_x * this_sx
-                this_oy = p_y - a_y * this_sy
-
-        eff_ox = cur_ox + this_ox * cur_sx
-        eff_oy = cur_oy + this_oy * cur_sy
-        eff_sx = cur_sx * this_sx
-        eff_sy = cur_sy * this_sy
-
-        ty = child.get('ty')
-        if ty == 'sh':
-            ks = child.get('ks', {}).get('k', {})
-            if isinstance(ks, dict):
-                for pt in ks.get('v', []):
-                    all_xs.append(pt[0] * eff_sx + eff_ox)
-                    all_ys.append(pt[1] * eff_sy + eff_oy)
-            elif isinstance(ks, list):
-                for kf in ks:
-                    if isinstance(kf, dict):
-                        s_val = kf.get('s', [{}])
-                        if isinstance(s_val, list) and s_val and isinstance(s_val[0], dict):
-                            for pt in s_val[0].get('v', []):
-                                all_xs.append(pt[0] * eff_sx + eff_ox)
-                                all_ys.append(pt[1] * eff_sy + eff_oy)
-        elif ty == 'fl' and 'c' in child:
-            sample_fill = copy.deepcopy(child.get('c'))
-        elif ty == 'st' and 'c' in child:
-            sample_stroke = copy.deepcopy(child.get('c'))
-            if 'w' in child:
-                sample_stroke_w = copy.deepcopy(child.get('w'))
-
-        for sub in sub_items:
-            collect_child(sub, eff_ox, eff_oy, eff_sx, eff_sy)
-
-    for child in item.get('it', []):
-        if isinstance(child, dict) and child.get('ty') != 'tr':
-            collect_child(child)
-
-    if all_xs and all_ys:
-        min_x, max_x = min(all_xs), max(all_xs)
-        min_y, max_y = min(all_ys), max(all_ys)
-    else:
-        min_x, max_x = -100.0, 100.0
-        min_y, max_y = -30.0, 30.0
-
-    return {
-        "orig_width": max_x - min_x,
-        "orig_height": max_y - min_y,
-        "orig_center_x": (min_x + max_x) / 2.0,
-        "orig_center_y": (min_y + max_y) / 2.0,
-        "orig_min_x": min_x,
-        "orig_max_x": max_x,
-        "orig_min_y": min_y,
-        "orig_max_y": max_y,
-        "fill": sample_fill,
-        "stroke": sample_stroke,
-        "stroke_w": sample_stroke_w
-    }
-
-
 def extract_layer_template_info(target_layer: dict, accumulate_transforms: bool = False):
-    if isinstance(target_layer, dict) and target_layer.get('_local_bounds'):
-        return copy.deepcopy(target_layer['_local_bounds'])
-
     if isinstance(target_layer, dict) and target_layer.get('_accumulate_transforms', False):
         accumulate_transforms = True
 
@@ -808,14 +703,7 @@ def generate_text_shapes(text: str, font_path: str, target_layer: dict, scale_fa
                 "hd": False
             })
 
-        stroke_val = info["stroke_w"].get("k", 0) if isinstance(info.get("stroke_w"), dict) else 0
-        has_stroke = False
-        if isinstance(stroke_val, (int, float)) and stroke_val > 0:
-            has_stroke = True
-        elif isinstance(stroke_val, list) and len(stroke_val) > 0:
-            has_stroke = True
-
-        if info.get("stroke_w") and has_stroke:
+        if info.get("stroke_w") and isinstance(info["stroke_w"], dict) and info["stroke_w"].get("k", 0) > 0:
             items.append({
                 "ty": "st",
                 "nm": "Stroke",
@@ -1277,10 +1165,8 @@ def is_text_container(item):
     """
     Checks if a shape group is a text container:
     1. Has multiple child groups named after single characters ('A', 'B', 'K', 'X', etc.)
-    2. Or is explicitly named 'TextGroup', 'NAME', 'Letters', 'caption', 'word', 'label'
+    2. Or is explicitly named 'TextGroup', 'NAME', 'Letters', 'caption', 'word'
     3. Or has child shape paths named 'Logo path' or child groups named 'Svg Group'
-    4. Or has 3-8 child groups containing vector shapes (e.g. Another pack unnamed letters)
-    5. Or has 3-8 child vector shapes with fill/stroke (e.g. Another pack direct glyphs)
     """
     if not isinstance(item, dict):
         return False, []
@@ -1297,9 +1183,9 @@ def is_text_container(item):
     if len(letter_indices) >= 2:
         return True, ('letters', letter_indices)
     
-    # Check 2: group named TextGroup, NAME, Letters, Label, caption, word
+    # Check 2: group named TextGroup, NAME, Letters, etc.
     nm = str(item.get('nm', '')).lower()
-    if any(k in nm for k in ['textgroup', 'name', 'letters', 'caption', 'word', 'label']):
+    if any(k in nm for k in ['textgroup', 'name', 'letters', 'caption', 'word']):
         return True, ('text_group', list(range(len(children))))
         
     # Check 3: child shape paths named 'Logo path' or child groups named 'Svg Group'
@@ -1312,36 +1198,6 @@ def is_text_container(item):
     ]
     if len(logo_paths) >= 1:
         return True, ('logo_paths', logo_paths)
-
-    # Check 4: Another pack text groups (must have fill or stroke)
-    has_fill_or_stroke = any(
-        isinstance(s, dict) and (s.get('ty') in ('fl', 'st', 'gf') or 
-        any(x.get('ty') in ('fl', 'st', 'gf') for x in s.get('it', [])))
-        for s in children
-    )
-    if not has_fill_or_stroke:
-        return False, []
-
-    if len(children) >= 3:
-        sub_groups = []
-        for i, s in enumerate(children):
-            if isinstance(s, dict) and s.get('ty') == 'gr':
-                s_items = s.get('it', [])
-                if any(x.get('ty') == 'sh' for x in s_items):
-                    sub_groups.append(i)
-        if len(sub_groups) in (3, 4, 5, 6, 7, 8):
-            bounds = get_text_local_bounds(item)
-            if bounds['orig_width'] >= bounds['orig_height'] * 0.9:
-                return True, ('another_letter_groups', sub_groups)
-            
-        sub_shapes = [
-            i for i, s in enumerate(children)
-            if isinstance(s, dict) and s.get('ty') == 'sh'
-        ]
-        if 3 <= len(sub_shapes) <= 8:
-            bounds = get_text_local_bounds(item)
-            if bounds['orig_width'] >= bounds['orig_height'] * 0.9:
-                return True, ('another_letter_shapes', sub_shapes)
         
     return False, []
 
@@ -1383,13 +1239,8 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
     for item in shapes_list:
         if isinstance(item, dict):
             is_text, text_type = is_text_container(item)
-            if is_text:
-                local_bounds = get_text_local_bounds(item)
-                target_group = {
-                    'shapes': [item],
-                    '_local_bounds': local_bounds,
-                    '_accumulate_transforms': True
-                }
+            if is_text and text_type[0] in ('text_group', 'logo_paths'):
+                target_group = {'shapes': [item]}
                 if is_svg:
                     new_shapes = generate_svg_shapes(svg_content, target_group, scale_factor=scale)
                 elif text and text.strip().upper() == "SVG":

@@ -1561,6 +1561,11 @@ const i18n = {
         "all_another_title": "Barcha Another Shablonlar",
         "all_another_desc": "Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
         "ph_search_another": "Another emoji raqamini qidirish (1-198)...",
+        "another_maintenance_badge": "Vaqtincha to'xtatilgan",
+        "another_maintenance_title": "Ta'mirlash ishlari olib borilmoqda",
+        "another_maintenance_desc": "Ushbu \"Another\" bo'limida sozlash va takomillashtirish ishlari ketmoqda. Tez orada to'liq ishga tushiriladi! Hozircha boshqa bo'limlardagi yuzlab shablonlardan bemalol foydalanishingiz mumkin.",
+        "btn_go_name_tab": "Ism bo'limiga o'tish",
+        "btn_go_logo_tab": "Logo bo'limiga o'tish",
         "btn_main_action": "Tanlangan Emojini Yaratish",
         "selected_count": "ta tanlandi",
         "btn_action_create": "Yaratish",
@@ -1747,6 +1752,11 @@ const i18n = {
         "all_another_title": "Все шаблоны Another",
         "all_another_desc": "Выберите нужные шаблоны или отметьте несколько для своего пака",
         "ph_search_another": "Поиск шаблонов Another (1-198)...",
+        "another_maintenance_badge": "Временно приостановлено",
+        "another_maintenance_title": "Ведутся технические работы",
+        "another_maintenance_desc": "В этом разделе ведутся работы по настройке. Скоро всё заработает! Пока вы можете использовать сотни шаблонов из других разделов.",
+        "btn_go_name_tab": "Перейти в Именные",
+        "btn_go_logo_tab": "Перейти в Логотипы",
         "btn_main_action": "Создать выбранные эмодзи",
         "selected_count": "выбрано",
         "btn_action_create": "Создать",
@@ -1933,6 +1943,11 @@ const i18n = {
         "all_another_title": "All Another Templates",
         "all_another_desc": "Select templates or choose multiple to build a custom pack",
         "ph_search_another": "Search Another templates (1-198)...",
+        "another_maintenance_badge": "Temporarily Paused",
+        "another_maintenance_title": "Maintenance in Progress",
+        "another_maintenance_desc": "This section is currently under maintenance and improvement. It will be back soon! Meanwhile, feel free to use hundreds of templates from other sections.",
+        "btn_go_name_tab": "Go to Name section",
+        "btn_go_logo_tab": "Go to Logo section",
         "btn_main_action": "Create Selected Emojis",
         "selected_count": "selected",
         "btn_action_create": "Create",
@@ -2550,9 +2565,7 @@ function switchTab(tabKey) {
             state.activeColorTarget = 'text';
             renderHQGrid(dom.hqSearch?.value || '');
         } else if (tabKey === 'another') {
-            state.selectedTemplate = Array.from(state.selectedAnother)[0] || "275.tgs";
-            state.activeColorTarget = 'text';
-            renderAnotherGrid(dom.anotherSearch?.value || '');
+            // Another bo'limi hozircha ta'mirlashda
         }
     } catch (err) {
         console.warn("switchTab grid render error:", err);
@@ -2579,7 +2592,7 @@ const debouncedFullUpdate = debounce(() => {
     } else if (state.activeTab === 'hq') {
         renderHQGrid(dom.hqSearch?.value || '');
     } else if (state.activeTab === 'another') {
-        renderAnotherGrid(dom.anotherSearch?.value || '');
+        // Another bo'limi hozircha ta'mirlashda
     }
 }, 300);
 
@@ -2909,7 +2922,9 @@ function updateSelectionStatus() {
     // Floating action bar visibility
     const bar = dom.bottomActionBar || document.getElementById('bottom-action-bar');
     if (bar) {
-        if (totalSelected > 0 && dom.viewStudio && !dom.viewStudio.classList.contains('hidden')) {
+        if (state.activeTab === 'another') {
+            bar.classList.remove('visible');
+        } else if (totalSelected > 0 && dom.viewStudio && !dom.viewStudio.classList.contains('hidden')) {
             bar.classList.add('visible');
         } else {
             bar.classList.remove('visible');
