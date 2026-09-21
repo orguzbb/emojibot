@@ -2565,7 +2565,9 @@ function switchTab(tabKey) {
             state.activeColorTarget = 'text';
             renderHQGrid(dom.hqSearch?.value || '');
         } else if (tabKey === 'another') {
-            // Another bo'limi hozircha ta'mirlashda
+            state.selectedTemplate = Array.from(state.selectedAnother)[0] || "275.tgs";
+            state.activeColorTarget = 'text';
+            renderAnotherGrid(dom.anotherSearch?.value || '');
         }
     } catch (err) {
         console.warn("switchTab grid render error:", err);
@@ -2592,7 +2594,7 @@ const debouncedFullUpdate = debounce(() => {
     } else if (state.activeTab === 'hq') {
         renderHQGrid(dom.hqSearch?.value || '');
     } else if (state.activeTab === 'another') {
-        // Another bo'limi hozircha ta'mirlashda
+        renderAnotherGrid(dom.anotherSearch?.value || '');
     }
 }, 300);
 
@@ -2922,9 +2924,7 @@ function updateSelectionStatus() {
     // Floating action bar visibility
     const bar = dom.bottomActionBar || document.getElementById('bottom-action-bar');
     if (bar) {
-        if (state.activeTab === 'another') {
-            bar.classList.remove('visible');
-        } else if (totalSelected > 0 && dom.viewStudio && !dom.viewStudio.classList.contains('hidden')) {
+        if (totalSelected > 0 && dom.viewStudio && !dom.viewStudio.classList.contains('hidden')) {
             bar.classList.add('visible');
         } else {
             bar.classList.remove('visible');
@@ -3582,39 +3582,71 @@ async function renderAnotherGrid(filterText = '') {
         console.warn("Initial Another batch error:", e);
     }
     
-    // Lazy load remaining Another emojis on scroll
+    // Fast batched lazy load remaining Another emojis on scroll
+    let pendingQueue = [];
+    let flushTimer = null;
+
+    async function processAnotherBatchQueue() {
+        if (pendingQueue.length === 0) return;
+        const currentBatch = pendingQueue.splice(0, 14);
+        const selB = currentBatch.filter(f => state.selectedAnother.has(f));
+        const unselB = currentBatch.filter(f => !state.selectedAnother.has(f));
+
+        const promises = [];
+        if (selB.length > 0 && state.text) {
+            promises.push(fetchBatchPreviews(selB, state.text, state.font, state.scale));
+        }
+        if (unselB.length > 0) {
+            promises.push(fetchBatchPreviews(unselB, "", state.font, state.scale));
+        }
+
+        try {
+            const results = await Promise.all(promises);
+            const merged = Object.assign({}, ...results);
+            currentBatch.forEach(file => {
+                const num = getTemplateNumber(file);
+                const container = document.getElementById(`thumb-another-${num}`);
+                const data = merged[file];
+                if (container && data && !state.anotherPlayers[file]) {
+                    container.innerHTML = '';
+                    const player = safeLoadLottieAnimation({
+                        container: container,
+                        renderer: 'svg',
+                        loop: true,
+                        autoplay: true,
+                        animationData: data
+                    });
+                    if (player) state.anotherPlayers[file] = player;
+                }
+            });
+        } catch (err) {
+            console.warn("Another batch lazy load error:", err);
+        }
+
+        if (pendingQueue.length > 0) {
+            flushTimer = setTimeout(processAnotherBatchQueue, 40);
+        }
+    }
+
     if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
-            entries.forEach(async entry => {
+            entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const card = entry.target;
                     const file = card.dataset.file;
-                    const num = getTemplateNumber(file);
-                    const container = document.getElementById(`thumb-another-${num}`);
-                    
-                    if (container && !state.anotherPlayers[file]) {
-                        try {
-                            const isSel = state.selectedAnother.has(file);
-                            const data = await fetchLottiePreview(file, isSel ? state.text : "", state.font, state.scale);
-                            if (data && container && !state.anotherPlayers[file]) {
-                                container.innerHTML = '';
-                                const player = safeLoadLottieAnimation({
-                                    container: container,
-                                    renderer: 'svg',
-                                    loop: true,
-                                    autoplay: true,
-                                    animationData: data
-                                });
-                                if (player) state.anotherPlayers[file] = player;
-                            }
-                        } catch (err) {
-                            console.warn("Lazy load thumb error:", file, err);
+                    if (!state.anotherPlayers[file] && !pendingQueue.includes(file)) {
+                        pendingQueue.push(file);
+                        if (!flushTimer) {
+                            flushTimer = setTimeout(() => {
+                                flushTimer = null;
+                                processAnotherBatchQueue();
+                            }, 50);
                         }
                     }
                     observer.unobserve(card);
                 }
             });
-        }, { rootMargin: '250px' });
+        }, { rootMargin: '350px' });
         
         dom.anotherGrid.querySelectorAll('.tpl-card').forEach((card) => {
             const file = card.dataset.file;

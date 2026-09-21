@@ -1206,7 +1206,7 @@ def process_shapes_list(shapes_list, font_path=None, text=None, svg_content=None
     """
     Recursively finds text shape groups and replaces them with newly rendered font glyphs or SVG shapes.
     """
-    is_svg = bool(svg_content)
+    is_svg = isinstance(svg_content, str) and bool(svg_content.strip())
 
     letter_indices = [
         i for i, s in enumerate(shapes_list)
@@ -1535,8 +1535,12 @@ def process_tgs_template(
     and applies custom badge colors (outer border, inner base, and text color).
     """
     effective_scale = text_scale if text_scale is not None else scale
+    if not isinstance(svg_content, str):
+        if isinstance(svg_content, (int, float)) and text_scale is None and scale == 1.0:
+            effective_scale = float(svg_content)
+        svg_content = None
     effective_svg = svg_content if svg_content is not None else svg_data
-    if input_type == 'text':
+    if not isinstance(effective_svg, str) or not effective_svg.strip() or input_type == 'text':
         effective_svg = None
 
     data = json.loads(gzip.decompress(template_bytes))

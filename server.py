@@ -149,6 +149,18 @@ async def check_channel_subscription(user_id: int) -> bool:
 
 
 _TEMPLATE_BYTES_CACHE = {}
+_PREVIEW_MEMORY_CACHE = {}
+
+
+def _get_preview_cache(key):
+    return _PREVIEW_MEMORY_CACHE.get(key)
+
+
+def _set_preview_cache(key, data):
+    if len(_PREVIEW_MEMORY_CACHE) > 3000:
+        for old_k in list(_PREVIEW_MEMORY_CACHE.keys())[:1000]:
+            _PREVIEW_MEMORY_CACHE.pop(old_k, None)
+    _PREVIEW_MEMORY_CACHE[key] = data
 
 
 def get_template_bytes(template_name: str) -> Optional[bytes]:
@@ -524,6 +536,23 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
     if not raw_bytes:
         raise HTTPException(status_code=404, detail="Shablon fayli topilmadi")
 
+    scale_val = round(float(req.scale or 1.0), 2)
+    effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
+    cache_key = (
+        tpl_name,
+        clean_text,
+        font_key,
+        scale_val,
+        effective_input_type,
+        req.badge_color,
+        req.badge_bg_color,
+        req.text_color,
+        bool(req.svg_data)
+    )
+    cached = _get_preview_cache(cache_key)
+    if cached is not None:
+        return JSONResponse(content=cached)
+
     try:
         tpl_num = 0
         try:
@@ -535,7 +564,6 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
         is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
-        effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
             text=clean_text,
@@ -548,6 +576,7 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             text_color=req.text_color if (is_logo or is_grey or is_hq or is_another) else None
         )
         lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
+        _set_preview_cache(cache_key, lottie_json)
         return JSONResponse(content=lottie_json)
     except Exception as e:
         logger.error(f"Preview generation error for {req.template_id}: {e}", exc_info=True)
@@ -557,7 +586,7 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
 @app.api_route("/api/batch_preview", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/batch_preview/", methods=["GET", "POST", "OPTIONS"])
 async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)):
-    """Renders multiple templates in a single batch request for speed"""
+    """Renders multiple templates in a single batch request for speed with in-memory caching"""
     if req is None:
         req = BatchPreviewRequest()
         
@@ -576,8 +605,27 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
     if not font_file_path.exists():
         font_file_path = Path(DEFAULT_FONT_PATH)
 
+    scale_val = round(float(req.scale or 1.0), 2)
+    effective_input_type = "svg" if is_svg_mode else (req.input_type or "text")
     results = {}
     for tpl_id in req.template_ids:
+        filename = tpl_id if str(tpl_id).endswith(".tgs") else f"{tpl_id}.tgs"
+        cache_key = (
+            filename,
+            clean_text,
+            font_key,
+            scale_val,
+            effective_input_type,
+            req.badge_color,
+            req.badge_bg_color,
+            req.text_color,
+            bool(req.svg_data)
+        )
+        cached = _get_preview_cache(cache_key)
+        if cached is not None:
+            results[filename] = cached
+            continue
+
         raw_bytes = get_template_bytes(tpl_id)
         if not raw_bytes:
             continue
@@ -598,13 +646,13 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 font_path=str(font_file_path),
                 text_scale=req.scale or 1.0,
                 svg_data=req.svg_data,
-                input_type=req.input_type or ("svg" if is_svg_mode else "text"),
+                input_type=effective_input_type,
                 badge_color=None if is_grey else (req.badge_color if (is_logo or is_hq or is_another) else None),
                 badge_bg_color=None if is_grey else (req.badge_bg_color if (is_logo or is_hq or is_another) else None),
                 text_color=req.text_color if (is_logo or is_grey or is_hq or is_another) else None
             )
             lottie_json = json.loads(gzip.decompress(proc_bytes).decode("utf-8"))
-            filename = tpl_id if tpl_id.endswith(".tgs") else f"{tpl_id}.tgs"
+            _set_preview_cache(cache_key, lottie_json)
             results[filename] = lottie_json
         except Exception as e:
             logger.warning(f"Batch preview error for {tpl_id}: {e}")
