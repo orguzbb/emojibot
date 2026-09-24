@@ -30,9 +30,15 @@ if [ -d "$HOME/www/xs134.xuss.us" ]; then
     echo "✅ WebApp fayllari nusxalandi ($HOME/www/xs134.xuss.us)."
 fi
 
-# 5. Bog'liqliklarni tekshirish
-echo "📦 Kutubxonalar tekshirilmoqda..."
-$PYTHON_CMD -m pip install -r requirements.txt --quiet 2>/dev/null || pip3 install -r requirements.txt --quiet 2>/dev/null || true
+# 5. Bog'liqliklarni tekshirish va o'rnatish
+echo "📦 Kutubxonalar o'rnatilmoqda..."
+if [ -f "venv/bin/pip" ]; then
+    venv/bin/pip install -r requirements.txt
+elif [ -f ".venv/bin/pip" ]; then
+    .venv/bin/pip install -r requirements.txt
+else
+    $PYTHON_CMD -m pip install -r requirements.txt || pip3 install -r requirements.txt || true
+fi
 
 # 6. Botni ishga tushirish
 echo "🚀 Bot va Server ishga tushirilmoqda..."
@@ -41,7 +47,7 @@ sleep 3
 
 # 7. Holatni tekshirish
 echo "=== Bot Holati va Loglar ==="
-if pgrep -f "main.py" > /dev/null; then
+if ps aux | grep -v grep | grep -q "main.py"; then
     echo "✅ Bot jarayoni muvaffaqiyatli ishga tushdi va ishlamoqda!"
 else
     echo "⚠️ DIQQAT: Bot jarayoni to'xtab qoldi! Oxirgi loglar:"
