@@ -2119,15 +2119,25 @@
 
         // Load app.js, ticket_templates.js and abu_templates.js in parallel so UI and previews activate instantly
         var sApp = document.createElement('script');
-        sApp.src = 'app.js?v=7.4.0';
+        sApp.src = 'app.js?v=7.4.1';
         document.body.appendChild(sApp);
 
         var sAbu = document.createElement('script');
-        sAbu.src = 'abu_templates.js?v=7.4.0';
+        sAbu.src = 'abu_templates.js?v=7.3.4';
+        sAbu.onload = function() {
+            if (typeof window.__onTemplatesReady === 'function') {
+                window.__onTemplatesReady();
+            }
+        };
         document.body.appendChild(sAbu);
 
         var sTemplates = document.createElement('script');
-        sTemplates.src = 'ticket_templates.js?v=7.4.0';
+        sTemplates.src = 'ticket_templates.js?v=7.3.4';
+        sTemplates.onload = function() {
+            if (typeof window.__onTemplatesReady === 'function') {
+                window.__onTemplatesReady();
+            }
+        };
         document.body.appendChild(sTemplates);
     })();
     </script>

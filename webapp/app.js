@@ -2992,6 +2992,19 @@ async function renderTicketsGrid(filterText = '') {
     });
 }
 
+window.__onTemplatesReady = function() {
+    if (state.activeTab === 'name') {
+        renderTicketsGrid(dom.templateSearch?.value || '');
+    } else if (state.activeTab === 'logo') {
+        renderLogosGrid(dom.logoSearch?.value || '');
+    } else if (state.activeTab === 'grey') {
+        renderGreyGrid(dom.greySearch?.value || '');
+    } else if (state.activeTab === 'hq') {
+        renderHQGrid(dom.hqSearch?.value || '');
+    }
+    updateLivePreview();
+};
+
 // Render the 104 Logo Emojis in Logo Tab (14.tgs to 117.tgs)
 async function renderLogosGrid(filterText = '') {
     Object.values(state.logoPlayers).forEach(p => {
