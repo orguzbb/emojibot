@@ -3,10 +3,11 @@
 echo "=== GnEmoji Bot Yangilanmoqda ==="
 cd "$(dirname "$0")"
 
-# 1. Eski jarayonlarni to'xtatish va port 8000 ni tozalash
+# 1. Eski jarayonlarni to'xtatish va port 8085 ni tozalash
 echo "🛑 Eski jarayonlar to'xtatilmoqda..."
+ps aux | grep "[m]ain.py" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
 pkill -9 -f "main.py" 2>/dev/null || true
-fuser -k 8000/tcp 2>/dev/null || true
+fuser -k 8085/tcp 2>/dev/null || true
 sleep 1
 
 # 2. Gitdan oxirgi kodni olish (aniq sinxronizatsiya)

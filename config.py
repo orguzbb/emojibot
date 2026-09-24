@@ -13,7 +13,7 @@ DEFAULT_FONT_PATH = FONTS_DIR / "stapel.ttf"
 
 WEBAPP_URL = "https://xs134.xuss.us/?v=7.4.0"
 SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 8000
+SERVER_PORT = 8085
 
 CHANNEL_ID = -1003900982155
 CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/gnemoji")

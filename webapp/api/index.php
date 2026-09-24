@@ -34,7 +34,8 @@ $queryString = $_SERVER['QUERY_STRING'] ?? '';
 $cleanQuery = preg_replace('/(&?endpoint=[^&]*)/', '', $queryString);
 $cleanQuery = trim($cleanQuery, '&');
 
-$targetUrl = 'http://127.0.0.1:8000/api/' . $endpoint . ($cleanQuery ? '?' . $cleanQuery : '');
+$backendPort = 8085;
+$targetUrl = 'http://127.0.0.1:' . $backendPort . '/api/' . $endpoint . ($cleanQuery ? '?' . $cleanQuery : '');
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 $ch = curl_init();
