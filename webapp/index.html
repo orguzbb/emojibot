@@ -686,7 +686,7 @@
     <!-- React & ReactDOM Core -->
     <script src="react.min.js?v=7.3.0"></script>
     <script src="react-dom.min.js?v=7.3.0"></script>
-    <link rel="stylesheet" href="style.css?v=7.3.0">
+    <link rel="stylesheet" href="style.css?v=7.4.0">
 </head>
 <body oncontextmenu="return false;" onselectstart="return false;" ondragstart="return false;">
 
@@ -1127,7 +1127,7 @@
             </div>
         </section>
 
-        <!-- Main Navigation Tabs (Name vs Logo vs Grey vs High Quality vs Another) -->
+        <!-- Main Navigation Tabs (Name vs Logo vs Grey vs High Quality) -->
         <div class="nav-tabs-wrapper">
             <div class="nav-tabs">
                 <button type="button" class="nav-tab active" id="tab-btn-name" data-tab="name" onclick="window.switchTab('name')">
@@ -1158,15 +1158,6 @@
                     </svg>
                     <span class="tab-text" data-i18n="tab_hq">HQ</span>
                     <span class="tab-counter" id="tab-counter-hq">80</span>
-                </button>
-                <button type="button" class="nav-tab" id="tab-btn-another" data-tab="another" onclick="window.switchTab('another')">
-                    <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    <span class="tab-text" data-i18n="tab_another">Another</span>
-                    <span class="tab-counter" id="tab-counter-another">196</span>
                 </button>
             </div>
         </div>
@@ -1364,60 +1355,6 @@
             <!-- 80 High Quality Grid (183.tgs to 262.tgs) -->
             <div class="templates-grid" id="hq-grid">
                 <!-- Javascript orqali 183-262 gacha bo'lgan barcha shablonlar render qilinadi -->
-            </div>
-        </main>
-
-        <!-- ==================== TAB 5: ANOTHER (196 TA ANOTHER EMOJILAR 275-472) ==================== -->
-        <main id="tab-content-another" class="tab-content">
-            <!-- Full Pack Hero Card for Another Emojis -->
-            <div class="logo-hero-card another-hero-card">
-                <div class="logo-hero-badge" style="background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35); color: #fff; font-weight: 800;">
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                    <span data-i18n="tab_another_badge">ANOTHER SPECIAL PACK</span>
-                </div>
-                <h2 class="logo-hero-title" data-i18n="tab_another_title">196 ta Another Emoji Shablonlar</h2>
-                <p class="logo-hero-desc" data-i18n="tab_another_desc">
-                    Yangi eksklyuziv matnli va 3D harakatlanuvchi shablonlar to'plami. Barcha 196 ta emojini 1 bosishda to'liq yarating!
-                </p>
-                <button type="button" class="btn-create-fullpack" id="btn-create-another-fullpack" style="background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); box-shadow: 0 8px 25px rgba(168, 85, 247, 0.45); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; font-weight: 800;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                    </svg>
-                    <span class="btn-text" data-i18n="btn_create_fullpack_another">To'liq 196 ta Another Emojini Yaratish</span>
-                </button>
-            </div>
-
-            <div class="section-intro" style="margin-top: 24px;">
-                <div class="intro-texts">
-                    <div class="title-with-badge">
-                        <h2 class="section-title" data-i18n="all_another_title">Barcha Another Shablonlar</h2>
-                        <span class="badge-pill-cyan" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.35);">275.tgs — 472.tgs</span>
-                    </div>
-                    <p class="section-desc" data-i18n="all_another_desc">Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating</p>
-                </div>
-                <div class="search-bar">
-                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    <input type="text" id="another-search" placeholder="Another emoji raqamini qidirish (1-196)..." data-i18n-ph="ph_search_another">
-                </div>
-                <div class="grid-toolbar">
-                    <button type="button" class="btn-select-all" id="btn-select-all-another">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        <span id="txt-select-all-another" data-i18n="btn_select_all">Hammasini belgilash</span>
-                    </button>
-                    <span class="selection-counter" id="another-selection-count">0 ta tanlandi</span>
-                </div>
-            </div>
-
-            <!-- 196 Another Grid (275.tgs to 472.tgs) -->
-            <div class="templates-grid" id="another-grid">
-                <!-- Javascript orqali 275-472 gacha bo'lgan barcha shablonlar render qilinadi -->
             </div>
         </main>
 
@@ -2182,15 +2119,15 @@
 
         // Load app.js, ticket_templates.js and abu_templates.js in parallel so UI and previews activate instantly
         var sApp = document.createElement('script');
-        sApp.src = 'app.js?v=7.3.4';
+        sApp.src = 'app.js?v=7.4.0';
         document.body.appendChild(sApp);
 
         var sAbu = document.createElement('script');
-        sAbu.src = 'abu_templates.js?v=7.3.4';
+        sAbu.src = 'abu_templates.js?v=7.4.0';
         document.body.appendChild(sAbu);
 
         var sTemplates = document.createElement('script');
-        sTemplates.src = 'ticket_templates.js?v=7.3.4';
+        sTemplates.src = 'ticket_templates.js?v=7.4.0';
         document.body.appendChild(sTemplates);
     })();
     </script>

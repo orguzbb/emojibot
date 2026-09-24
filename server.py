@@ -308,7 +308,6 @@ async def get_info():
         "logo_templates_count": 100,
         "grey_templates_count": 65,
         "high_quality_templates_count": 80,
-        "another_templates_count": 198,
         "emoji_price": emoji_price,
         "referral_bonus": referral_bonus,
         "fonts": [
@@ -496,8 +495,7 @@ async def get_templates_list():
             cat = "ticket"
             nm = f"100x100 #{num - 262 + 13}"
         else:
-            cat = "another"
-            nm = f"Another #{num - 274}"
+            continue
         items.append({
             "id": f.stem,
             "filename": f.name,
@@ -561,13 +559,7 @@ async def generate_preview(req: Optional[PreviewRequest] = Body(None)):
             pass
         is_grey = 118 <= tpl_num <= 182
         is_hq = 183 <= tpl_num <= 262
-        is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
-
-        if is_another:
-            lottie_json = json.loads(gzip.decompress(raw_bytes).decode("utf-8"))
-            _set_preview_cache(cache_key, lottie_json)
-            return JSONResponse(content=lottie_json)
 
         proc_bytes = process_tgs_template(
             template_bytes=raw_bytes,
@@ -642,17 +634,7 @@ async def generate_batch_preview(req: Optional[BatchPreviewRequest] = Body(None)
                 pass
             is_grey = 118 <= tpl_num <= 182
             is_hq = 183 <= tpl_num <= 262
-            is_another = 275 <= tpl_num <= 472
             is_logo = (14 <= tpl_num <= 117) or is_svg_mode
-
-            if is_another:
-                try:
-                    lottie_json = json.loads(gzip.decompress(raw_bytes).decode("utf-8"))
-                    _set_preview_cache(cache_key, lottie_json)
-                    results[filename] = lottie_json
-                except Exception as e:
-                    logger.warning(f"Batch preview another template error {tpl_id}: {e}")
-                continue
 
             proc_bytes = process_tgs_template(
                 template_bytes=raw_bytes,
@@ -787,8 +769,6 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
         target_files = [p / f"{i}.tgs" for i in range(118, 183) if (p / f"{i}.tgs").exists()]
     elif req.mode in ("all_hq", "all_high_quality", "hq", "high_quality"):
         target_files = [p / f"{i}.tgs" for i in range(183, 263) if (p / f"{i}.tgs").exists()]
-    elif req.mode in ("all_another", "another"):
-        target_files = [p / f"{i}.tgs" for i in range(275, 473) if i != 330 and (p / f"{i}.tgs").exists()]
     else:
         # Full Mega Pack (all templates)
         target_files = sorted(p.glob("*.tgs"), key=lambda f: (int(f.stem) if f.stem.isdigit() else 9999, f.name))
@@ -833,13 +813,9 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
             pass
         is_grey = 118 <= tpl_num <= 182
         is_hq = 183 <= tpl_num <= 262
-        is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
-        if is_another:
-            proc_bytes = raw_bytes
-        else:
-            proc_bytes = process_tgs_template(
+        proc_bytes = process_tgs_template(
                 template_bytes=raw_bytes,
                 text=clean_text,
                 font_path=str(font_file_path),
@@ -938,13 +914,9 @@ async def generate_emoji_pack(req: Optional[GenerateRequest] = Body(None), is_st
 
     # Branch B: Create a brand new sticker set
     is_any_hq = any(183 <= int(''.join(filter(str.isdigit, f.name)) or 0) <= 262 for f in target_files)
-    is_any_another = any(275 <= int(''.join(filter(str.isdigit, f.name)) or 0) <= 472 for f in target_files)
     if is_svg_mode:
         raw_slug = to_name_slug(clean_text) if (clean_text and clean_text != "SVG") else "svg"
         pack_title = f"{clean_text} Vector Emojis" if (clean_text and clean_text != "SVG") else "SVG Vector Emojis"
-    elif is_any_another or req.mode in ("all_another", "another"):
-        raw_slug = f"{to_name_slug(clean_text)}_another"
-        pack_title = f"{clean_text} Another Emojis" if req.mode != "single" else f"{clean_text} Another ({font_info['name']})"
     elif is_any_hq or req.mode in ("all_hq", "all_high_quality", "hq", "high_quality"):
         raw_slug = f"{to_name_slug(clean_text)}_hq"
         pack_title = f"{clean_text} HQ Emojis" if req.mode != "single" else f"{clean_text} HQ ({font_info['name']})"
@@ -1091,13 +1063,9 @@ async def add_to_existing_pack_endpoint(req: Optional[AddToPackRequest] = Body(N
             pass
         is_grey = 118 <= tpl_num <= 182
         is_hq = 183 <= tpl_num <= 262
-        is_another = 275 <= tpl_num <= 472
         is_logo = (14 <= tpl_num <= 117) or is_svg_mode
 
-        if is_another:
-            proc_bytes = raw_bytes
-        else:
-            proc_bytes = process_tgs_template(
+        proc_bytes = process_tgs_template(
                 template_bytes=raw_bytes,
                 text=clean_text,
                 font_path=str(font_file_path),

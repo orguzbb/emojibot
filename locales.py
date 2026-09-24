@@ -320,16 +320,6 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "uz": "🎉 Rahmat! Obuna tasdiqlandi. Endi botdan to'liq foydalanishingiz mumkin.",
         "ru": "🎉 Спасибо! Подписка подтверждена. Теперь вы можете пользоваться ботом.",
         "en": "🎉 Thank you! Subscription verified. You can now use the bot."
-    },
-    "tab_another": {
-        "uz": "Another",
-        "ru": "Another",
-        "en": "Another"
-    },
-    "btn_create_fullpack_another": {
-        "uz": "To'liq 198 ta Another Emojini Yaratish",
-        "ru": "Создать полный набор (198 Another)",
-        "en": "Create Full Pack (198 Another)"
     }
 }
 

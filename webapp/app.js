@@ -209,20 +209,6 @@ for (let i = 183; i <= 262; i++) {
     });
 }
 
-// The 196 Another Emojis (275.tgs to 472.tgs, excluding 280 / 18+ and 330 / Another #56)
-const ANOTHER_TEMPLATES = [];
-let anotherCounter = 1;
-for (let i = 275; i <= 472; i++) {
-    if (i === 280 || i === 330) continue; // 280 (18+) and 330 removed
-    const dNum = anotherCounter++;
-    ANOTHER_TEMPLATES.push({
-        id: `${i}`,
-        file: `${i}.tgs`,
-        displayNum: dNum,
-        name: `Another #${dNum}`,
-        tag: "Another Emoji"
-    });
-}
 
 // App State (Nothing selected by default on load, empty text/svg for user input)
 const state = {
@@ -249,7 +235,6 @@ const state = {
     selectedLogos: new Set(),   // 0 selected on start
     selectedGrey: new Set(),    // 0 selected on start
     selectedHQ: new Set(),      // 0 selected on start
-    selectedAnother: new Set(), // 0 selected on start
     userPacks: [],
     
     // Lottie player instances
@@ -259,7 +244,6 @@ const state = {
     logoPlayers: {},
     greyPlayers: {},
     hqPlayers: {},
-    anotherPlayers: {},
     
     // In-memory preview cache
     previewCache: new Map()
@@ -369,15 +353,12 @@ const dom = {
     tabBtnLogo: document.getElementById('tab-btn-logo'),
     tabBtnGrey: document.getElementById('tab-btn-grey'),
     tabBtnHQ: document.getElementById('tab-btn-hq'),
-    tabBtnAnother: document.getElementById('tab-btn-another'),
     tabContentName: document.getElementById('tab-content-name'),
     tabContentLogo: document.getElementById('tab-content-logo'),
     tabContentGrey: document.getElementById('tab-content-grey'),
     tabContentHQ: document.getElementById('tab-content-hq'),
-    tabContentAnother: document.getElementById('tab-content-another'),
     tabCounterGrey: document.getElementById('tab-counter-grey'),
     tabCounterHQ: document.getElementById('tab-counter-hq'),
-    tabCounterAnother: document.getElementById('tab-counter-another'),
     
     // Name Tab (25 100x100 Emojis)
     templatesGrid: document.getElementById('templates-grid'),
@@ -409,14 +390,6 @@ const dom = {
     txtSelectAllHQ: document.getElementById('txt-select-all-hq'),
     hqSelectionCount: document.getElementById('hq-selection-count'),
     btnCreateHQFullpack: document.getElementById('btn-create-hq-fullpack'),
-
-    // Another Tab (198 Emojis)
-    anotherGrid: document.getElementById('another-grid'),
-    anotherSearch: document.getElementById('another-search'),
-    btnSelectAllAnother: document.getElementById('btn-select-all-another'),
-    txtSelectAllAnother: document.getElementById('txt-select-all-another'),
-    anotherSelectionCount: document.getElementById('another-selection-count'),
-    btnCreateAnotherFullpack: document.getElementById('btn-create-another-fullpack'),
     
     userPacksList: document.getElementById('user-packs-list'),
     btnRefreshPacks: document.getElementById('btn-refresh-packs'),
@@ -857,11 +830,10 @@ function setActiveColorTarget(target) {
 }
 
 function syncColorControlsUI() {
-    const isAnotherTab = state.activeTab === 'another';
     const isHQTab = state.activeTab === 'hq';
     const isGreyTab = state.activeTab === 'grey';
     const isLogoTab = state.activeTab === 'logo' || state.inputType === 'svg';
-    const showColorSection = isLogoTab || isGreyTab || isHQTab || isAnotherTab;
+    const showColorSection = isLogoTab || isGreyTab || isHQTab;
 
     if (dom.logoColorSection) {
         if (showColorSection) {
@@ -871,13 +843,13 @@ function syncColorControlsUI() {
         }
     }
 
-    const isSingleTextMode = isGreyTab || isHQTab || isAnotherTab;
+    const isSingleTextMode = isGreyTab || isHQTab;
     if (isSingleTextMode) {
         state.activeColorTarget = 'text';
     }
 
     if (dom.colorPickerLabelText) {
-        dom.colorPickerLabelText.textContent = isAnotherTab ? "Another Emoji Matn Rangi" : (isHQTab ? "High Quality Matn Rangi" : (isGreyTab ? "Grey Emoji Matn Rangi" : "Ranglarni sozlash"));
+        dom.colorPickerLabelText.textContent = isHQTab ? "High Quality Matn Rangi" : (isGreyTab ? "Grey Emoji Matn Rangi" : "Ranglarni sozlash");
     }
 
     if (dom.targetPillOuter) dom.targetPillOuter.style.display = isSingleTextMode ? 'none' : '';
@@ -1073,9 +1045,6 @@ async function initApp() {
         
         // 3.6. Render the 80 High Quality Templates in HQ Tab (none selected by default)
         renderHQGrid();
-        
-        // 3.7. Render the 198 Another Templates in Another Tab (none selected by default)
-        renderAnotherGrid();
         
         // 4. Update Selection Status
         updateSelectionStatus();
@@ -1526,7 +1495,6 @@ const i18n = {
         "tab_logo": "Logo",
         "tab_grey": "Grey",
         "tab_hq": "HQ",
-        "tab_another": "Another",
         "tab_name_badge": "24 ta Ism Emoji",
         "tab_name_title": "Ism Emojilar",
         "tab_name_desc": "1-24 gacha maxsus animatsiyalardan birini yoki bir nechtasini tanlang",
@@ -1554,18 +1522,6 @@ const i18n = {
         "all_hq_title": "Barcha High Quality Shablonlar",
         "all_hq_desc": "Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
         "ph_search_hq": "HQ shablonlardan qidirish...",
-        "tab_another_badge": "ANOTHER SPECIAL PACK",
-        "tab_another_title": "196 ta Another Emoji Shablonlar",
-        "tab_another_desc": "Yangi eksklyuziv matnli va 3D harakatlanuvchi shablonlar to'plami. Barcha 196 ta emojini 1 bosishda to'liq yarating!",
-        "btn_create_fullpack_another": "To'liq 196 ta Another Emojini Yaratish",
-        "all_another_title": "Barcha Another Shablonlar",
-        "all_another_desc": "Kerakli shablonni tanlang yoki bir nechtasini belgilab maxsus to'plam yarating",
-        "ph_search_another": "Another emoji raqamini qidirish (1-196)...",
-        "another_maintenance_badge": "Vaqtincha to'xtatilgan",
-        "another_maintenance_title": "Ta'mirlash ishlari olib borilmoqda",
-        "another_maintenance_desc": "Ushbu \"Another\" bo'limida sozlash va takomillashtirish ishlari ketmoqda. Tez orada to'liq ishga tushiriladi! Hozircha boshqa bo'limlardagi yuzlab shablonlardan bemalol foydalanishingiz mumkin.",
-        "btn_go_name_tab": "Ism bo'limiga o'tish",
-        "btn_go_logo_tab": "Logo bo'limiga o'tish",
         "btn_main_action": "Tanlangan Emojini Yaratish",
         "selected_count": "ta tanlandi",
         "btn_action_create": "Yaratish",
@@ -1717,7 +1673,6 @@ const i18n = {
         "tab_logo": "Logo",
         "tab_grey": "Grey",
         "tab_hq": "HQ",
-        "tab_another": "Another",
         "tab_name_badge": "24 Именных эмодзи",
         "tab_name_title": "Именные эмодзи",
         "tab_name_desc": "Выберите из 1-24 именных анимаций",
@@ -1745,18 +1700,6 @@ const i18n = {
         "all_hq_title": "Все шаблоны High Quality",
         "all_hq_desc": "Выберите шаблоны или отметьте несколько для своего пака",
         "ph_search_hq": "Поиск шаблонов HQ...",
-        "tab_another_badge": "ANOTHER СПЕЦИАЛЬНЫЙ ПАК",
-        "tab_another_title": "196 шаблонов Another эмодзи",
-        "tab_another_desc": "Новая коллекция текстовых и 3D анимированных стикеров Another. Создайте все 196 эмодзи в 1 клик!",
-        "btn_create_fullpack_another": "Создать полный пак (196 Another)",
-        "all_another_title": "Все шаблоны Another",
-        "all_another_desc": "Выберите нужные шаблоны или отметьте несколько для своего пака",
-        "ph_search_another": "Поиск шаблонов Another (1-196)...",
-        "another_maintenance_badge": "Временно приостановлено",
-        "another_maintenance_title": "Ведутся технические работы",
-        "another_maintenance_desc": "В этом разделе ведутся работы по настройке. Скоро всё заработает! Пока вы можете использовать сотни шаблонов из других разделов.",
-        "btn_go_name_tab": "Перейти в Именные",
-        "btn_go_logo_tab": "Перейти в Логотипы",
         "btn_main_action": "Создать выбранные эмодзи",
         "selected_count": "выбрано",
         "btn_action_create": "Создать",
@@ -1908,7 +1851,6 @@ const i18n = {
         "tab_logo": "Logo",
         "tab_grey": "Grey",
         "tab_hq": "HQ",
-        "tab_another": "Another",
         "tab_name_badge": "24 Name Emojis",
         "tab_name_title": "Name Emojis",
         "tab_name_desc": "Choose from 1-24 special name animations",
@@ -1936,18 +1878,6 @@ const i18n = {
         "all_hq_title": "All High Quality Templates",
         "all_hq_desc": "Select templates or choose multiple to build a custom pack",
         "ph_search_hq": "Search HQ templates...",
-        "tab_another_badge": "ANOTHER SPECIAL PACK",
-        "tab_another_title": "196 Another Emoji Templates",
-        "tab_another_desc": "New exclusive text and 3D animated Another pack. Generate all 196 emojis in 1 click!",
-        "btn_create_fullpack_another": "Create Full Pack (196 Another)",
-        "all_another_title": "All Another Templates",
-        "all_another_desc": "Select templates or choose multiple to build a custom pack",
-        "ph_search_another": "Search Another templates (1-196)...",
-        "another_maintenance_badge": "Temporarily Paused",
-        "another_maintenance_title": "Maintenance in Progress",
-        "another_maintenance_desc": "This section is currently under maintenance and improvement. It will be back soon! Meanwhile, feel free to use hundreds of templates from other sections.",
-        "btn_go_name_tab": "Go to Name section",
-        "btn_go_logo_tab": "Go to Logo section",
         "btn_main_action": "Create Selected Emojis",
         "selected_count": "selected",
         "btn_action_create": "Create",
@@ -2357,7 +2287,6 @@ window.claimDailyBonus = claimDailyBonus;
 
 function getPreviewCacheKey(file, scale, text = null) {
     const tplNum = parseInt(getTemplateNumber(file));
-    const isAnother = tplNum >= 275 && tplNum <= 472;
     const isHQ = tplNum >= 183 && tplNum <= 262;
     const isGrey = tplNum >= 118 && tplNum <= 182;
     const isLogo = (tplNum >= 14 && tplNum <= 117) || state.inputType === 'svg';
@@ -2370,7 +2299,7 @@ function getPreviewCacheKey(file, scale, text = null) {
     }
     const txtToUse = text !== null ? text : state.text;
     const cleanTxt = (txtToUse && txtToUse.trim() && txtToUse.trim().toUpperCase() !== "SVG") ? txtToUse.trim().toUpperCase() : "ISMINGIZ";
-    if (isGrey || isHQ || isAnother) {
+    if (isGrey || isHQ) {
         const tCol = state.textColor || '#FFFFFF';
         return `${file}_${state.font}_${scale}_${cleanTxt}_${tCol}`;
     }
@@ -2386,7 +2315,6 @@ function getPreviewCacheKey(file, scale, text = null) {
 async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
     const isSvg = state.inputType === 'svg';
     const tplNum = parseInt(getTemplateNumber(templateFile));
-    const isAnother = tplNum >= 275 && tplNum <= 472;
     const isHQ = tplNum >= 183 && tplNum <= 262;
     const isGrey = tplNum >= 118 && tplNum <= 182;
     const isLogo = (tplNum >= 14 && tplNum <= 117) || isSvg;
@@ -2408,9 +2336,9 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
                 font: font,
                 scale: scale,
                 svg_data: isSvg ? state.svgData : null,
-                badge_color: (isGrey || isHQ || isAnother) ? null : (isLogo ? (state.badgeColor || null) : null),
-                badge_bg_color: (isGrey || isHQ || isAnother) ? null : (isLogo ? (state.badgeBgColor || null) : null),
-                text_color: (isLogo || isGrey || isHQ || isAnother) ? (state.textColor || null) : null
+                badge_color: (isGrey || isHQ) ? null : (isLogo ? (state.badgeColor || null) : null),
+                badge_bg_color: (isGrey || isHQ) ? null : (isLogo ? (state.badgeBgColor || null) : null),
+                text_color: (isLogo || isGrey || isHQ) ? (state.textColor || null) : null
             })
         });
         
@@ -2425,7 +2353,7 @@ async function fetchLottiePreview(templateFile, text, font, scale = 1.0) {
         if (!isSvg) {
             let fallbackData = getPreRenderedTemplateData(templateFile, font, scale);
             if (fallbackData) {
-                if (isGrey || isHQ || isAnother) {
+                if (isGrey || isHQ) {
                     fallbackData = applyBadgeColorToLottieJSON(fallbackData, null, null, state.textColor, true);
                 } else if (isLogo) {
                     fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor, false);
@@ -2509,11 +2437,9 @@ async function fetchBatchPreviews(templateFiles, text, font, scale = 1.0) {
             needed.forEach(file => {
                 let fallbackData = getPreRenderedTemplateData(file, font, scale);
                 if (fallbackData) {
-                    const tplNum = parseInt(getTemplateNumber(file));
-                    const isAnother = tplNum >= 275 && tplNum <= 472;
                     const isGrey = tplNum >= 118;
-                    const isLogo = (tplNum >= 14 && !isGrey && !isAnother) || isSvg;
-                    if (isGrey || isAnother) {
+                    const isLogo = (tplNum >= 14 && !isGrey) || isSvg;
+                    if (isGrey) {
                         fallbackData = applyBadgeColorToLottieJSON(fallbackData, null, null, state.textColor, true);
                     } else if (isLogo) {
                         fallbackData = applyBadgeColorToLottieJSON(fallbackData, state.badgeColor, state.badgeBgColor, state.textColor, false);
@@ -2536,13 +2462,11 @@ function switchTab(tabKey) {
         dom.tabBtnLogo?.classList.toggle('active', tabKey === 'logo');
         dom.tabBtnGrey?.classList.toggle('active', tabKey === 'grey');
         dom.tabBtnHQ?.classList.toggle('active', tabKey === 'hq');
-        dom.tabBtnAnother?.classList.toggle('active', tabKey === 'another');
         
         dom.tabContentName?.classList.toggle('active', tabKey === 'name');
         dom.tabContentLogo?.classList.toggle('active', tabKey === 'logo');
         dom.tabContentGrey?.classList.toggle('active', tabKey === 'grey');
         dom.tabContentHQ?.classList.toggle('active', tabKey === 'hq');
-        dom.tabContentAnother?.classList.toggle('active', tabKey === 'another');
     } catch (err) {
         console.warn("switchTab class toggle error:", err);
     }
@@ -2564,10 +2488,6 @@ function switchTab(tabKey) {
             state.selectedTemplate = Array.from(state.selectedHQ)[0] || "183.tgs";
             state.activeColorTarget = 'text';
             renderHQGrid(dom.hqSearch?.value || '');
-        } else if (tabKey === 'another') {
-            state.selectedTemplate = Array.from(state.selectedAnother)[0] || "275.tgs";
-            state.activeColorTarget = 'text';
-            renderAnotherGrid(dom.anotherSearch?.value || '');
         }
     } catch (err) {
         console.warn("switchTab grid render error:", err);
@@ -2593,8 +2513,6 @@ const debouncedFullUpdate = debounce(() => {
         renderGreyGrid(dom.greySearch?.value || '');
     } else if (state.activeTab === 'hq') {
         renderHQGrid(dom.hqSearch?.value || '');
-    } else if (state.activeTab === 'another') {
-        renderAnotherGrid(dom.anotherSearch?.value || '');
     }
 }, 300);
 
@@ -2738,10 +2656,6 @@ async function updateLivePreview() {
         const found = TICKET_TEMPLATES.find(t => parseInt(t.id) === num);
         const dNum = found ? found.displayNum : (num < 266 ? num - 263 + 14 : num - 264 + 14);
         tag = `Ticket #${dNum}`;
-    } else if (num >= 275 && num <= 472) {
-        const found = ANOTHER_TEMPLATES.find(t => parseInt(t.id) === num);
-        const dNum = found ? found.displayNum : (num < 330 ? num - 274 : num - 275);
-        tag = `Another #${dNum}`;
     } else if (num >= 183 && num <= 262) {
         tag = `High Quality #${num - 182}`;
     } else if (num >= 118 && num <= 182) {
@@ -2817,9 +2731,8 @@ function updateSelectionStatus() {
     if (state.activeTab === 'logo') activeSet = state.selectedLogos;
     else if (state.activeTab === 'grey') activeSet = state.selectedGrey;
     else if (state.activeTab === 'hq') activeSet = state.selectedHQ;
-    else if (state.activeTab === 'another') activeSet = state.selectedAnother;
     
-    const totalSelected = state.selectedTickets.size + state.selectedLogos.size + state.selectedGrey.size + state.selectedHQ.size + state.selectedAnother.size;
+    const totalSelected = state.selectedTickets.size + state.selectedLogos.size + state.selectedGrey.size + state.selectedHQ.size;
     const curLang = state.lang || 'uz';
     const dict = (typeof i18n !== 'undefined' && i18n[curLang]) ? i18n[curLang] : {};
 
@@ -2878,20 +2791,6 @@ function updateSelectionStatus() {
             dom.btnSelectAllHQ?.classList.remove('active-all');
         }
     }
-
-    // Another tab toolbar
-    if (dom.anotherSelectionCount) {
-        dom.anotherSelectionCount.textContent = `${state.selectedAnother.size} ${dict.selected_count || "ta tanlandi"}`;
-    }
-    if (dom.txtSelectAllAnother) {
-        if (state.selectedAnother.size === ANOTHER_TEMPLATES.length && ANOTHER_TEMPLATES.length > 0) {
-            dom.txtSelectAllAnother.textContent = dict.btn_deselect_all || "Tanlovni bekor qilish";
-            dom.btnSelectAllAnother?.classList.add('active-all');
-        } else {
-            dom.txtSelectAllAnother.textContent = dict.btn_select_all || "Hammasini belgilash";
-            dom.btnSelectAllAnother?.classList.remove('active-all');
-        }
-    }
     
     // Price & Label Calculation
     const count = totalSelected > 0 ? totalSelected : 1;
@@ -2909,7 +2808,7 @@ function updateSelectionStatus() {
             const tmpl = dict.action_btn_multiple || "Tanlangan Emojilarni {action} ({count} ta • {price})";
             dom.mainBtnText.innerHTML = tmpl.replace('{action}', actionVerb).replace('{count}', totalSelected).replace('{price}', priceBadge);
         } else if (totalSelected === 1) {
-            const allSel = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ, ...state.selectedAnother];
+            const allSel = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ];
             const singleFile = allSel[0];
             const num = getTemplateNumber(singleFile);
             const tmpl = dict.action_btn_single || "Tanlangan #{num} Emojini {action} ({price})";
@@ -2950,9 +2849,6 @@ async function updateCardPreview(file, tabKey, isSelected) {
     } else if (tabKey === 'hq') {
         container = document.getElementById(`thumb-hq-${num}`);
         playersMap = state.hqPlayers;
-    } else if (tabKey === 'another') {
-        container = document.getElementById(`thumb-another-${num}`);
-        playersMap = state.anotherPlayers;
     }
     if (!container) return;
 
@@ -2997,9 +2893,6 @@ function updateSelectedCardsPreview() {
     } else if (state.activeTab === 'hq') {
         activeSet = state.selectedHQ;
         tabKey = 'hq';
-    } else if (state.activeTab === 'another') {
-        activeSet = state.selectedAnother;
-        tabKey = 'another';
     }
     
     if (!activeSet || activeSet.size === 0) return;
@@ -3490,153 +3383,6 @@ async function renderHQGrid(filterText = '') {
     }
 }
 
-// Render the 198 Another Emojis in Another Tab (275.tgs to 472.tgs)
-async function renderAnotherGrid(filterText = '') {
-    Object.values(state.anotherPlayers).forEach(p => {
-        try { p.destroy(); } catch (e) {}
-    });
-    state.anotherPlayers = {};
-    if (!dom.anotherGrid) return;
-    dom.anotherGrid.innerHTML = '';
-    
-    let filtered = ANOTHER_TEMPLATES;
-    if (filterText && filterText.trim()) {
-        const query = filterText.trim().toLowerCase();
-        filtered = ANOTHER_TEMPLATES.filter(t => 
-            t.name.toLowerCase().includes(query) || 
-            t.file.toLowerCase().includes(query) ||
-            t.id.includes(query) ||
-            `another #${t.displayNum}`.toLowerCase().includes(query) ||
-            `${t.displayNum}` === query ||
-            `#${t.displayNum}` === query
-        );
-    }
-    
-    if (filtered.length === 0) {
-        dom.anotherGrid.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-dim);">
-                Another emoji shabloni topilmadi 🔍
-            </div>
-        `;
-        return;
-    }
-    
-    filtered.forEach((tpl) => {
-        const num = tpl.id;
-        const displayIdx = tpl.displayNum;
-        const isSelected = state.selectedAnother.has(tpl.file);
-        const card = document.createElement('div');
-        card.className = `tpl-card ${isSelected ? 'selected' : ''}`;
-        card.dataset.file = tpl.file;
-        
-        card.innerHTML = `
-            <span class="tpl-badge" style="background: rgba(168, 85, 247, 0.18); border-color: rgba(168, 85, 247, 0.4); color: #c084fc;">#${displayIdx}</span>
-            <div class="tpl-check-badge">✓</div>
-            <div class="tpl-lottie-thumb" id="thumb-another-${num}">
-                <div class="thumb-loader"></div>
-            </div>
-            <div class="tpl-meta">
-                <div class="tpl-title">${tpl.name}</div>
-                <div class="tpl-tag-label">${tpl.tag}</div>
-            </div>
-        `;
-        
-        card.addEventListener('click', () => {
-            haptic('selection');
-            toggleCardSelection(tpl.file, 'another');
-        });
-        
-        dom.anotherGrid.appendChild(card);
-    });
-    
-    // Load first 12 Another emojis immediately via batch preview
-    const initialBatch = filtered.slice(0, 12).map(t => t.file);
-    try {
-        const batchData = await fetchBatchPreviews(initialBatch, "", state.font, 1.0);
-        initialBatch.forEach(file => {
-            const num = getTemplateNumber(file);
-            const container = document.getElementById(`thumb-another-${num}`);
-            const data = batchData[file];
-            if (container && data && !state.anotherPlayers[file]) {
-                container.innerHTML = '';
-                const player = safeLoadLottieAnimation({
-                    container: container,
-                    renderer: 'svg',
-                    loop: true,
-                    autoplay: true,
-                    animationData: data
-                });
-                if (player) state.anotherPlayers[file] = player;
-            }
-        });
-    } catch (e) {
-        console.warn("Initial Another batch error:", e);
-    }
-    
-    // Fast batched lazy load remaining Another emojis on scroll
-    let pendingQueue = [];
-    let flushTimer = null;
-
-    async function processAnotherBatchQueue() {
-        if (pendingQueue.length === 0) return;
-        const currentBatch = pendingQueue.splice(0, 14);
-
-        try {
-            const merged = await fetchBatchPreviews(currentBatch, "", state.font, 1.0);
-            currentBatch.forEach(file => {
-                const num = getTemplateNumber(file);
-                const container = document.getElementById(`thumb-another-${num}`);
-                const data = merged[file];
-                if (container && data && !state.anotherPlayers[file]) {
-                    container.innerHTML = '';
-                    const player = safeLoadLottieAnimation({
-                        container: container,
-                        renderer: 'svg',
-                        loop: true,
-                        autoplay: true,
-                        animationData: data
-                    });
-                    if (player) state.anotherPlayers[file] = player;
-                }
-            });
-        } catch (err) {
-            console.warn("Another batch lazy load error:", err);
-        }
-
-        if (pendingQueue.length > 0) {
-            flushTimer = setTimeout(processAnotherBatchQueue, 40);
-        }
-    }
-
-    if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const card = entry.target;
-                    const file = card.dataset.file;
-                    if (!state.anotherPlayers[file] && !pendingQueue.includes(file)) {
-                        pendingQueue.push(file);
-                        if (!flushTimer) {
-                            flushTimer = setTimeout(() => {
-                                flushTimer = null;
-                                processAnotherBatchQueue();
-                            }, 50);
-                        }
-                    }
-                    observer.unobserve(card);
-                }
-            });
-        }, { rootMargin: '350px' });
-        
-        dom.anotherGrid.querySelectorAll('.tpl-card').forEach((card) => {
-            const file = card.dataset.file;
-            if (!state.anotherPlayers[file]) {
-                observer.observe(card);
-            }
-        });
-    }
-}
-
 // Toggle selection on a card (multi-select supported)
 function toggleCardSelection(filename, tabKey) {
     let targetSet = state.selectedTickets;
@@ -3650,9 +3396,6 @@ function toggleCardSelection(filename, tabKey) {
     } else if (tabKey === 'hq') {
         targetSet = state.selectedHQ;
         container = dom.hqGrid;
-    } else if (tabKey === 'another') {
-        targetSet = state.selectedAnother;
-        container = dom.anotherGrid;
     }
     
     const isNowSelected = !targetSet.has(filename);
@@ -3699,10 +3442,6 @@ function toggleSelectAll(tabKey) {
         targetSet = state.selectedHQ;
         allList = HQ_TEMPLATES;
         container = dom.hqGrid;
-    } else if (tabKey === 'another') {
-        targetSet = state.selectedAnother;
-        allList = ANOTHER_TEMPLATES;
-        container = dom.anotherGrid;
     }
     
     const selectAll = targetSet.size !== allList.length;
@@ -3905,10 +3644,8 @@ async function startGeneration(mode = 'selected') {
         selectedFiles = GREY_TEMPLATES.map(t => t.file);
     } else if (mode === 'all_hq') {
         selectedFiles = HQ_TEMPLATES.map(t => t.file);
-    } else if (mode === 'all_another') {
-        selectedFiles = ANOTHER_TEMPLATES.map(t => t.file);
     } else {
-        const allSelected = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ, ...state.selectedAnother];
+        const allSelected = [...state.selectedTickets, ...state.selectedLogos, ...state.selectedGrey, ...state.selectedHQ];
         if (allSelected.length === 0) {
             targetMode = "single";
             selectedFiles = [state.selectedTemplate];
@@ -4040,8 +3777,6 @@ async function executeGeneration(pendingAction) {
         showProgressModal("Grey 3D Pack Tayyorlanmoqda...", "Barcha 65 ta grey shablon qayta ishlanmoqda...", 10);
     } else if (rawMode === 'all_hq') {
         showProgressModal("High Quality Pack Tayyorlanmoqda...", "Barcha 80 ta High Quality shablon qayta ishlanmoqda...", 10);
-    } else if (rawMode === 'all_another') {
-        showProgressModal("Another Special Pack Tayyorlanmoqda...", "Barcha 196 ta Another shablon qayta ishlanmoqda...", 10);
     } else if (mode === "single") {
         const num = parseInt(getTemplateNumber(selectedFiles[0]));
         let tag = `Logo #${num}`;
@@ -4051,10 +3786,6 @@ async function executeGeneration(pendingAction) {
             const found = TICKET_TEMPLATES.find(t => parseInt(t.id) === num);
             const dNum = found ? found.displayNum : (num < 266 ? num - 263 + 14 : num - 264 + 14);
             tag = `Ticket #${dNum}`;
-        } else if (num >= 275 && num <= 472) {
-            const found = ANOTHER_TEMPLATES.find(t => parseInt(t.id) === num);
-            const dNum = found ? found.displayNum : (num < 330 ? num - 274 : num - 275);
-            tag = `Another #${dNum}`;
         } else if (num >= 183 && num <= 262) {
             tag = `High Quality #${num - 182}`;
         } else if (num >= 118 && num <= 182) {
@@ -4431,11 +4162,10 @@ function setupEventListeners() {
             renderLogosGrid(dom.logoSearch?.value || '');
             renderGreyGrid(dom.greySearch?.value || '');
             renderHQGrid(dom.hqSearch?.value || '');
-            renderAnotherGrid(dom.anotherSearch?.value || '');
         });
     });
     
-    // Tab switching (Name vs Logo vs Grey vs HQ vs Another)
+    // Tab switching (Name vs Logo vs Grey vs HQ)
     dom.tabBtnName?.addEventListener('click', () => {
         haptic('selection');
         switchTab('name');
@@ -4454,11 +4184,6 @@ function setupEventListeners() {
     dom.tabBtnHQ?.addEventListener('click', () => {
         haptic('selection');
         switchTab('hq');
-    });
-
-    dom.tabBtnAnother?.addEventListener('click', () => {
-        haptic('selection');
-        switchTab('another');
     });
     
     // Destination selector (New Pack vs Existing Pack)
@@ -4569,7 +4294,6 @@ function setupEventListeners() {
     dom.btnSelectAllLogos?.addEventListener('click', () => toggleSelectAll('logo'));
     dom.btnSelectAllGrey?.addEventListener('click', () => toggleSelectAll('grey'));
     dom.btnSelectAllHQ?.addEventListener('click', () => toggleSelectAll('hq'));
-    dom.btnSelectAllAnother?.addEventListener('click', () => toggleSelectAll('another'));
     
     // Search ticket templates (1-13 & 263-274)
     dom.templateSearch?.addEventListener('input', (e) => {
@@ -4590,11 +4314,6 @@ function setupEventListeners() {
     dom.hqSearch?.addEventListener('input', (e) => {
         renderHQGrid(e.target.value);
     });
-
-    // Search Another templates (275-472)
-    dom.anotherSearch?.addEventListener('input', (e) => {
-        renderAnotherGrid(e.target.value);
-    });
     
     // Bottom Action Button
     dom.btnMainAction.addEventListener('click', () => {
@@ -4614,11 +4333,6 @@ function setupEventListeners() {
     // High Quality Tab Full Pack Button (all 80)
     dom.btnCreateHQFullpack?.addEventListener('click', () => {
         startGeneration('all_hq');
-    });
-
-    // Another Tab Full Pack Button (all 198)
-    dom.btnCreateAnotherFullpack?.addEventListener('click', () => {
-        startGeneration('all_another');
     });
     
     // Refresh user packs
