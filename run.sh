@@ -1,34 +1,52 @@
 #!/bin/bash
-set -e
 
 echo "=== GnEmoji Bot Yangilanmoqda ==="
 cd "$(dirname "$0")"
 
-# 1. Eski jarayonlarni to'xtatish
-kill -9 $(ps -u $USER -o pid,comm | grep python | awk '{print $1}') 2>/dev/null || true
-pkill -9 -f "python.*main.py" 2>/dev/null || true
-
-# 2. Gitdan oxirgi kodni olish (aniq sinxronizatsiya)
-git fetch origin main
-git reset --hard origin/main
-
-# 3. WebApp fayllarini nusxalash
-if [ -d "$HOME/www/xs134.xuss.us" ]; then
-    cp -a webapp/. "$HOME/www/xs134.xuss.us/"
-    echo "✅ WebApp fayllari yangilandi."
+# 1. Python muhitini aniqlash (venv yoki tizim)
+PYTHON_CMD="python3"
+if [ -d "venv" ] && [ -f "venv/bin/python3" ]; then
+    PYTHON_CMD="venv/bin/python3"
+    echo "Using venv Python: $PYTHON_CMD"
+elif [ -d ".venv" ] && [ -f ".venv/bin/python3" ]; then
+    PYTHON_CMD=".venv/bin/python3"
+    echo "Using .venv Python: $PYTHON_CMD"
 fi
 
-# 4. Bog'liqliklarni tekshirish
-pip3 install -r requirements.txt --quiet 2>/dev/null || true
+# 2. Eski jarayonlarni to'xtatish va port 8000 ni tozalash
+echo "🛑 Eski jarayonlar to'xtatilmoqda..."
+pkill -9 -f "main.py" 2>/dev/null || true
+fuser -k 8000/tcp 2>/dev/null || true
+sleep 1
 
-# 5. Botni ishga tushirish
+# 3. Gitdan oxirgi kodni olish (aniq sinxronizatsiya)
+echo "📥 Gitdan yangilanishlar olinmoqda..."
+git fetch origin main || true
+git reset --hard origin/main || true
+
+# 4. WebApp fayllarini nusxalash
+if [ -d "$HOME/www/xs134.xuss.us" ]; then
+    cp -a webapp/. "$HOME/www/xs134.xuss.us/"
+    echo "✅ WebApp fayllari nusxalandi ($HOME/www/xs134.xuss.us)."
+fi
+
+# 5. Bog'liqliklarni tekshirish
+echo "📦 Kutubxonalar tekshirilmoqda..."
+$PYTHON_CMD -m pip install -r requirements.txt --quiet 2>/dev/null || pip3 install -r requirements.txt --quiet 2>/dev/null || true
+
+# 6. Botni ishga tushirish
 echo "🚀 Bot va Server ishga tushirilmoqda..."
-nohup python3 main.py > bot.log 2>&1 &
+nohup $PYTHON_CMD main.py > bot.log 2>&1 &
 sleep 3
 
-# 6. Loglarni tekshirish
-echo "=== Bot Loglari ==="
-cat bot.log
+# 7. Holatni tekshirish
+echo "=== Bot Holati va Loglar ==="
+if pgrep -f "main.py" > /dev/null; then
+    echo "✅ Bot jarayoni muvaffaqiyatli ishga tushdi va ishlamoqda!"
+else
+    echo "⚠️ DIQQAT: Bot jarayoni to'xtab qoldi! Oxirgi loglar:"
+fi
+tail -n 25 bot.log
 
 echo ""
-echo "✅ Tayyor! Bot hozir ishlamoqda."
+echo "=== Tugadi ==="

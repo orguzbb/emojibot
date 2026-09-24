@@ -88,8 +88,8 @@ async def run_web_server():
     server = uvicorn.Server(config)
     try:
         await server.serve()
-    except Exception as e:
-        logger.error(f"Web server error: {e}", exc_info=True)
+    except (Exception, SystemExit, BaseException) as e:
+        logger.error(f"Web server error: {e}")
 
 
 async def main():
