@@ -35,6 +35,34 @@ $cleanQuery = preg_replace('/(&?endpoint=[^&]*)/', '', $queryString);
 $cleanQuery = trim($cleanQuery, '&');
 
 $backendPort = 8085;
+
+// Diagnostic helper
+if (isset($_GET['diag']) || $endpoint === 'diag') {
+    $processes = @shell_exec('ps aux | grep -E "python|main.py" | grep -v grep') ?: 'None';
+    $ports = @shell_exec('netstat -tlpn 2>/dev/null || ss -tlpn 2>/dev/null') ?: 'None';
+    $candidates = [
+        dirname(__DIR__, 2) . '/gn_emoji/bot.log',
+        dirname(__DIR__) . '/bot.log',
+        '/var/www/usr_1fvuia/data/gn_emoji/bot.log'
+    ];
+    $logContent = 'Not found';
+    foreach ($candidates as $cand) {
+        if (file_exists($cand)) {
+            $logContent = file_get_contents($cand);
+            break;
+        }
+    }
+    if (strlen($logContent) > 2000) $logContent = substr($logContent, -2000);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'backendPort' => $backendPort,
+        'processes' => $processes,
+        'ports' => $ports,
+        'bot_log' => $logContent
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 $targetUrl = 'http://127.0.0.1:' . $backendPort . '/api/' . $endpoint . ($cleanQuery ? '?' . $cleanQuery : '');
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
@@ -68,7 +96,9 @@ if ($curlErr || $response === false) {
     http_response_code(502);
     header('Content-Type: application/json');
     echo json_encode([
-        'detail' => 'Python server ishlamayapti. Terminalda "nohup python3 main.py > bot.log 2>&1 &" buyrug\'ini bering.'
+        'detail' => 'Python server ishlamayapti. Terminalda "nohup python3 main.py > bot.log 2>&1 &" buyrug\'ini bering.',
+        'target' => $targetUrl,
+        'curl_error' => $curlErr
     ]);
     exit;
 }
